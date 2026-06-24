@@ -240,18 +240,31 @@
   .bar-row .bar-value .bar-pct{ font-weight:700; color:var(--muted); font-size:10px; }
 
   /* ===== ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, with floating Delta% callouts ===== */
-  .compare-row{ margin-bottom:13px; }
-  .compare-row:last-child{ margin-bottom:0; }
-  .compare-label{ display:flex; justify-content:space-between; align-items:baseline; font-size:11.5px; font-weight:700; color:var(--ink); margin-bottom:5px; }
-  .compare-delta{ font-size:11.5px; font-weight:800; padding:2px 9px; border-radius:999px; background:rgba(122,6,36,0.06); }
-  .compare-delta.pos{ color:var(--green); background:rgba(30,130,76,0.1); }
-  .compare-delta.neg{ color:var(--red); background:rgba(179,38,30,0.1); }
-  .compare-bars{ display:flex; flex-direction:column; gap:4px; }
-  .compare-bar-track{ position:relative; height:16px; border-radius:999px; background:rgba(122,6,36,0.06); overflow:hidden; }
-  .compare-bar-fill{ height:100%; border-radius:999px; transition: width .35s ease; }
-  .compare-bar-fill.base{ background:linear-gradient(90deg,var(--maroon-tint-2),var(--maroon)); }
-  .compare-bar-fill.sim{ background:linear-gradient(90deg,var(--gold-soft),var(--gold)); }
-  .compare-bar-tag{ position:absolute; top:0; left:9px; height:100%; display:flex; align-items:center; font-size:9.5px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.35); white-space:nowrap; }
+  /* ===== HIGH-CONTRAST ENTERPRISE REVAMP — Baseline vs Simulated comparison section ===== */
+  .compare-card{ padding:22px 26px 26px; }
+  .compare-legend{ display:flex; gap:18px; margin:0 0 16px; }
+  .legend-item{ display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:700; color:var(--ink); }
+  .legend-swatch{ width:14px; height:14px; border-radius:4px; display:inline-block; box-shadow:0 1px 3px rgba(0,0,0,0.25); }
+  .legend-swatch.base{ background:#2b2b33; }
+  .legend-swatch.sim{ background:linear-gradient(135deg,#e6c659,var(--gold)); }
+  .compare-grid{ gap:28px; }
+  .compare-panel{ background:#fff; border:1px solid var(--border); border-radius:14px; padding:18px 20px 14px; box-shadow:0 6px 18px rgba(122,6,36,0.07); }
+  .compare-panel h4{ margin:0 0 16px; }
+  .compare-row{ margin-bottom:20px; }
+  .compare-row:last-child{ margin-bottom:4px; }
+  .compare-label{ display:flex; justify-content:space-between; align-items:baseline; font-size:13px; font-weight:800; color:var(--maroon-dark); margin-bottom:9px; }
+  .compare-delta{ font-size:12.5px; font-weight:800; padding:3px 11px; border-radius:999px; background:#f1f1f3; color:#2b2b33; }
+  .compare-delta.pos{ color:#0c6b3a; background:#e2f6ea; }
+  .compare-delta.neg{ color:#b3261e; background:#fbe7e5; }
+  .compare-bars{ display:flex; flex-direction:column; gap:8px; }
+  .compare-bar-track{ position:relative; height:26px; border-radius:8px; background:#f0eeec; overflow:hidden; border:1px solid rgba(0,0,0,0.04); }
+  .compare-bar-fill{ height:100%; border-radius:8px 0 0 8px; transition: width .35s ease; min-width:2px; }
+  /* Baseline = crisp dark charcoal bar with white text overlay; Simulated = gold bar with dark-charcoal text overlay — chosen specifically so the data text is never washed out against the fill color. */
+  .compare-bar-fill.base{ background:linear-gradient(90deg,#3a3a44,#1f1f26); }
+  .compare-bar-fill.sim{ background:linear-gradient(90deg,#e6c659,var(--gold)); }
+  .compare-bar-track .compare-bar-tag{ color:#1f1f26; }
+  .compare-bar-track:has(.compare-bar-fill.base) .compare-bar-tag{ color:#fff; text-shadow:none; }
+  .compare-bar-tag{ position:absolute; top:0; left:12px; height:100%; display:flex; align-items:center; font-size:11.5px; font-weight:800; white-space:nowrap; letter-spacing:0.01em; }
 </style>
 </head>
 <body>
@@ -478,29 +491,19 @@
           </div>
         </div>
 
-        <!-- DYNAMIC CHARTS — Monthly Volume by SKU & Revenue Mix (Simulated) -->
-        <div class="glass-card">
-          <div class="charts-grid">
-            <div class="chart-panel">
-              <h4>Monthly Volume by SKU</h4>
-              <div id="volumeChart"></div>
-            </div>
-            <div class="chart-panel">
-              <h4>Revenue Mix (Simulated)</h4>
-              <div id="revenueMixChart"></div>
-            </div>
-          </div>
-        </div>
-
         <!-- ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, with floating Delta% callouts -->
-        <div class="glass-card">
-          <h3 class="section-title" style="margin-bottom:14px;">Baseline vs Simulated Comparison</h3>
-          <div class="charts-grid">
-            <div class="chart-panel">
+        <div class="glass-card compare-card">
+          <h3 class="section-title" style="margin-bottom:4px;">Baseline vs Simulated Comparison</h3>
+          <div class="compare-legend">
+            <span class="legend-item"><span class="legend-swatch base"></span> Baseline</span>
+            <span class="legend-item"><span class="legend-swatch sim"></span> Simulated</span>
+          </div>
+          <div class="charts-grid compare-grid">
+            <div class="chart-panel compare-panel">
               <h4>Baseline vs Simulated Units</h4>
               <div id="compareUnitsChart"></div>
             </div>
-            <div class="chart-panel">
+            <div class="chart-panel compare-panel">
               <h4>Baseline vs Simulated Revenue</h4>
               <div id="compareRevenueChart"></div>
             </div>
@@ -720,15 +723,19 @@ function computeAllVolumes(){
     return { row: r, simPtc, simVolume };
   });
   const volumeLostDelta = stepA.map(x => x.row.dailyVolume - x.simVolume); // Current - Simulated, full precision
-  // VTM Gain — Σ_j≠i (-volumeLostDelta_j) * vtmMatrix[fromSKU_j][toSKU_i], computed on full-precision
-  // volumeLostDelta values (no early rounding feeding into this sum).
+  // VTM Gain — Σ_j≠i volumeLostDelta_j * vtmMatrix[fromSKU_j][toSKU_i], computed on full-precision
+  // volumeLostDelta values (no early rounding feeding into this sum). volumeLostDelta_j is POSITIVE when
+  // SKU j lost volume (current > simulated) — that lost volume is exactly what flows to other SKUs as a
+  // POSITIVE additive gain via the transfer fraction, so there is no negation/inversion anywhere in this
+  // sum: Final_Avg_Daily_Volume_Simulated = Avg_Daily_Volume_Simulated + VTM_Gain, with VTM_Gain itself
+  // always acting as a positive additive contribution when upstream SKUs are losing volume to this one.
   const vtmGain = stepA.map((x, i) => {
     let gain = 0;
     for(let j=0;j<stepA.length;j++){
       if(j===i) continue;
       const fromName = stepA[j].row.name, toName = x.row.name;
       const frac = (vtmMatrix[fromName] && vtmMatrix[fromName][toName]) || 0;
-      gain += (-volumeLostDelta[j]) * frac;
+      gain += volumeLostDelta[j] * frac;
     }
     return gain;
   });
@@ -870,48 +877,13 @@ function renderOutputTable(){
       <td class="num ${revCls}">${c.revDeltaPct.toFixed(2)}%</td>
     </tr>`;
   }).join('');
-  renderCharts(visibleComputed);
   renderComparisonCharts(visibleComputed);
 }
 
-// ---------- DYNAMIC CHARTS — fully recomputed from the live `computed` array on every render ----------
-// "Monthly Volume by SKU" reads each row's Final Monthly_Volume (Simulated) (c.monthlySimulated) and scales
-// every bar against the largest such value among all SKUs in the current scenario.
-// "Revenue Mix (Simulated)" computes, for every SKU, its individual simulated revenue divided by the
-// TOTAL simulated portfolio revenue across all SKUs — i.e. each SKU's live share of the simulated revenue mix.
-function renderCharts(computed){
-  const volEl = document.getElementById('volumeChart');
-  const mixEl = document.getElementById('revenueMixChart');
-  if(!volEl || !mixEl) return;
-
-  // DUAL LABEL — each bar shows BOTH the absolute simulated units AND its live share of the portfolio's
-  // total simulated volume across the SKUs currently in view (computed in real time from the same
-  // `computed` array that drives the Output Dashboard grid, so it always reconciles to the grid with zero variance).
-  const maxMonthlyVolume = Math.max(...computed.map(c => c.monthlySimulated), 1);
-  const totalSimVolume = computed.reduce((s,c) => s + c.monthlySimulated, 0) || 1;
-  volEl.innerHTML = computed.map(c => {
-    const pct = Math.max(0, Math.min(100, (c.monthlySimulated / maxMonthlyVolume) * 100));
-    const sharePct = (c.monthlySimulated / totalSimVolume) * 100;
-    return `<div class="bar-row">
-      <div class="bar-label" title="${c.row.name}">${c.row.name}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
-      <div class="bar-value">${Math.round(c.monthlySimulated).toLocaleString('en-IN')} <span class="bar-pct">(${sharePct.toFixed(1)}%)</span></div>
-    </div>`;
-  }).join('');
-
-  const totalSimRevenue = computed.reduce((s,c) => s + c.revenueSimulated, 0) || 1;
-  mixEl.innerHTML = computed.map(c => {
-    const sharePct = (c.revenueSimulated / totalSimRevenue) * 100;
-    const widthPct = Math.max(0, Math.min(100, sharePct));
-    return `<div class="bar-row">
-      <div class="bar-label" title="${c.row.name}">${c.row.name}</div>
-      <div class="bar-track"><div class="bar-fill alt" style="width:${widthPct}%;"></div></div>
-      <div class="bar-value">&#8377;${Math.round(c.revenueSimulated).toLocaleString('en-IN')} <span class="bar-pct">(${sharePct.toFixed(1)}%)</span></div>
-    </div>`;
-  }).join('');
-}
-
 // ---------- ADVANCED SIMULATION COMPARISON CHARTS ----------
+// The "Monthly Volume by SKU" and "Revenue Mix (Simulated)" progress-bar sections have been fully removed
+// from the Output Dashboard per the latest layout directive — the grid now flows directly into this
+// Baseline vs Simulated comparison section, which is the sole chart surface on Step 3.
 // Side-by-side "Baseline vs Simulated Units" and "Baseline vs Simulated Revenue" bars, with a floating
 // Delta % callout per SKU. Every number rendered here is read directly off the same `computed` array
 // (c.monthlyCurrent / c.monthlySimulated / c.revenueCurrent / c.revenueSimulated / c.volDeltaPct / c.revDeltaPct)
