@@ -388,19 +388,19 @@ Object.keys(baseData).forEach(month => {
 });
 const DEFAULT_MONTH = 'May 2026';
 
-// ---------- VOLUME TRANSFER MATRIX (vtm_metric.csv — reviewer-updated cross-elasticity matrix) ----------
-// Keyed by SKU name on both axes: vtmMatrix[fromSKU][toSKU] = fraction of fromSKU's lost volume captured by toSKU.
-// These are the EXACT decimals from the latest "vtm_metric.csv" upload — this overwrites all prior VTM values.
+// ---------- VOLUME TRANSFER MATRIX (VTM sheet of blinkit_pricing_simulator (1).xlsx — stakeholder-updated cross-elasticity matrix) ----------
+// Keyed by SKU name on both axes: vtmMatrix[fromSKU][toSKU] = fraction of fromSKU's volume change captured by toSKU.
+// These are the EXACT decimals read from the latest "VTM" sheet — this overwrites all prior VTM values.
 const vtmMatrix = {
-  "IG Everyday 5": {"IG Everyday 5":0.0, "IG Feast Rozzana 1":0.3074337703059225, "IG Feast Rozzana 5":0.47385237981008893, "IG Mini Mogra 10":0.009140471596855573, "IG Mini Mogra 5":0.054626245157281934, "IG Mini Mogra II 10":0.03837463830061876, "IG Mogra 10":0.008479618202957307, "IG Mogra 5":0.06777306601296881, "IG Super 5":0.0403198106133062},
-  "IG Feast Rozzana 1": {"IG Everyday 5":0.5106907068209543, "IG Feast Rozzana 1":0.0, "IG Feast Rozzana 5":0.4141006079417705, "IG Mini Mogra 10":0.002729670913588242, "IG Mini Mogra 5":0.02100282861773942, "IG Mini Mogra II 10":0.01081523102692006, "IG Mogra 10":0.002500699317369978, "IG Mogra 5":0.02438716785026364, "IG Super 5":0.01377308751139394},
-  "IG Feast Rozzana 5": {"IG Everyday 5":0.583913482065173, "IG Feast Rozzana 1":0.3071884772305264, "IG Feast Rozzana 5":0.0, "IG Mini Mogra 10":0.004800519627228576, "IG Mini Mogra 5":0.025976895079903143, "IG Mini Mogra II 10":0.02092584883686031, "IG Mogra 10":0.004388156119808107, "IG Mogra 5":0.03285193590546137, "IG Super 5":0.01995468513503902},
-  "IG Mini Mogra 10": {"IG Everyday 5":0.05081541322347556, "IG Feast Rozzana 1":0.009135467279292597, "IG Feast Rozzana 5":0.021657567219363884, "IG Mini Mogra 10":0.0, "IG Mini Mogra 5":0.3725737965673121, "IG Mini Mogra II 10":0.25924615226863656, "IG Mogra 10":0.08876659802171061, "IG Mogra 5":0.1792664664190587, "IG Super 5":0.018538539001150097},
-  "IG Mini Mogra 5": {"IG Everyday 5":0.1091218766487554, "IG Feast Rozzana 1":0.025257006826326492, "IG Feast Rozzana 5":0.04211068250978146, "IG Mini Mogra 10":0.13387390328535984, "IG Mini Mogra 5":0.0, "IG Mini Mogra II 10":0.21412143418936078, "IG Mogra 10":0.04813018444640351, "IG Mogra 5":0.40077944062614473, "IG Super 5":0.026605471467867885},
-  "IG Mini Mogra II 10": {"IG Everyday 5":0.09483820329393947, "IG Feast Rozzana 1":0.01609045925077791, "IG Feast Rozzana 5":0.041967845034997835, "IG Mini Mogra 10":0.11524563464042689, "IG Mini Mogra 5":0.26490410573137685, "IG Mini Mogra II 10":0.0, "IG Mogra 10":0.10572538416753419, "IG Mogra 5":0.33427497470604445, "IG Super 5":0.026953393174902585},
-  "IG Mogra 10": {"IG Everyday 5":0.04883899942248423, "IG Feast Rozzana 1":0.008670528122535695, "IG Feast Rozzana 5":0.02051006765483968, "IG Mini Mogra 10":0.09196300992397782, "IG Mini Mogra 5":0.13877061359166684, "IG Mini Mogra II 10":0.246394329423339, "IG Mogra 10":0.0, "IG Mogra 5":0.42548171894892783, "IG Super 5":0.019370732912228905},
-  "IG Mogra 5": {"IG Everyday 5":0.11938392800296609, "IG Feast Rozzana 1":0.025860904733391116, "IG Feast Rozzana 5":0.0469617487673993, "IG Mini Mogra 10":0.05680164728496204, "IG Mini Mogra 5":0.35341395057555763, "IG Mini Mogra II 10":0.23826133604725508, "IG Mogra 10":0.1301305233788071, "IG Mogra 5":0.0, "IG Super 5":0.02918596120966149},
-  "IG Super 5": {"IG Everyday 5":0.35904962086018427, "IG Feast Rozzana 1":0.07383476757907564, "IG Feast Rozzana 5":0.14420337723258536, "IG Mini Mogra 10":0.029695089312855895, "IG Mini Mogra 5":0.11860321767549756, "IG Mini Mogra II 10":0.0971203889100954, "IG Mogra 10":0.02994963835420354, "IG Mogra 5":0.1475439000755025, "IG Super 5":0.0}
+  "IG Everyday 5": {"IG Everyday 5":0, "IG Feast Rozzana 1":0.0750691117528706, "IG Feast Rozzana 5":0.116616497602548, "IG Mini Mogra 10":0.00254365066269931, "IG Mini Mogra 5":0.0135264567413614, "IG Mini Mogra II 10":0.00949034456739128, "IG Mogra 10":0.00238184297425041, "IG Mogra 5":0.0164299775519882, "IG Super 5":0.0107183633031156},
+  "IG Feast Rozzana 1": {"IG Everyday 5":0.0939345780282561, "IG Feast Rozzana 1":0, "IG Feast Rozzana 5":0.07967461885738, "IG Mini Mogra 10":0.000576674148705677, "IG Mini Mogra 5":0.00389858156434384, "IG Mini Mogra II 10":0.00209997284342122, "IG Mogra 10":0.000536807664906707, "IG Mogra 5":0.00455227036022911, "IG Super 5":0.00289477822847134},
+  "IG Feast Rozzana 5": {"IG Everyday 5":0.351335389688034, "IG Feast Rozzana 1":0.191830512529445, "IG Feast Rozzana 5":0, "IG Mini Mogra 10":0.00296415740114926, "IG Mini Mogra 5":0.0146255786800953, "IG Mini Mogra II 10":0.0111122091500098, "IG Mogra 10":0.00275793656899457, "IG Mogra 5":0.018009864251111, "IG Super 5":0.0121708684660843},
+  "IG Mini Mogra 10": {"IG Everyday 5":0.0445292102048824, "IG Feast Rozzana 1":0.00806777536598062, "IG Feast Rozzana 5":0.017223717091689, "IG Mini Mogra 10":0, "IG Mini Mogra 5":0.30172557985772, "IG Mini Mogra II 10":0.205184753624907, "IG Mogra 10":0.062940932654288, "IG Mogra 5":0.145553694996952, "IG Super 5":0.0145815522010538},
+  "IG Mini Mogra 5": {"IG Everyday 5":0.0757377972915265, "IG Feast Rozzana 1":0.0174450024758356, "IG Feast Rozzana 5":0.0271818978867626, "IG Mini Mogra 10":0.0965057581602893, "IG Mini Mogra 5":0, "IG Mini Mogra II 10":0.140075114997381, "IG Mogra 10":0.0355189471040957, "IG Mogra 5":0.24961934063875, "IG Super 5":0.0194626499104828},
+  "IG Mini Mogra II 10": {"IG Everyday 5":0.0695176301449127, "IG Feast Rozzana 1":0.0122931291644036, "IG Feast Rozzana 5":0.0270178932035287, "IG Mini Mogra 10":0.0858559778780175, "IG Mini Mogra 5":0.183250573841354, "IG Mini Mogra II 10":0, "IG Mogra 10":0.0800410504161973, "IG Mogra 5":0.225511974144351, "IG Super 5":0.019714671764325},
+  "IG Mogra 10": {"IG Everyday 5":0.0428836261003344, "IG Feast Rozzana 1":0.00772383292210366, "IG Feast Rozzana 5":0.0164816521239796, "IG Mini Mogra 10":0.0647327447565016, "IG Mini Mogra 5":0.114211499943039, "IG Mini Mogra II 10":0.196733435330748, "IG Mogra 10":0, "IG Mogra 5":0.349796330843173, "IG Super 5":0.0149868978903997},
+  "IG Mogra 5": {"IG Everyday 5":0.080239059274168, "IG Feast Rozzana 1":0.0177669423704997, "IG Feast Rozzana 5":0.0291942547571037, "IG Mini Mogra 10":0.0406054723808418, "IG Mini Mogra 5":0.217720071209372, "IG Mini Mogra II 10":0.150350711355137, "IG Mogra 10":0.0948824158420758, "IG Mogra 5":0, "IG Super 5":0.0207925332284311},
+  "IG Super 5": {"IG Everyday 5":0.0795698986952061, "IG Feast Rozzana 1":0.0171739983811902, "IG Feast Rozzana 5":0.0299902438039508, "IG Mini Mogra 10":0.00618353128789673, "IG Mini Mogra 5":0.025804394930087, "IG Mini Mogra II 10":0.0199800653550433, "IG Mogra 10":0.00617950525526244, "IG Mogra 5":0.0316066798570936, "IG Super 5":0}
 };
 const COGS_RATE = 0.65; // assumed cost-of-goods rate, used only to illustrate gross profit
 
@@ -459,20 +459,25 @@ function computeAllVolumes(){
   const stepA = priceRows.map(r => {
     const simPtc = r.ptc * (1 + r.change/100);
     const posFactor = r.position > 0 ? Math.pow(r.simPosition / r.position, r.positionCoeff) : 1;
-    const simVolume = r.dailyVolume
+    const simVolumeRaw = r.dailyVolume
       * Math.pow(simPtc / r.ptc, r.elasticity)
       * posFactor
       * Math.exp(r.osaCoeff * ((r.simOsa - r.osa) / 100));
+    // The Simulator sheet wraps the isolated simulated volume in ROUND(...,0) before computing
+    // "Volume lost Δ" and "VTM Gain" — replicate that rounding exactly so VTM Gain matches decimal-by-decimal.
+    const simVolume = Math.round(simVolumeRaw);
     return { row: r, simPtc, simVolume };
   });
-  const volumeLostDelta = stepA.map(x => x.row.dailyVolume - x.simVolume);
+  const volumeLostDelta = stepA.map(x => x.row.dailyVolume - x.simVolume); // "G" in the spreadsheet: Current - Simulated
+  // VTM Gain — replicates the workbook's exact formula: H_i = SUMPRODUCT(-G_j, VTM!col_i) for all j (rows 19:27, VTM column i)
+  // i.e. VTM_Gain_i = Σ_j (SimVolume_j - DailyVolume_j) * vtmMatrix[fromSKU_j][toSKU_i]   (self term j=i contributes 0 since vtmMatrix[x][x]=0)
   const vtmGain = stepA.map((x, i) => {
     let gain = 0;
     for(let j=0;j<stepA.length;j++){
       if(j===i) continue;
       const fromName = stepA[j].row.name, toName = x.row.name;
       const frac = (vtmMatrix[fromName] && vtmMatrix[fromName][toName]) || 0;
-      gain += volumeLostDelta[j] * frac;
+      gain += (-volumeLostDelta[j]) * frac;
     }
     return gain;
   });

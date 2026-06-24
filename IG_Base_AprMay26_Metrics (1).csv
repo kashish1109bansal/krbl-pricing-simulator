@@ -1,0 +1,19 @@
+﻿sku_order,item_id,item_name,month,avg_ptc,avg_comp_ptc,avg_osa,avg_ranking,avg_daily_volume,monthly_total_volume,revenue
+1,10117961,India Gate Everyday Basmati Rice (Medium Grain) 5 kg,April 2026,355.69,347.73,0.78,3.21,2162.17,64865,23043291.61
+1,10117961,India Gate Everyday Basmati Rice (Medium Grain) 5 kg,May 2026,366.56,356.74,0.7959,3.12,2469.65,76559,27801041.93
+2,10000195,India Gate Feast Rozana Basmati Rice (Medium Grain) 1 kg,April 2026,99.88,92.78,0.78,4.55,1703.5,51105,5101503.81
+2,10000195,India Gate Feast Rozana Basmati Rice (Medium Grain) 1 kg,May 2026,100.78,96.44,0.801,3.71,1784.77,55328,5555984.5
+3,10000196,India Gate Mogra Basmati Rice 5 Kg (Short Grain) 5 kg,April 2026,358.7,337.45,0.78,3.57,977.7,29331,10497440.7
+3,10000196,India Gate Mogra Basmati Rice 5 Kg (Short Grain) 5 kg,May 2026,374.69,341.77,0.7996,3.73,963.61,29872,11180757.73
+4,10006061,India Gate Feast Rozana Basmati Rice (Medium Grain) 5 kg,April 2026,439.22,431.53,0.78,6.17,851.57,25547,11189413.56
+4,10006061,India Gate Feast Rozana Basmati Rice (Medium Grain) 5 kg,May 2026,459.72,450.02,0.8042,5.43,876.55,27173,12484525.46
+5,10002013,India Gate Super Basmati Rice (Extra Long Grain) 5 kg,April 2026,745.3,735.72,0.78,6.76,742.33,22270,16535210.96
+5,10002013,India Gate Super Basmati Rice (Extra Long Grain) 5 kg,May 2026,793.35,777.58,0.8024,6.47,744.06,23066,18245526.05
+6,10046799,India Gate Mini II Mogra Basmati Rice (Short Grain) 10 kg,April 2026,496.42,501.64,0.78,4.86,706.83,21205,10522122.77
+6,10046799,India Gate Mini II Mogra Basmati Rice (Short Grain) 10 kg,May 2026,488.43,501.34,0.8009,5.68,862.94,26751,13049080.37
+7,10012362,India Gate Mini Mogra Basmati Rice (Short Grain) 5 kg,April 2026,321.77,303.14,0.78,1,631.63,18949,6092542.12
+7,10012362,India Gate Mini Mogra Basmati Rice (Short Grain) 5 kg,May 2026,319.02,308.99,0.7904,1.43,807.19,25023,7981720.06
+8,10006305,India Gate Mini Mogra Basmati Rice (Short Grain) 10 kg,April 2026,607.94,595.37,0.78,4.86,242.67,7280,4424555.23
+8,10006305,India Gate Mini Mogra Basmati Rice (Short Grain) 10 kg,May 2026,612.43,595,0.7865,5.68,257.23,7974,4882903.04
+9,10030412,India Gate Mogra Basmati Rice 10 Kg (Short Grain) 10 kg,April 2026,689.26,656.39,0.78,0.07,251.07,7532,5183323.35
+9,10030412,India Gate Mogra Basmati Rice 10 Kg (Short Grain) 10 kg,May 2026,708.49,663.39,0.7852,0,248.94,7717,5464781.28
