@@ -24,6 +24,7 @@
     --shadow-sm: 0 2px 10px rgba(99,0,25,0.06);
     --shadow-md: 0 10px 30px rgba(99,0,25,0.10);
     --shadow-lg: 0 24px 60px rgba(99,0,25,0.16);
+    --sidebar-w: 264px;
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; padding:0; }
@@ -36,6 +37,74 @@
       linear-gradient(180deg, var(--cream), #fff 60%);
     min-height:100vh;
   }
+
+  /* ================= LOGIN SCREEN ================= */
+  .login-screen{
+    position:fixed; inset:0; z-index:999;
+    display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(1100px 700px at 8% 0%, rgba(212,175,55,0.16), transparent 55%),
+      radial-gradient(1000px 800px at 100% 100%, rgba(122,6,36,0.20), transparent 55%),
+      linear-gradient(160deg, var(--maroon-dark) 0%, var(--maroon) 55%, #4a0014 100%);
+    transition: opacity .35s ease, visibility .35s ease;
+  }
+  .login-screen.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  .login-card{
+    width:380px; max-width:92vw; background: rgba(255,255,255,0.97); border-radius:20px;
+    padding:38px 34px 30px; box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+    border:1px solid rgba(212,175,55,0.35); position:relative; overflow:hidden;
+  }
+  .login-card::before{
+    content:''; position:absolute; top:0; left:0; right:0; height:5px;
+    background:linear-gradient(90deg,var(--gold),var(--maroon),var(--gold));
+  }
+  .login-brand{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:22px; }
+  .login-mark{ width:58px; height:58px; border-radius:16px; background:linear-gradient(135deg,var(--maroon),var(--maroon-dark)); display:flex; align-items:center; justify-content:center; color:var(--gold); font-weight:800; font-size:22px; box-shadow: var(--shadow-md); }
+  .login-brand h2{ margin:0; font-size:17px; color:var(--maroon-dark); font-weight:800; text-align:center; }
+  .login-brand p{ margin:0; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; font-weight:700; text-align:center; }
+  .login-field{ margin-bottom:16px; }
+  .login-field label{ display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:7px; }
+  .login-field input{ width:100%; font-family:inherit; font-size:13.5px; padding:12px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; color:var(--ink); }
+  .login-field input:focus{ outline:none; border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-soft); }
+  .login-btn{ width:100%; margin-top:6px; padding:13px; border-radius:11px; border:none; cursor:pointer; font-family:inherit; font-weight:800; font-size:13.5px; letter-spacing:0.02em; background:linear-gradient(135deg,#e6c659,var(--gold)); color:var(--maroon-dark); box-shadow:0 8px 20px rgba(212,175,55,0.35); transition: filter .15s ease, transform .15s ease; }
+  .login-btn:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+  .login-error{ font-size:12px; color:#ffd9d9; background:rgba(179,38,30,0.25); border:1px solid rgba(255,255,255,0.25); border-radius:8px; padding:9px 12px; margin-bottom:14px; display:none; font-weight:600; }
+  .login-hint{ margin-top:16px; text-align:center; font-size:10.5px; color:var(--muted); }
+
+  /* ================= APP SHELL / SIDEBAR LAYOUT ================= */
+  .app-shell{ display:none; }
+  .app-shell.visible{ display:flex; min-height:100vh; animation: fadeIn .3s ease; }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+
+  .sidebar{
+    width: var(--sidebar-w); flex-shrink:0; position:fixed; top:0; left:0; bottom:0;
+    background:linear-gradient(180deg,var(--maroon-dark),var(--maroon) 60%,#4a0014);
+    display:flex; flex-direction:column; padding:24px 16px; box-shadow: 6px 0 24px rgba(99,0,25,0.18);
+    z-index:50;
+  }
+  .sidebar-brand{ display:flex; align-items:center; gap:12px; padding:6px 8px 22px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:18px; }
+  .sidebar-brand .mark{ width:42px; height:42px; border-radius:11px; background:rgba(212,175,55,0.18); display:flex; align-items:center; justify-content:center; color:var(--gold); font-weight:800; font-size:16px; flex-shrink:0; }
+  .sidebar-brand .txt h1{ margin:0; font-size:14.5px; color:#fff; font-weight:800; line-height:1.25; }
+  .sidebar-brand .txt p{ margin:2px 0 0; font-size:9.5px; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:0.07em; font-weight:600; }
+
+  .side-nav{ display:flex; flex-direction:column; gap:6px; flex:1; }
+  .side-link{
+    display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:13px 14px;
+    border-radius:12px; border:none; background:transparent; color:rgba(255,255,255,0.72);
+    font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition: all .18s ease;
+  }
+  .side-link .num{ width:24px; height:24px; border-radius:50%; background:rgba(255,255,255,0.12); color:#fff; font-size:11.5px; display:flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0; }
+  .side-link:not(.active):hover{ background:rgba(255,255,255,0.08); color:#fff; }
+  .side-link.active{ background:linear-gradient(135deg,var(--gold),#c79f2e); color:var(--maroon-dark); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+  .side-link.active .num{ background:rgba(122,6,36,0.18); color:var(--maroon-dark); }
+  .side-link:disabled{ opacity:0.35; cursor:not-allowed; }
+
+  .sidebar-footer{ border-top:1px solid rgba(255,255,255,0.12); padding-top:16px; margin-top:10px; }
+  .sidebar-footer .tag{ font-size:10px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:0.05em; font-weight:600; margin-bottom:10px; padding:0 4px; }
+  .logout-btn{ width:100%; padding:11px 14px; border-radius:10px; border:1.5px solid rgba(255,255,255,0.2); background:transparent; color:rgba(255,255,255,0.8); font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; transition: all .15s ease; }
+  .logout-btn:hover{ background:rgba(255,255,255,0.1); color:#fff; }
+
+  .main-content{ flex:1; margin-left: var(--sidebar-w); min-width:0; }
   .app{ max-width:1480px; margin:0 auto; padding: 26px 28px 60px; }
 
   /* Header */
@@ -46,20 +115,10 @@
   .brand-text p{ margin:1px 0 0; font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; font-weight:600; }
   .header-tag{ font-size:11px; color:var(--gold); background:var(--maroon-dark); padding:6px 14px; border-radius:999px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; box-shadow: var(--shadow-sm); }
 
-  /* Step nav */
-  .step-nav{ display:flex; gap:10px; margin-bottom:26px; background: var(--glass); backdrop-filter: blur(14px); border:1px solid rgba(255,255,255,0.5); border-radius:16px; padding:8px; box-shadow: var(--shadow-md); }
-  .step-btn{ flex:1; display:flex; align-items:center; gap:10px; justify-content:center; padding:13px 16px; border-radius:12px; border:none; background:transparent; cursor:pointer; font-weight:700; font-size:13.5px; color:var(--muted); transition: all .18s ease; }
-  .step-btn .num{ width:24px; height:24px; border-radius:50%; background:rgba(122,6,36,0.10); color:var(--maroon-dark); font-size:12px; display:flex; align-items:center; justify-content:center; font-weight:800; }
-  .step-btn.active{ background:linear-gradient(135deg,var(--maroon),var(--maroon-dark)); color:#fff; box-shadow: var(--shadow-md); }
-  .step-btn.active .num{ background:var(--gold); color:var(--maroon-dark); }
-  .step-btn:not(.active):hover{ background: rgba(122,6,36,0.06); color:var(--maroon-dark); }
-  .step-btn:disabled{ opacity:0.45; cursor:not-allowed; }
-
   .panel{ display:none; }
   .panel.active{ display:block; animation: fadeIn .25s ease; }
-  @keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
 
-  .glass-card{ background: var(--glass); backdrop-filter: blur(16px); border:1px solid rgba(255,255,255,0.55); border-radius:18px; box-shadow: var(--shadow-md); padding:24px 26px; margin-bottom:22px; }
+  .glass-card{ background: var(--glass); backdrop-filter: blur(16px); border:1px solid rgba(255,255,255,0.55); border-radius:18px; box-shadow: var(--shadow-md); padding:18px 22px; margin-bottom:16px; }
 
   /* Empty state */
   .empty-state{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:70px 20px; text-align:center; }
@@ -68,11 +127,11 @@
   .empty-state p{ margin:0; font-size:13.5px; color:var(--muted); max-width:420px; }
 
   /* Scenario cards */
-  .scenario-card{ display:flex; align-items:center; justify-content:space-between; gap:18px; background: var(--glass-strong); border:1px solid var(--border); border-radius:14px; padding:16px 20px; margin-bottom:12px; box-shadow: var(--shadow-sm); transition: box-shadow .18s ease, transform .18s ease; }
+  .scenario-card{ display:flex; align-items:center; justify-content:space-between; gap:18px; background: var(--glass-strong); border:1px solid var(--border); border-radius:14px; padding:16px 20px; margin-bottom:12px; box-shadow: var(--shadow-sm); transition: box-shadow .18s ease, transform .18s ease; flex-wrap:wrap; }
   .scenario-card:hover{ box-shadow: var(--shadow-md); transform: translateY(-1px); }
   .scenario-meta h4{ margin:0 0 4px; font-size:14.5px; color:var(--maroon-dark); font-weight:800; }
   .scenario-meta .sub{ font-size:11.5px; color:var(--muted); }
-  .scenario-stats{ display:flex; gap:22px; }
+  .scenario-stats{ display:flex; gap:22px; flex-wrap:wrap; }
   .scenario-stats div{ text-align:center; }
   .scenario-stats .v{ font-size:14px; font-weight:800; color:var(--ink); }
   .scenario-stats .l{ font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
@@ -111,19 +170,44 @@
   input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--maroon-dark); border:3px solid var(--gold); cursor:pointer; box-shadow: var(--shadow-sm); }
   .range-val{ min-width:58px; text-align:right; font-weight:800; font-size:13px; color:var(--maroon-dark); }
 
-  /* Table */
+  /* Table — ZERO-SCROLL COMPACT LAYOUT: minified vertical paddings + condensed text so the full grid
+     (6 SKU rows, 21 columns) fits a standard 1080p viewport with no horizontal or vertical scroll. */
   .scroll-x{ overflow-x:auto; border-radius:14px; border:1px solid var(--border); box-shadow: var(--shadow-sm); }
-  table{ border-collapse:collapse; width:100%; min-width:900px; background:#fff; }
-  thead th{ position:sticky; top:0; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; padding:11px 12px; white-space:nowrap; border-bottom:2px solid var(--border); }
-  tbody td{ padding:10px 12px; font-size:12.5px; border-bottom:1px solid rgba(122,6,36,0.06); white-space:nowrap; color:var(--ink); }
+  table{ border-collapse:collapse; width:100%; min-width:0; table-layout:auto; background:#fff; }
+  thead th{ position:sticky; top:0; font-size:9.5px; text-transform:uppercase; letter-spacing:0.03em; padding:6px 7px; white-space:nowrap; border-bottom:2px solid var(--border); line-height:1.25; }
+  tbody td{ padding:4px 7px; font-size:11px; border-bottom:1px solid rgba(122,6,36,0.06); white-space:nowrap; color:var(--ink); line-height:1.2; }
   tbody tr:hover{ background: rgba(212,175,55,0.06); }
   td.num, th.num{ text-align:right; font-variant-numeric: tabular-nums; }
   .pos{ color:var(--green); font-weight:700; }
   .neg{ color:var(--red); font-weight:700; }
-  td input[type=number]{ width:78px; padding:7px 9px; border-radius:8px; border:1.5px solid var(--gold); background: var(--gold-soft); font-family:inherit; font-size:12.5px; font-weight:700; color:var(--maroon-dark); text-align:right; }
+  td input[type=number]{ width:62px; padding:4px 6px; border-radius:7px; border:1.5px solid var(--gold); background: var(--gold-soft); font-family:inherit; font-size:11px; font-weight:700; color:var(--maroon-dark); text-align:right; }
   td input[type=number]:focus{ outline:none; border-color:var(--maroon); box-shadow:0 0 0 3px rgba(122,6,36,0.12); }
   .readonly-cell{ color:var(--muted); }
-  .sku-cell{ font-weight:800; color:var(--maroon-dark); }
+  .sku-cell{ font-weight:800; color:var(--maroon-dark); font-size:11px; }
+
+  /* Advanced Selection Filters — Baseline Period toggle & SKU multi-select */
+  .period-toggle{ display:flex; border:1.5px solid var(--border); border-radius:10px; overflow:hidden; }
+  .period-toggle .toggle-btn{ font-family:inherit; font-size:12px; font-weight:700; padding:9px 16px; border:none; background:#fff; color:var(--maroon-dark); cursor:pointer; transition: all .15s ease; }
+  .period-toggle .toggle-btn:not(:last-child){ border-right:1.5px solid var(--border); }
+  .period-toggle .toggle-btn.active{ background:linear-gradient(135deg,var(--gold),#c79f2e); color:var(--maroon-dark); }
+  .sku-filter-bar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; max-width:520px; }
+  .sku-chk{ display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; color:var(--ink); background:#fff; border:1.5px solid var(--border); border-radius:999px; padding:6px 11px; cursor:pointer; user-select:none; }
+  .sku-chk input{ accent-color:var(--maroon); cursor:pointer; }
+
+  /* Period banner — Baseline vs Simulation period labels (Step 2 & Step 3) */
+  .period-banner{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+  .period-chip{ display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:12px; font-size:12px; font-weight:700; flex:1; min-width:240px; }
+  .period-chip .dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .period-chip.baseline{ background:var(--gold-soft); color:var(--maroon-dark); border:1.5px solid rgba(212,175,55,0.4); }
+  .period-chip.baseline .dot{ background:var(--gold); }
+  .period-chip.simulation{ background:var(--maroon-tint-2); color:var(--maroon-dark); border:1.5px solid rgba(122,6,36,0.18); }
+  .period-chip.simulation .dot{ background:var(--maroon); }
+  .period-chip b{ font-weight:800; }
+  .period-chip span.lbl{ font-weight:500; opacity:0.85; }
+
+  /* Period metadata text inside saved scenario cards (single pipe-separated line) */
+  .scenario-periods{ font-size:10.5px; color:var(--muted); margin:8px 0 12px; }
+  .scenario-periods b{ color:var(--maroon-dark); font-weight:800; }
 
   /* Dynamic per-row Scenario tags (Step 3 output table) */
   .scenario-tag{ display:inline-block; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:800; letter-spacing:0.02em; text-transform:uppercase; white-space:nowrap; }
@@ -132,22 +216,6 @@
   .scenario-OSAChange{ background:rgba(212,175,55,0.18); color:#8a6d10; }
   .scenario-PositionChange{ background:rgba(30,130,76,0.12); color:var(--green); }
   .scenario-PTCOthers{ background:var(--maroon); color:#fff; }
-
-  /* KPI cards */
-  .metric-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:16px; margin-bottom:22px; }
-  .metric-card{ background: var(--glass-strong); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow: var(--shadow-sm); }
-  .metric-card .l{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:700; margin-bottom:8px; }
-  .metric-card .v{ font-size:22px; font-weight:800; color:var(--maroon-dark); }
-  .metric-card .d{ font-size:12px; margin-top:6px; font-weight:700; }
-
-  /* Bars */
-  .bars-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:20px; }
-  .bar-row{ display:flex; align-items:center; gap:10px; margin-bottom:9px; }
-  .bar-row .label{ width:140px; font-size:11.5px; color:var(--ink); font-weight:600; flex-shrink:0; }
-  .bar-track{ flex:1; height:14px; border-radius:999px; background: rgba(122,6,36,0.07); overflow:hidden; position:relative; }
-  .bar-fill{ height:100%; border-radius:999px; background: linear-gradient(90deg, var(--maroon-light), var(--maroon-dark)); }
-  .bar-fill.gold{ background: linear-gradient(90deg,#e6c659,var(--gold)); }
-  .bar-row .val{ width:90px; text-align:right; font-size:11.5px; font-weight:700; color:var(--maroon-dark); flex-shrink:0; }
 
   .section-title{ font-size:13px; font-weight:800; color:var(--maroon-dark); text-transform:uppercase; letter-spacing:0.06em; margin:0 0 14px; }
 
@@ -158,187 +226,328 @@
 
   .col-group-base{ background:var(--gold); color:var(--maroon-dark); text-align:center; }
   .col-group-out{ background:var(--maroon); color:#fff; text-align:center; }
+
+  /* ================= DYNAMIC CHARTS (Step 3) ================= */
+  .charts-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:22px; }
+  @media (max-width: 980px){ .charts-grid{ grid-template-columns: 1fr; } }
+  .chart-panel h4{ margin:0 0 14px; font-size:12px; font-weight:800; color:var(--maroon-dark); text-transform:uppercase; letter-spacing:0.06em; }
+  .bar-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .bar-row .bar-label{ width:150px; flex-shrink:0; font-size:11.5px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar-track{ flex:1; height:14px; border-radius:999px; background:rgba(122,6,36,0.07); overflow:hidden; position:relative; }
+  .bar-fill{ height:100%; border-radius:999px; background:linear-gradient(90deg,var(--maroon),var(--gold)); transition: width .35s ease; }
+  .bar-fill.alt{ background:linear-gradient(90deg,var(--gold),var(--maroon-dark)); }
+  .bar-row .bar-value{ width:148px; flex-shrink:0; text-align:right; font-size:11px; font-weight:800; color:var(--maroon-dark); font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .bar-row .bar-value .bar-pct{ font-weight:700; color:var(--muted); font-size:10px; }
+
+  /* ===== ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, with floating Delta% callouts ===== */
+  .compare-row{ margin-bottom:13px; }
+  .compare-row:last-child{ margin-bottom:0; }
+  .compare-label{ display:flex; justify-content:space-between; align-items:baseline; font-size:11.5px; font-weight:700; color:var(--ink); margin-bottom:5px; }
+  .compare-delta{ font-size:11.5px; font-weight:800; padding:2px 9px; border-radius:999px; background:rgba(122,6,36,0.06); }
+  .compare-delta.pos{ color:var(--green); background:rgba(30,130,76,0.1); }
+  .compare-delta.neg{ color:var(--red); background:rgba(179,38,30,0.1); }
+  .compare-bars{ display:flex; flex-direction:column; gap:4px; }
+  .compare-bar-track{ position:relative; height:16px; border-radius:999px; background:rgba(122,6,36,0.06); overflow:hidden; }
+  .compare-bar-fill{ height:100%; border-radius:999px; transition: width .35s ease; }
+  .compare-bar-fill.base{ background:linear-gradient(90deg,var(--maroon-tint-2),var(--maroon)); }
+  .compare-bar-fill.sim{ background:linear-gradient(90deg,var(--gold-soft),var(--gold)); }
+  .compare-bar-tag{ position:absolute; top:0; left:9px; height:100%; display:flex; align-items:center; font-size:9.5px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.35); white-space:nowrap; }
 </style>
 </head>
 <body>
-<div class="app">
 
-  <div class="app-header">
-    <div class="brand">
-      <div class="brand-mark">IG</div>
-      <div class="brand-text">
-        <h1>KRBL India Gate &mdash; Pricing Simulator</h1>
-        <p>Blinkit Quick-Commerce &middot; Enterprise Revenue Intelligence</p>
+<!-- ================= LOGIN SCREEN ================= -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-mark">IG</div>
+      <h2>KRBL India Gate</h2>
+      <p>Pricing Simulator &middot; Secure Access</p>
+    </div>
+    <div class="login-error" id="loginError">Invalid username or password. Please try again.</div>
+    <form id="loginForm" onsubmit="return handleLogin(event)">
+      <div class="login-field">
+        <label>Username</label>
+        <input type="text" id="loginUser" autocomplete="username" placeholder="admin" required>
+      </div>
+      <div class="login-field">
+        <label>Password</label>
+        <input type="password" id="loginPass" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;" required>
+      </div>
+      <button type="submit" class="login-btn">Unlock Workspace &#10148;</button>
+    </form>
+    <div class="login-hint">Internal &middot; Pricing &amp; Revenue Team Access Only</div>
+  </div>
+</div>
+
+<!-- ================= APP SHELL ================= -->
+<div class="app-shell" id="appShell">
+
+  <!-- PERMANENT LEFT SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="mark">IG</div>
+      <div class="txt">
+        <h1>KRBL India Gate</h1>
+        <p>Pricing Simulator</p>
       </div>
     </div>
-    <div class="header-tag">Internal &middot; Pricing &amp; Revenue Team</div>
-  </div>
-
-  <div class="step-nav">
-    <button class="step-btn active" id="navLibrary" onclick="goToStep('library')"><span class="num">1</span> Scenario Library</button>
-    <button class="step-btn" id="navSimulator" onclick="goToStep('simulator')"><span class="num">2</span> Pricing Simulator</button>
-    <button class="step-btn" id="navOutput" onclick="goToStep('output')" disabled><span class="num">3</span> Output Dashboard</button>
-  </div>
-
-  <!-- STEP 1: SCENARIO LIBRARY -->
-  <div class="panel active" id="panel-library">
-    <div class="glass-card">
-      <h3 class="section-title" style="margin-bottom:18px;">Saved Scenarios</h3>
-      <div id="libraryContent"></div>
+    <div class="side-nav">
+      <button class="side-link active" id="navLibrary" onclick="goToStep('library')"><span class="num">1</span> Scenario Library</button>
+      <button class="side-link" id="navSimulator" onclick="goToStep('simulator')"><span class="num">2</span> Pricing Simulator</button>
+      <button class="side-link" id="navOutput" onclick="goToStep('output')" disabled><span class="num">3</span> Output Dashboard</button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="tag">Internal &middot; Pricing &amp; Revenue Team</div>
+      <button class="logout-btn" onclick="handleLogout()">&#8634; Log Out</button>
     </div>
   </div>
 
-  <!-- STEP 2: PRICING SIMULATOR (INPUTS ONLY) -->
-  <div class="panel" id="panel-simulator">
-    <div class="glass-card">
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <div class="field">
-            <label>Baseline Month</label>
-            <select class="month-select" id="monthSelect" onchange="onMonthChange(this.value)"></select>
+  <div class="main-content">
+    <div class="app">
+
+      <div class="app-header">
+        <div class="brand">
+          <div class="brand-mark">IG</div>
+          <div class="brand-text">
+            <h1>KRBL India Gate &mdash; Pricing Simulator</h1>
+            <p>Blinkit Quick-Commerce &middot; Enterprise Revenue Intelligence</p>
           </div>
         </div>
-        <div class="toolbar-actions">
-          <button class="btn btn-outline" onclick="resetAll()">&#10227; Reset to Base</button>
+        <div class="header-tag">Internal &middot; Pricing &amp; Revenue Team</div>
+      </div>
+
+      <!-- STEP 1: SCENARIO LIBRARY -->
+      <div class="panel active" id="panel-library">
+        <div class="glass-card">
+          <h3 class="section-title" style="margin-bottom:18px;">Saved Scenarios</h3>
+          <div id="libraryContent"></div>
         </div>
       </div>
 
-      <div class="sim-controls">
-        <h3>Monthly Simulation Controls</h3>
-        <p>Global levers &mdash; each one applies the same value to every row in one shot. Editing an individual row's input in the grid below overrides only that SKU.</p>
-        <div class="sim-grid">
-          <div class="sim-field">
-            <label>PTC Change (%) <span class="sub">applies to all rows; overrides individual PTC Change inputs in the grid</span></label>
-            <div class="range-row">
-              <input type="range" id="globalPtcChange" min="-50" max="50" step="0.5" value="0" oninput="syncRange('globalPtcChange','globalPtcChangeVal','%')">
-              <span class="range-val" id="globalPtcChangeVal">0%</span>
+      <!-- STEP 2: PRICING SIMULATOR (INPUTS ONLY) -->
+      <div class="panel" id="panel-simulator">
+        <div class="glass-card">
+          <div class="period-banner">
+            <div class="period-chip baseline"><span class="dot"></span><span class="lbl">Baseline Period:</span> <b id="periodBaselineLabel2">May 2026</b> <span class="lbl">(Historical Actuals)</span></div>
+            <div class="period-chip simulation"><span class="dot"></span><span class="lbl">Simulation Period:</span> <b>Next 30 Days</b> <span class="lbl">(Projections)</span></div>
+          </div>
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="field">
+                <label>Baseline Month</label>
+                <select class="month-select" id="monthSelect" onchange="onMonthChange(this.value)" style="display:none;"></select>
+                <div class="period-toggle">
+                  <button type="button" class="toggle-btn" data-month="April 2026" onclick="onMonthChange('April 2026')">April 2026</button>
+                  <button type="button" class="toggle-btn" data-month="May 2026" onclick="onMonthChange('May 2026')">May 2026</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>SKU Filter</label>
+                <div class="sku-filter-bar"></div>
+              </div>
+            </div>
+            <div class="toolbar-actions">
+              <button class="btn btn-outline" onclick="resetAll()">&#10227; Reset to Base</button>
             </div>
           </div>
-          <div class="sim-field">
-            <label>Simulated OSA (%) <span class="sub">applies to all rows; overrides individual Simulated OSA inputs in the grid</span></label>
-            <div class="range-row">
-              <input type="range" id="globalOsa" min="0" max="100" step="1" value="80" oninput="syncRange('globalOsa','globalOsaVal','%')">
-              <span class="range-val" id="globalOsaVal">80%</span>
+
+          <div class="sim-controls">
+            <h3>Monthly Simulation Controls</h3>
+            <p>Global levers &mdash; each one applies the same value to every row in one shot. Editing an individual row's input in the grid below overrides only that SKU.</p>
+            <div class="sim-grid">
+              <div class="sim-field">
+                <label>PTC Change (%) <span class="sub">applies to all rows; overrides individual PTC Change inputs in the grid</span></label>
+                <div class="range-row">
+                  <input type="range" id="globalPtcChange" min="-50" max="50" step="0.5" value="0" oninput="syncRange('globalPtcChange','globalPtcChangeVal','%')">
+                  <span class="range-val" id="globalPtcChangeVal">0%</span>
+                </div>
+              </div>
+              <div class="sim-field">
+                <label>Simulated OSA (%) <span class="sub">applies to all rows; overrides individual Simulated OSA inputs in the grid</span></label>
+                <div class="range-row">
+                  <input type="range" id="globalOsa" min="0" max="100" step="1" value="80" oninput="syncRange('globalOsa','globalOsaVal','%')">
+                  <span class="range-val" id="globalOsaVal">80%</span>
+                </div>
+              </div>
+              <div class="sim-field">
+                <label>Simulated Avg Position <span class="sub">applies to all rows; overrides individual Simulated Avg Position inputs in the grid</span></label>
+                <div class="range-row">
+                  <input type="range" id="globalPosition" min="0" max="10" step="0.1" value="4" oninput="syncRange('globalPosition','globalPositionVal','')">
+                  <span class="range-val" id="globalPositionVal">4</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="sim-field">
-            <label>Simulated Avg Position <span class="sub">applies to all rows; overrides individual Simulated Avg Position inputs in the grid</span></label>
-            <div class="range-row">
-              <input type="range" id="globalPosition" min="0" max="10" step="0.1" value="4" oninput="syncRange('globalPosition','globalPositionVal','')">
-              <span class="range-val" id="globalPositionVal">4</span>
-            </div>
+
+          <div class="run-row">
+            <button class="btn btn-gold btn-lg" onclick="runSimulation()">Run Simulation &amp; View Outputs &#10148;</button>
           </div>
+
+          <div class="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th colspan="9" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
+                </tr>
+                <tr>
+                  <th>SKU</th>
+                  <th>Period</th>
+                  <th class="num">Current PTC (&#8377;)</th>
+                  <th class="num">PTC Change (%)</th>
+                  <th class="num">Simulated PTC (&#8377;)</th>
+                  <th class="num">Current OSA (%)</th>
+                  <th class="num">Simulated OSA (%)</th>
+                  <th class="num">Current Avg Position</th>
+                  <th class="num">Simulated Avg Position</th>
+                </tr>
+              </thead>
+              <tbody id="inputsTableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="run-row">
+            <button class="btn btn-gold btn-lg" onclick="runSimulation()">Run Simulation &amp; View Outputs &#10148;</button>
+          </div>
+
         </div>
       </div>
 
-      <div class="run-row">
-        <button class="btn btn-gold btn-lg" onclick="runSimulation()">Run Simulation &amp; View Outputs &#10148;</button>
-      </div>
+      <!-- STEP 3: OUTPUT DASHBOARD -->
+      <div class="panel" id="panel-output">
+        <div class="glass-card">
+          <div class="period-banner">
+            <div class="period-chip baseline"><span class="dot"></span><span class="lbl">Baseline Period:</span> <b id="periodBaselineLabel3">May 2026</b> <span class="lbl">(Historical Actuals)</span></div>
+            <div class="period-chip simulation"><span class="dot"></span><span class="lbl">Simulation Period:</span> <b>Next 30 Days</b> <span class="lbl">(Projections)</span></div>
+          </div>
+          <div class="toolbar">
+            <h3 class="section-title" style="margin:0;">Baseline Inputs &amp; Simulation Outputs</h3>
+            <div class="toolbar-actions">
+              <button class="btn btn-outline" onclick="downloadExcel()">&#11015; Download Excel</button>
+              <button class="btn btn-ghost" onclick="goToStep('simulator')">&#8592; Back to Simulator</button>
+            </div>
+          </div>
+          <div class="toolbar" style="margin-top:-6px;">
+            <div class="toolbar-left">
+              <div class="field">
+                <label>Baseline Month</label>
+                <div class="period-toggle">
+                  <button type="button" class="toggle-btn" data-month="April 2026" onclick="onMonthChange('April 2026'); renderOutputTable();">April 2026</button>
+                  <button type="button" class="toggle-btn" data-month="May 2026" onclick="onMonthChange('May 2026'); renderOutputTable();">May 2026</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>SKU Filter</label>
+                <div class="sku-filter-bar"></div>
+              </div>
+            </div>
+          </div>
+          <div class="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th colspan="9" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
+                  <th colspan="12" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
+                </tr>
+                <tr>
+                  <th>SKU</th>
+                  <th>Period</th>
+                  <th class="num">Current PTC (&#8377;)</th>
+                  <th class="num">PTC Change (%)</th>
+                  <th class="num">Simulated PTC (&#8377;)</th>
+                  <th class="num">Current OSA (%)</th>
+                  <th class="num">Simulated OSA (%)</th>
+                  <th class="num">Current Avg Position</th>
+                  <th class="num">Simulated Avg Position</th>
+                  <th>Scenario</th>
+                  <th class="num">Avg_Daily_Volume (Current)</th>
+                  <th class="num">Avg_Daily_Volume (Simulated)</th>
+                  <th class="num">Volume lost &Delta;</th>
+                  <th class="num">VTM Gain</th>
+                  <th class="num">Final Avg_Daily_Volume (Simulated)</th>
+                  <th class="num">Monthly_Volume (Current)</th>
+                  <th class="num">Final Monthly_Volume (Simulated)</th>
+                  <th class="num">Volume &Delta;%</th>
+                  <th class="num">Revenue (&#8377;) (Current)</th>
+                  <th class="num">Revenue (&#8377;) (Simulated)</th>
+                  <th class="num">Revenue &Delta; %</th>
+                </tr>
+              </thead>
+              <tbody id="outputTableBody"></tbody>
+            </table>
+          </div>
+        </div>
 
-      <div class="scroll-x">
-        <table>
-          <thead>
-            <tr>
-              <th colspan="9" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
-            </tr>
-            <tr>
-              <th>SKU</th>
-              <th>Period</th>
-              <th class="num">Current PTC (&#8377;)</th>
-              <th class="num">PTC Change (%)</th>
-              <th class="num">Simulated PTC (&#8377;)</th>
-              <th class="num">Current OSA (%)</th>
-              <th class="num">Simulated OSA (%)</th>
-              <th class="num">Current Avg Position</th>
-              <th class="num">Simulated Avg Position</th>
-            </tr>
-          </thead>
-          <tbody id="inputsTableBody"></tbody>
-        </table>
-      </div>
+        <!-- DYNAMIC CHARTS — Monthly Volume by SKU & Revenue Mix (Simulated) -->
+        <div class="glass-card">
+          <div class="charts-grid">
+            <div class="chart-panel">
+              <h4>Monthly Volume by SKU</h4>
+              <div id="volumeChart"></div>
+            </div>
+            <div class="chart-panel">
+              <h4>Revenue Mix (Simulated)</h4>
+              <div id="revenueMixChart"></div>
+            </div>
+          </div>
+        </div>
 
-      <div class="run-row">
-        <button class="btn btn-gold btn-lg" onclick="runSimulation()">Run Simulation &amp; View Outputs &#10148;</button>
+        <!-- ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, with floating Delta% callouts -->
+        <div class="glass-card">
+          <h3 class="section-title" style="margin-bottom:14px;">Baseline vs Simulated Comparison</h3>
+          <div class="charts-grid">
+            <div class="chart-panel">
+              <h4>Baseline vs Simulated Units</h4>
+              <div id="compareUnitsChart"></div>
+            </div>
+            <div class="chart-panel">
+              <h4>Baseline vs Simulated Revenue</h4>
+              <div id="compareRevenueChart"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <h3 class="section-title">Save This Scenario</h3>
+          <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Name this scenario and push it to the Scenario Library so it can be revisited later.</p>
+          <div class="save-row">
+            <input type="text" id="scenarioNameInput" placeholder="e.g. May 2026 &mdash; 5% PTC cut + OSA recovery">
+            <button class="btn btn-primary" onclick="saveScenario()">&#128190; Save Scenario</button>
+            <span class="save-confirm" id="saveConfirm">&#10003; Saved to Scenario Library</span>
+          </div>
+        </div>
       </div>
 
     </div>
   </div>
-
-  <!-- STEP 3: OUTPUT DASHBOARD -->
-  <div class="panel" id="panel-output">
-    <div class="glass-card">
-      <h3 class="section-title">Key Performance Indicators</h3>
-      <div class="metric-grid" id="metricGrid"></div>
-      <div class="bars-grid">
-        <div>
-          <h3 class="section-title">Monthly Volume by SKU</h3>
-          <div id="volumeBars"></div>
-        </div>
-        <div>
-          <h3 class="section-title">Revenue Mix (Simulated)</h3>
-          <div id="mixBars"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="glass-card">
-      <div class="toolbar">
-        <h3 class="section-title" style="margin:0;">Baseline Inputs &amp; Simulation Outputs</h3>
-        <div class="toolbar-actions">
-          <button class="btn btn-outline" onclick="downloadExcel()">&#11015; Download Excel</button>
-          <button class="btn btn-ghost" onclick="goToStep('simulator')">&#8592; Back to Simulator</button>
-        </div>
-      </div>
-      <div class="scroll-x">
-        <table>
-          <thead>
-            <tr>
-              <th colspan="9" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
-              <th colspan="12" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
-            </tr>
-            <tr>
-              <th>SKU</th>
-              <th>Period</th>
-              <th class="num">Current PTC (&#8377;)</th>
-              <th class="num">PTC Change (%)</th>
-              <th class="num">Simulated PTC (&#8377;)</th>
-              <th class="num">Current OSA (%)</th>
-              <th class="num">Simulated OSA (%)</th>
-              <th class="num">Current Avg Position</th>
-              <th class="num">Simulated Avg Position</th>
-              <th>Scenario</th>
-              <th class="num">Avg_Daily_Volume (Current)</th>
-              <th class="num">Avg_Daily_Volume (Simulated)</th>
-              <th class="num">Volume lost &Delta;</th>
-              <th class="num">VTM Gain</th>
-              <th class="num">Final Avg_Daily_Volume (Simulated)</th>
-              <th class="num">Monthly_Volume (Current)</th>
-              <th class="num">Final Monthly_Volume (Simulated)</th>
-              <th class="num">Volume &Delta;%</th>
-              <th class="num">Revenue (&#8377;) (Current)</th>
-              <th class="num">Revenue (&#8377;) (Simulated)</th>
-              <th class="num">Revenue &Delta; %</th>
-            </tr>
-          </thead>
-          <tbody id="outputTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="glass-card">
-      <h3 class="section-title">Save This Scenario</h3>
-      <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Name this scenario and push it to the Scenario Library so it can be revisited later.</p>
-      <div class="save-row">
-        <input type="text" id="scenarioNameInput" placeholder="e.g. May 2026 &mdash; 5% PTC cut + OSA recovery">
-        <button class="btn btn-primary" onclick="saveScenario()">&#128190; Save Scenario</button>
-        <span class="save-confirm" id="saveConfirm">&#10003; Saved to Scenario Library</span>
-      </div>
-    </div>
-  </div>
-
 </div>
 
 <script>
+// ---------- MOCK AUTHENTICATION (LOGIN GATE) ----------
+// Client-side only mock auth — admin/admin unlocks the workspace. Not a real security boundary;
+// this exists purely to present a professional login gate in front of the simulator on first load.
+function handleLogin(evt){
+  evt.preventDefault();
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errorBox = document.getElementById('loginError');
+  if(user === 'admin' && pass === 'admin'){
+    errorBox.style.display = 'none';
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('appShell').classList.add('visible');
+  } else {
+    errorBox.style.display = 'block';
+  }
+  return false;
+}
+function handleLogout(){
+  document.getElementById('appShell').classList.remove('visible');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
 // ---------- BASELINE DATA (from IG_Base_AprMay26_Metrics.csv) ----------
 // OSA and Avg Position are stored exactly as reported; OSA is expressed as a 0-100 percentage in this UI
 // (the underlying model treats it as a fraction internally via /100 inside the exponent — see formula note).
@@ -346,40 +555,37 @@
 // ROW-LEVEL COEFFICIENTS — pulled directly from the "Simulator" sheet (columns L "Elasticity (ε)",
 // M "osa coeff", N "position coeff") of blinkit_pricing_simulator.xlsx. Each SKU has its own elasticity,
 // OSA coefficient, and position coefficient; there is no single global coefficient set anymore.
+// FILTERING DATA ENGINE — ONLY SKUs with a NEGATIVE log_PTC_IG (elasticity) coefficient from
+// Combined_Elasticity_1.xlsx are retained. Positive-elasticity SKUs (IG Mini Mogra 5, IG Mini Mogra II 10,
+// IG Mogra 10) have been fully excluded from the dataset, the coefficient table, and the VTM matrix below —
+// not merely hidden. For SKUs 10117961 and 10006061 the "_New" sheet's negative coefficient is used.
+// The global Position Coefficient has been fixed to a single static value (-0.01) for every surviving SKU
+// per the approved portfolio update; OSA coefficient remains the existing flat business-rule constant (0.03).
 const SKU_COEFFICIENTS = {
-  'IG Everyday 5':       { elasticity: 0.396466,  osaCoeff: 0.03, positionCoeff: -0.000552 },
-  'IG Feast Rozzana 1':  { elasticity: -0.446434, osaCoeff: 0.03, positionCoeff: 0.006049 },
-  'IG Feast Rozzana 5':  { elasticity: 0.416862,  osaCoeff: 0.03, positionCoeff: 0.001196 },
-  'IG Mini Mogra 10':    { elasticity: -0.543019, osaCoeff: 0.03, positionCoeff: 0.000274 },
-  'IG Mini Mogra 5':     { elasticity: 0.3535641, osaCoeff: 0.03, positionCoeff: -1.629212e-12 },
-  'IG Mini Mogra II 10': { elasticity: 0.767514,  osaCoeff: 0.03, positionCoeff: 0.000431 },
-  'IG Mogra 10':         { elasticity: 0.54432,   osaCoeff: 0.03, positionCoeff: -0.029982 },
-  'IG Mogra 5':          { elasticity: -0.006453, osaCoeff: 0.03, positionCoeff: 0.015619 },
-  'IG Super 5':          { elasticity: -0.514138, osaCoeff: 0.03, positionCoeff: -0.00794 },
+  'IG Everyday 5':       { elasticity: -0.538622, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10117961 (New)
+  'IG Feast Rozzana 1':  { elasticity: -0.446434, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10000195
+  'IG Feast Rozzana 5':  { elasticity: -0.114435, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10006061 (New)
+  'IG Mini Mogra 10':    { elasticity: -0.543019, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10006305
+  'IG Mogra 5':          { elasticity: -0.006453, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10000196
+  'IG Super 5':          { elasticity: -0.514138, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10002013
 };
 
 const baseData = {
   'April 2026': [
     { name:'IG Everyday 5',        ptc:355.69, osa:78.00, position:3.21, dailyVolume:2162.17 },
     { name:'IG Feast Rozzana 1',   ptc:99.88,  osa:78.00, position:4.55, dailyVolume:1703.50 },
-    { name:'IG Mogra 5',           ptc:358.70, osa:78.00, position:3.57, dailyVolume:977.70  },
     { name:'IG Feast Rozzana 5',   ptc:439.22, osa:78.00, position:6.17, dailyVolume:851.57  },
-    { name:'IG Super 5',           ptc:745.30, osa:78.00, position:6.76, dailyVolume:742.33  },
-    { name:'IG Mini Mogra II 10',  ptc:496.42, osa:78.00, position:4.86, dailyVolume:706.83  },
-    { name:'IG Mini Mogra 5',      ptc:321.77, osa:78.00, position:1.00, dailyVolume:631.63  },
     { name:'IG Mini Mogra 10',     ptc:607.94, osa:78.00, position:4.86, dailyVolume:242.67  },
-    { name:'IG Mogra 10',          ptc:689.26, osa:78.00, position:0.07, dailyVolume:251.07  },
+    { name:'IG Mogra 5',           ptc:358.70, osa:78.00, position:3.57, dailyVolume:977.70  },
+    { name:'IG Super 5',           ptc:745.30, osa:78.00, position:6.76, dailyVolume:742.33  },
   ],
   'May 2026': [
     { name:'IG Everyday 5',        ptc:366.56, osa:79.59, position:3.12, dailyVolume:2469.65 },
     { name:'IG Feast Rozzana 1',   ptc:100.78, osa:80.10, position:3.71, dailyVolume:1784.77 },
-    { name:'IG Mogra 5',           ptc:374.69, osa:79.96, position:3.73, dailyVolume:963.61  },
     { name:'IG Feast Rozzana 5',   ptc:459.72, osa:80.42, position:5.43, dailyVolume:876.55  },
-    { name:'IG Super 5',           ptc:793.35, osa:80.24, position:6.47, dailyVolume:744.06  },
-    { name:'IG Mini Mogra II 10',  ptc:488.43, osa:80.09, position:5.68, dailyVolume:862.94  },
-    { name:'IG Mini Mogra 5',      ptc:319.02, osa:79.04, position:1.43, dailyVolume:807.19  },
     { name:'IG Mini Mogra 10',     ptc:612.43, osa:78.65, position:5.68, dailyVolume:257.23  },
-    { name:'IG Mogra 10',          ptc:708.49, osa:78.52, position:0.00, dailyVolume:248.94  },
+    { name:'IG Mogra 5',           ptc:374.69, osa:79.96, position:3.73, dailyVolume:963.61  },
+    { name:'IG Super 5',           ptc:793.35, osa:80.24, position:6.47, dailyVolume:744.06  },
   ]
 };
 // Attach each SKU's row-level coefficients to every month's baseline rows
@@ -388,33 +594,34 @@ Object.keys(baseData).forEach(month => {
 });
 const DEFAULT_MONTH = 'May 2026';
 
-// ---------- VOLUME TRANSFER MATRIX (VTM sheet of blinkit_pricing_simulator (1).xlsx — stakeholder-updated cross-elasticity matrix) ----------
+// ---------- VOLUME TRANSFER MATRIX (vtm_metric_2.csv — restricted to the 6 approved SKUs) ----------
 // Keyed by SKU name on both axes: vtmMatrix[fromSKU][toSKU] = fraction of fromSKU's volume change captured by toSKU.
-// These are the EXACT decimals read from the latest "VTM" sheet — this overwrites all prior VTM values.
+// This is the EXACT 6x6 submatrix read from the latest vtm_metric_2.csv, mapped 1:1 to its coordinates —
+// all rows/columns involving the 3 excluded positive-elasticity SKUs (IG Mini Mogra 5, IG Mini Mogra II 10,
+// IG Mogra 10) have been dropped entirely, consistent with the negative-elasticity-only portfolio filter above.
 const vtmMatrix = {
-  "IG Everyday 5": {"IG Everyday 5":0, "IG Feast Rozzana 1":0.0750691117528706, "IG Feast Rozzana 5":0.116616497602548, "IG Mini Mogra 10":0.00254365066269931, "IG Mini Mogra 5":0.0135264567413614, "IG Mini Mogra II 10":0.00949034456739128, "IG Mogra 10":0.00238184297425041, "IG Mogra 5":0.0164299775519882, "IG Super 5":0.0107183633031156},
-  "IG Feast Rozzana 1": {"IG Everyday 5":0.0939345780282561, "IG Feast Rozzana 1":0, "IG Feast Rozzana 5":0.07967461885738, "IG Mini Mogra 10":0.000576674148705677, "IG Mini Mogra 5":0.00389858156434384, "IG Mini Mogra II 10":0.00209997284342122, "IG Mogra 10":0.000536807664906707, "IG Mogra 5":0.00455227036022911, "IG Super 5":0.00289477822847134},
-  "IG Feast Rozzana 5": {"IG Everyday 5":0.351335389688034, "IG Feast Rozzana 1":0.191830512529445, "IG Feast Rozzana 5":0, "IG Mini Mogra 10":0.00296415740114926, "IG Mini Mogra 5":0.0146255786800953, "IG Mini Mogra II 10":0.0111122091500098, "IG Mogra 10":0.00275793656899457, "IG Mogra 5":0.018009864251111, "IG Super 5":0.0121708684660843},
-  "IG Mini Mogra 10": {"IG Everyday 5":0.0445292102048824, "IG Feast Rozzana 1":0.00806777536598062, "IG Feast Rozzana 5":0.017223717091689, "IG Mini Mogra 10":0, "IG Mini Mogra 5":0.30172557985772, "IG Mini Mogra II 10":0.205184753624907, "IG Mogra 10":0.062940932654288, "IG Mogra 5":0.145553694996952, "IG Super 5":0.0145815522010538},
-  "IG Mini Mogra 5": {"IG Everyday 5":0.0757377972915265, "IG Feast Rozzana 1":0.0174450024758356, "IG Feast Rozzana 5":0.0271818978867626, "IG Mini Mogra 10":0.0965057581602893, "IG Mini Mogra 5":0, "IG Mini Mogra II 10":0.140075114997381, "IG Mogra 10":0.0355189471040957, "IG Mogra 5":0.24961934063875, "IG Super 5":0.0194626499104828},
-  "IG Mini Mogra II 10": {"IG Everyday 5":0.0695176301449127, "IG Feast Rozzana 1":0.0122931291644036, "IG Feast Rozzana 5":0.0270178932035287, "IG Mini Mogra 10":0.0858559778780175, "IG Mini Mogra 5":0.183250573841354, "IG Mini Mogra II 10":0, "IG Mogra 10":0.0800410504161973, "IG Mogra 5":0.225511974144351, "IG Super 5":0.019714671764325},
-  "IG Mogra 10": {"IG Everyday 5":0.0428836261003344, "IG Feast Rozzana 1":0.00772383292210366, "IG Feast Rozzana 5":0.0164816521239796, "IG Mini Mogra 10":0.0647327447565016, "IG Mini Mogra 5":0.114211499943039, "IG Mini Mogra II 10":0.196733435330748, "IG Mogra 10":0, "IG Mogra 5":0.349796330843173, "IG Super 5":0.0149868978903997},
-  "IG Mogra 5": {"IG Everyday 5":0.080239059274168, "IG Feast Rozzana 1":0.0177669423704997, "IG Feast Rozzana 5":0.0291942547571037, "IG Mini Mogra 10":0.0406054723808418, "IG Mini Mogra 5":0.217720071209372, "IG Mini Mogra II 10":0.150350711355137, "IG Mogra 10":0.0948824158420758, "IG Mogra 5":0, "IG Super 5":0.0207925332284311},
-  "IG Super 5": {"IG Everyday 5":0.0795698986952061, "IG Feast Rozzana 1":0.0171739983811902, "IG Feast Rozzana 5":0.0299902438039508, "IG Mini Mogra 10":0.00618353128789673, "IG Mini Mogra 5":0.025804394930087, "IG Mini Mogra II 10":0.0199800653550433, "IG Mogra 10":0.00617950525526244, "IG Mogra 5":0.0316066798570936, "IG Super 5":0}
+  "IG Everyday 5":      {"IG Everyday 5":0, "IG Feast Rozzana 1":0.023309701338938248, "IG Feast Rozzana 5":0.35937427245556625, "IG Mini Mogra 10":0.0, "IG Mogra 5":0.0, "IG Super 5":0.0},
+  "IG Feast Rozzana 1": {"IG Everyday 5":0.023150478105613607, "IG Feast Rozzana 1":0, "IG Feast Rozzana 5":0.030057559348036948, "IG Mini Mogra 10":0.0, "IG Mogra 5":0.0, "IG Super 5":0.0},
+  "IG Feast Rozzana 5": {"IG Everyday 5":0.3951479525043059, "IG Feast Rozzana 1":0.03327692676562703, "IG Feast Rozzana 5":0, "IG Mini Mogra 10":0.0, "IG Mogra 5":0.0, "IG Super 5":0.0},
+  "IG Mini Mogra 10":   {"IG Everyday 5":0.0, "IG Feast Rozzana 1":0.0, "IG Feast Rozzana 5":0.0, "IG Mini Mogra 10":0, "IG Mogra 5":0.078855363728298, "IG Super 5":0.0},
+  "IG Mogra 5":         {"IG Everyday 5":0.0, "IG Feast Rozzana 1":0.0, "IG Feast Rozzana 5":0.0, "IG Mini Mogra 10":0.06399565694528181, "IG Mogra 5":0, "IG Super 5":0.0},
+  "IG Super 5":         {"IG Everyday 5":0.0, "IG Feast Rozzana 1":0.0, "IG Feast Rozzana 5":0.0, "IG Mini Mogra 10":0.0, "IG Mogra 5":0.0, "IG Super 5":0}
 };
-const COGS_RATE = 0.65; // assumed cost-of-goods rate, used only to illustrate gross profit
-
 // ---------- STATE ----------
 let selectedMonth = DEFAULT_MONTH;
 let priceRows = [];
 let savedScenarios = []; // in-memory scenario library for this session
+// ADVANCED SELECTION FILTERS — SKU multi-select: controls which of the 6 approved SKUs are shown in the
+// grids AND the charts (display-only filter; the calculation engine still runs on the FULL 6-SKU set so
+// VTM cross-elasticity transfers to/from hidden SKUs remain mathematically correct).
+let visibleSkus = new Set(Object.keys(SKU_COEFFICIENTS));
 
 function initPriceRows(month){
   priceRows = baseData[month].map(s => ({ ...s, change:0, simOsa:s.osa, simPosition:s.position }));
 }
 initPriceRows(selectedMonth);
 
-// ---------- NAVIGATION ----------
+// ---------- NAVIGATION (permanent left sidebar) ----------
 function goToStep(step){
   ['library','simulator','output'].forEach(s => {
     document.getElementById('panel-'+s).classList.toggle('active', s===step);
@@ -422,7 +629,16 @@ function goToStep(step){
   });
   if(step==='library') renderLibrary();
   if(step==='simulator') renderInputsTable();
-  if(step==='output'){ renderOutputTable(); renderDashboard(); }
+  if(step==='output'){ renderOutputTable(); }
+  updatePeriodLabels();
+}
+
+// ---------- PERIOD LABELS (Baseline vs Simulation) ----------
+function updatePeriodLabels(){
+  const lbl2 = document.getElementById('periodBaselineLabel2');
+  const lbl3 = document.getElementById('periodBaselineLabel3');
+  if(lbl2) lbl2.textContent = selectedMonth;
+  if(lbl3) lbl3.textContent = selectedMonth;
 }
 
 function runSimulation(){
@@ -433,14 +649,17 @@ function runSimulation(){
 // ---------- MONTH DROPDOWN ----------
 function populateMonthDropdown(){
   const sel = document.getElementById('monthSelect');
-  sel.innerHTML = '';
-  Object.keys(baseData).forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m; opt.textContent = m;
-    if(m === selectedMonth) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  sel.value = selectedMonth; // belt-and-suspenders: force the dropdown's displayed value to match state
+  if(sel){
+    sel.innerHTML = '';
+    Object.keys(baseData).forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m; opt.textContent = m;
+      if(m === selectedMonth) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.value = selectedMonth; // belt-and-suspenders: force the dropdown's displayed value to match state
+  }
+  refreshPeriodToggleUI();
 }
 function onMonthChange(month){
   selectedMonth = month;
@@ -448,6 +667,35 @@ function onMonthChange(month){
   document.getElementById('globalPtcChange').value = 0;
   document.getElementById('globalPtcChangeVal').textContent = '0%';
   renderInputsTable();
+}
+
+// ---------- ADVANCED SELECTION FILTERS ----------
+// 1) Baseline Period Filter — toggle button-pair (April 2026 / May 2026) that instantly swaps the
+//    baseline metrics everywhere via the existing onMonthChange()/selectedMonth state.
+function refreshPeriodToggleUI(){
+  document.querySelectorAll('.period-toggle .toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.month === selectedMonth);
+  });
+}
+// 2) SKU Multi-select Filter — checkbox row that hides/shows specific SKUs dynamically in both the
+//    data grids AND the charts. This is a DISPLAY-ONLY filter: the calc engine (computeAll/computeAllVolumes)
+//    always runs across the FULL 6-SKU set so VTM cross-elasticity to/from a hidden SKU stays correct;
+//    only the rendered rows/bars are filtered down to `visibleSkus`.
+function renderSkuFilterBars(){
+  const html = Object.keys(SKU_COEFFICIENTS).map(name => {
+    const checked = visibleSkus.has(name) ? 'checked' : '';
+    const safeId = 'skuchk_' + name.replace(/[^a-zA-Z0-9]+/g,'_');
+    return `<label class="sku-chk" for="${safeId}"><input type="checkbox" id="${safeId}" ${checked} onchange="toggleSkuVisibility('${name.replace(/'/g,"\\'")}', this.checked)"> ${name}</label>`;
+  }).join('');
+  document.querySelectorAll('.sku-filter-bar').forEach(el => { el.innerHTML = html; });
+}
+function toggleSkuVisibility(name, checked){
+  if(checked) visibleSkus.add(name); else visibleSkus.delete(name);
+  // Guard against filtering every SKU out of view at once.
+  if(visibleSkus.size === 0){ visibleSkus.add(name); checked = true; }
+  renderSkuFilterBars();
+  renderInputsTable();
+  if(document.getElementById('panel-output').classList.contains('active')) renderOutputTable();
 }
 
 // ---------- CALCULATION ENGINE ----------
@@ -459,18 +707,21 @@ function computeAllVolumes(){
   const stepA = priceRows.map(r => {
     const simPtc = r.ptc * (1 + r.change/100);
     const posFactor = r.position > 0 ? Math.pow(r.simPosition / r.position, r.positionCoeff) : 1;
-    const simVolumeRaw = r.dailyVolume
+    // FULL-PRECISION ENGINE: Sim_Vol = Cur_Vol * (Sim_PTC/Cur_PTC)^Elasticity * (Sim_Pos/Cur_Pos)^Position_Coeff
+    //   * exp(OSA_Coeff * (Sim_OSA - Cur_OSA) / 100)
+    // No intermediate rounding is applied anywhere in this chain — "Avg Daily Volume (Simulated)", "Volume lost Δ"
+    // and "VTM Gain" all carry the raw floating-point result through every downstream step. Rounding is applied
+    // ONLY at the final display/export layer (toFixed/Math.round in the render & CSV-export functions), never
+    // inside the math itself, so the engine stays decimal-perfect end-to-end.
+    const simVolume = r.dailyVolume
       * Math.pow(simPtc / r.ptc, r.elasticity)
       * posFactor
       * Math.exp(r.osaCoeff * ((r.simOsa - r.osa) / 100));
-    // The Simulator sheet wraps the isolated simulated volume in ROUND(...,0) before computing
-    // "Volume lost Δ" and "VTM Gain" — replicate that rounding exactly so VTM Gain matches decimal-by-decimal.
-    const simVolume = Math.round(simVolumeRaw);
     return { row: r, simPtc, simVolume };
   });
-  const volumeLostDelta = stepA.map(x => x.row.dailyVolume - x.simVolume); // "G" in the spreadsheet: Current - Simulated
-  // VTM Gain — replicates the workbook's exact formula: H_i = SUMPRODUCT(-G_j, VTM!col_i) for all j (rows 19:27, VTM column i)
-  // i.e. VTM_Gain_i = Σ_j (SimVolume_j - DailyVolume_j) * vtmMatrix[fromSKU_j][toSKU_i]   (self term j=i contributes 0 since vtmMatrix[x][x]=0)
+  const volumeLostDelta = stepA.map(x => x.row.dailyVolume - x.simVolume); // Current - Simulated, full precision
+  // VTM Gain — Σ_j≠i (-volumeLostDelta_j) * vtmMatrix[fromSKU_j][toSKU_i], computed on full-precision
+  // volumeLostDelta values (no early rounding feeding into this sum).
   const vtmGain = stepA.map((x, i) => {
     let gain = 0;
     for(let j=0;j<stepA.length;j++){
@@ -483,11 +734,31 @@ function computeAllVolumes(){
   });
   return stepA.map((x,i) => ({ ...x, volumeLostDelta: volumeLostDelta[i], vtmGain: vtmGain[i], finalSimVolume: x.simVolume + vtmGain[i] }));
 }
+// Dynamic "days in simulation month" multiplier: the simulation horizon is always the calendar month
+// immediately AFTER the selected baseline month (Baseline = May 2026 -> Simulation = June 2026 = 30 days;
+// Baseline = April 2026 -> Simulation = May 2026 = 31 days). This replaces a flat "*30" assumption with the
+// actual number of days in whichever month the simulation is projecting into.
+function getSimulationMonthDays(baselineMonthLabel){
+  const [monthName, yearStr] = baselineMonthLabel.split(' ');
+  const year = parseInt(yearStr, 10);
+  const baselineMonthIndex = new Date(`${monthName} 1, ${year}`).getMonth(); // 0-based
+  const simMonthIndex = (baselineMonthIndex + 1) % 12;
+  const simYear = baselineMonthIndex === 11 ? year + 1 : year;
+  // Day 0 of (simMonthIndex+1) is the last day of simMonthIndex -> gives exact day count for that month.
+  return new Date(simYear, simMonthIndex + 1, 0).getDate();
+}
 function computeAll(){
+  const daysInSimMonth = getSimulationMonthDays(selectedMonth);
   return computeAllVolumes().map(x => {
     const r = x.row;
-    const monthlyCurrent = r.dailyVolume * 30;
-    const monthlySimulated = x.finalSimVolume * 30;
+    const monthlyCurrent = r.dailyVolume * daysInSimMonth;
+    // Final_Monthly_Volume = Monthly_Volume_Current * (Avg_Daily_Volume_Simulated / Avg_Daily_Volume_Current)
+    // i.e. the monthly simulated total is held in EXACT proportion to the monthly current total — the ratio of
+    // simulated-to-current daily volume is mirrored 1:1 onto the monthly figures, so the % shift you see on the
+    // monthly columns always strictly matches the % shift on the daily columns. monthlyCurrent itself now uses
+    // the dynamic days-in-simulation-month multiplier (30 for June following May, 31 for May following April, etc.)
+    // instead of a flat "*30" assumption.
+    const monthlySimulated = r.dailyVolume ? monthlyCurrent * (x.finalSimVolume / r.dailyVolume) : 0;
     const volDeltaPct = monthlyCurrent ? ((monthlySimulated - monthlyCurrent)/monthlyCurrent)*100 : 0;
     const revenueCurrent = monthlyCurrent * r.ptc;
     const revenueSimulated = monthlySimulated * x.simPtc;
@@ -514,8 +785,9 @@ function scenarioLabel(c){
 // ---------- STEP 2: INPUTS-ONLY TABLE ----------
 function renderInputsTable(){
   populateMonthDropdown();
+  renderSkuFilterBars();
   const tbody = document.getElementById('inputsTableBody');
-  tbody.innerHTML = priceRows.map((r,i) => {
+  tbody.innerHTML = priceRows.map((r,i) => ({ r, i })).filter(x => visibleSkus.has(x.r.name)).map(({r,i}) => {
     const simPtc = r.ptc * (1 + r.change/100);
     return `<tr>
       <td class="sku-cell">${r.name}</td>
@@ -567,9 +839,11 @@ document.getElementById('globalPosition').addEventListener('input', function(e){
 
 // ---------- STEP 3: OUTPUT TABLE ----------
 function renderOutputTable(){
-  const computed = computeAll();
+  renderSkuFilterBars();
+  const computed = computeAll(); // full 6-SKU engine output — VTM cross-elasticity always uses ALL SKUs
+  const visibleComputed = computed.filter(c => visibleSkus.has(c.row.name)); // display-only SKU filter
   const tbody = document.getElementById('outputTableBody');
-  tbody.innerHTML = computed.map(c => {
+  tbody.innerHTML = visibleComputed.map(c => {
     const volCls = c.volDeltaPct >= 0 ? 'pos' : 'neg';
     const revCls = c.revDeltaPct >= 0 ? 'pos' : 'neg';
     return `<tr>
@@ -596,47 +870,84 @@ function renderOutputTable(){
       <td class="num ${revCls}">${c.revDeltaPct.toFixed(2)}%</td>
     </tr>`;
   }).join('');
+  renderCharts(visibleComputed);
+  renderComparisonCharts(visibleComputed);
 }
 
-function renderDashboard(){
-  const computed = computeAll();
-  const grossRevenueSim = computed.reduce((s,x)=>s+x.revenueSimulated,0);
-  const grossRevenueCur = computed.reduce((s,x)=>s+x.revenueCurrent,0);
-  const unitsSim = computed.reduce((s,x)=>s+x.monthlySimulated,0);
-  const unitsCur = computed.reduce((s,x)=>s+x.monthlyCurrent,0);
-  const netRevenueSim = grossRevenueSim, netRevenueCur = grossRevenueCur;
-  const grossProfitSim = netRevenueSim*(1-COGS_RATE), grossProfitCur = netRevenueCur*(1-COGS_RATE);
+// ---------- DYNAMIC CHARTS — fully recomputed from the live `computed` array on every render ----------
+// "Monthly Volume by SKU" reads each row's Final Monthly_Volume (Simulated) (c.monthlySimulated) and scales
+// every bar against the largest such value among all SKUs in the current scenario.
+// "Revenue Mix (Simulated)" computes, for every SKU, its individual simulated revenue divided by the
+// TOTAL simulated portfolio revenue across all SKUs — i.e. each SKU's live share of the simulated revenue mix.
+function renderCharts(computed){
+  const volEl = document.getElementById('volumeChart');
+  const mixEl = document.getElementById('revenueMixChart');
+  if(!volEl || !mixEl) return;
 
-  const pct = (a,b) => b ? ((a-b)/b*100) : 0;
-  const fmtInr = v => '₹' + Math.round(v).toLocaleString('en-IN');
-  const metrics = [
-    { l:'Gross Revenue (Simulated)', v: fmtInr(grossRevenueSim), d: pct(grossRevenueSim, grossRevenueCur) },
-    { l:'Units (Monthly, Simulated)', v: Math.round(unitsSim).toLocaleString('en-IN'), d: pct(unitsSim, unitsCur) },
-    { l:'Net Revenue (Simulated)', v: fmtInr(netRevenueSim), d: pct(netRevenueSim, netRevenueCur) },
-    { l:'Gross Profit (Simulated)', v: fmtInr(grossProfitSim), d: pct(grossProfitSim, grossProfitCur) },
-  ];
-  document.getElementById('metricGrid').innerHTML = metrics.map(m => `
-    <div class="metric-card">
-      <div class="l">${m.l}</div>
-      <div class="v">${m.v}</div>
-      <div class="d ${m.d>=0?'pos':'neg'}">${m.d>=0?'▲':'▼'} ${Math.abs(m.d).toFixed(2)}% vs current</div>
-    </div>`).join('');
+  // DUAL LABEL — each bar shows BOTH the absolute simulated units AND its live share of the portfolio's
+  // total simulated volume across the SKUs currently in view (computed in real time from the same
+  // `computed` array that drives the Output Dashboard grid, so it always reconciles to the grid with zero variance).
+  const maxMonthlyVolume = Math.max(...computed.map(c => c.monthlySimulated), 1);
+  const totalSimVolume = computed.reduce((s,c) => s + c.monthlySimulated, 0) || 1;
+  volEl.innerHTML = computed.map(c => {
+    const pct = Math.max(0, Math.min(100, (c.monthlySimulated / maxMonthlyVolume) * 100));
+    const sharePct = (c.monthlySimulated / totalSimVolume) * 100;
+    return `<div class="bar-row">
+      <div class="bar-label" title="${c.row.name}">${c.row.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
+      <div class="bar-value">${Math.round(c.monthlySimulated).toLocaleString('en-IN')} <span class="bar-pct">(${sharePct.toFixed(1)}%)</span></div>
+    </div>`;
+  }).join('');
 
-  const maxVol = Math.max(...computed.map(x=>Math.max(x.monthlyCurrent,x.monthlySimulated)),1);
-  document.getElementById('volumeBars').innerHTML = computed.map(c => `
-    <div class="bar-row">
-      <div class="label">${c.row.name}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${(c.monthlySimulated/maxVol*100).toFixed(1)}%"></div></div>
-      <div class="val">${Math.round(c.monthlySimulated).toLocaleString('en-IN')}</div>
-    </div>`).join('');
+  const totalSimRevenue = computed.reduce((s,c) => s + c.revenueSimulated, 0) || 1;
+  mixEl.innerHTML = computed.map(c => {
+    const sharePct = (c.revenueSimulated / totalSimRevenue) * 100;
+    const widthPct = Math.max(0, Math.min(100, sharePct));
+    return `<div class="bar-row">
+      <div class="bar-label" title="${c.row.name}">${c.row.name}</div>
+      <div class="bar-track"><div class="bar-fill alt" style="width:${widthPct}%;"></div></div>
+      <div class="bar-value">&#8377;${Math.round(c.revenueSimulated).toLocaleString('en-IN')} <span class="bar-pct">(${sharePct.toFixed(1)}%)</span></div>
+    </div>`;
+  }).join('');
+}
 
-  const totalRev = computed.reduce((s,x)=>s+x.revenueSimulated,0) || 1;
-  document.getElementById('mixBars').innerHTML = computed.map(c => `
-    <div class="bar-row">
-      <div class="label">${c.row.name}</div>
-      <div class="bar-track"><div class="bar-fill gold" style="width:${(c.revenueSimulated/totalRev*100).toFixed(1)}%"></div></div>
-      <div class="val">${(c.revenueSimulated/totalRev*100).toFixed(1)}%</div>
-    </div>`).join('');
+// ---------- ADVANCED SIMULATION COMPARISON CHARTS ----------
+// Side-by-side "Baseline vs Simulated Units" and "Baseline vs Simulated Revenue" bars, with a floating
+// Delta % callout per SKU. Every number rendered here is read directly off the same `computed` array
+// (c.monthlyCurrent / c.monthlySimulated / c.revenueCurrent / c.revenueSimulated / c.volDeltaPct / c.revDeltaPct)
+// that feeds the Output Dashboard grid, so these values always tie out exactly to the grid.
+function renderComparisonCharts(computed){
+  const unitsEl = document.getElementById('compareUnitsChart');
+  const revEl = document.getElementById('compareRevenueChart');
+  if(!unitsEl || !revEl) return;
+
+  const maxUnits = Math.max(...computed.flatMap(c => [c.monthlyCurrent, c.monthlySimulated]), 1);
+  unitsEl.innerHTML = computed.map(c => {
+    const curPct = Math.max(0, Math.min(100, (c.monthlyCurrent / maxUnits) * 100));
+    const simPct = Math.max(0, Math.min(100, (c.monthlySimulated / maxUnits) * 100));
+    const cls = c.volDeltaPct >= 0 ? 'pos' : 'neg';
+    return `<div class="compare-row">
+      <div class="compare-label"><span title="${c.row.name}">${c.row.name}</span><span class="compare-delta ${cls}">${c.volDeltaPct>=0?'+':''}${c.volDeltaPct.toFixed(2)}%</span></div>
+      <div class="compare-bars">
+        <div class="compare-bar-track"><div class="compare-bar-fill base" style="width:${curPct}%;"></div><span class="compare-bar-tag">Baseline ${Math.round(c.monthlyCurrent).toLocaleString('en-IN')}</span></div>
+        <div class="compare-bar-track"><div class="compare-bar-fill sim" style="width:${simPct}%;"></div><span class="compare-bar-tag">Simulated ${Math.round(c.monthlySimulated).toLocaleString('en-IN')}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const maxRev = Math.max(...computed.flatMap(c => [c.revenueCurrent, c.revenueSimulated]), 1);
+  revEl.innerHTML = computed.map(c => {
+    const curPct = Math.max(0, Math.min(100, (c.revenueCurrent / maxRev) * 100));
+    const simPct = Math.max(0, Math.min(100, (c.revenueSimulated / maxRev) * 100));
+    const cls = c.revDeltaPct >= 0 ? 'pos' : 'neg';
+    return `<div class="compare-row">
+      <div class="compare-label"><span title="${c.row.name}">${c.row.name}</span><span class="compare-delta ${cls}">${c.revDeltaPct>=0?'+':''}${c.revDeltaPct.toFixed(2)}%</span></div>
+      <div class="compare-bars">
+        <div class="compare-bar-track"><div class="compare-bar-fill base" style="width:${curPct}%;"></div><span class="compare-bar-tag">&#8377;${Math.round(c.revenueCurrent).toLocaleString('en-IN')}</span></div>
+        <div class="compare-bar-track"><div class="compare-bar-fill sim" style="width:${simPct}%;"></div><span class="compare-bar-tag">&#8377;${Math.round(c.revenueSimulated).toLocaleString('en-IN')}</span></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ---------- DOWNLOAD CSV ----------
@@ -657,18 +968,26 @@ function downloadExcel(){
 function saveScenario(){
   const nameInput = document.getElementById('scenarioNameInput');
   const name = nameInput.value.trim() || `Scenario ${savedScenarios.length+1}`;
+  // Snapshot priceRows FIRST, then recompute from that exact snapshot — guarantees the KPI
+  // tags saved into the library card always reflect the state that was actually saved, even if
+  // priceRows or selectedMonth are mutated elsewhere before this entry is rendered later.
+  const priceRowsSnapshot = priceRows.map(r => ({...r}));
   const computed = computeAll();
+  const unitsSim = computed.reduce((s,x)=>s+x.monthlySimulated,0);
+  const unitsCur = computed.reduce((s,x)=>s+x.monthlyCurrent,0);
   const grossRevenueSim = computed.reduce((s,x)=>s+x.revenueSimulated,0);
   const grossRevenueCur = computed.reduce((s,x)=>s+x.revenueCurrent,0);
-  const unitsSim = computed.reduce((s,x)=>s+x.monthlySimulated,0);
   savedScenarios.push({
     name,
     month: selectedMonth,
     timestamp: new Date().toLocaleString('en-IN', { dateStyle:'medium', timeStyle:'short' }),
-    priceRowsSnapshot: priceRows.map(r => ({...r})),
-    revenueSim: grossRevenueSim,
-    revDeltaPct: grossRevenueCur ? ((grossRevenueSim-grossRevenueCur)/grossRevenueCur*100) : 0,
+    priceRowsSnapshot,
     unitsSim,
+    unitsCur,
+    volDeltaPct: unitsCur ? ((unitsSim-unitsCur)/unitsCur*100) : 0,
+    revenueSim: grossRevenueSim,
+    revenueCur: grossRevenueCur,
+    revDeltaPct: grossRevenueCur ? ((grossRevenueSim-grossRevenueCur)/grossRevenueCur*100) : 0,
   });
   nameInput.value = '';
   const confirm = document.getElementById('saveConfirm');
@@ -706,10 +1025,12 @@ function renderLibrary(){
       <div class="scenario-meta">
         <h4>${s.name}</h4>
         <div class="sub">${s.month} &middot; saved ${s.timestamp}</div>
+        <div class="scenario-periods"><b>Baseline Period:</b> ${s.month} | <b>Simulation Period:</b> Next 30 Days</div>
       </div>
       <div class="scenario-stats">
-        <div><div class="v">${Math.round(s.unitsSim).toLocaleString('en-IN')}</div><div class="l">Units</div></div>
+        <div><div class="v">${Math.round(s.unitsSim).toLocaleString('en-IN')}</div><div class="l">Total Volume (Monthly)</div></div>
         <div><div class="v">₹${Math.round(s.revenueSim).toLocaleString('en-IN')}</div><div class="l">Revenue</div></div>
+        <div><div class="v ${s.volDeltaPct>=0?'pos':'neg'}">${s.volDeltaPct>=0?'+':''}${s.volDeltaPct.toFixed(2)}%</div><div class="l">Volume &Delta;</div></div>
         <div><div class="v ${s.revDeltaPct>=0?'pos':'neg'}">${s.revDeltaPct>=0?'+':''}${s.revDeltaPct.toFixed(2)}%</div><div class="l">Revenue &Delta;</div></div>
       </div>
       <div class="scenario-actions">
@@ -720,9 +1041,15 @@ function renderLibrary(){
 }
 
 // ---------- INIT ----------
+// selectedMonth is forced to DEFAULT_MONTH ('May 2026') above, and initPriceRows(selectedMonth) has
+// already populated priceRows from baseData['May 2026'] before this script block runs further — so the
+// very first render of the inputs grid reflects May 2026 actuals immediately, with no user action required.
+// This all runs regardless of login state (it only builds DOM content); visibility of the app shell itself
+// is gated entirely by handleLogin()/handleLogout() toggling the .visible / .hidden classes above.
 populateMonthDropdown();
 renderInputsTable();
 renderLibrary();
+updatePeriodLabels();
 </script>
 </body>
 </html>
