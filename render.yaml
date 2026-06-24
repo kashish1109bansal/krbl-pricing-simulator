@@ -1,0 +1,13 @@
+# Render "Static Site" deployment — no server/build step needed since this is a
+# single self-contained HTML file with zero external dependencies (no CDN, no API).
+services:
+  - type: web
+    name: krbl-pricing-simulator
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: .
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

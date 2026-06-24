@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KRBL Pricing Simulator | KRBL Limited</title>
+<style>
+  :root{
+    --maroon:#7A0624;
+    --maroon-dark:#630019;
+    --maroon-light:#9c2542;
+    --maroon-tint:#fbeaee;
+    --maroon-tint-2:#f5d9e1;
+    --white:#ffffff;
+    --ink:#2b2024;
+    --muted:#7a6a6d;
+    --border:#ecd9dd;
+    --green:#1b7a43;
+    --green-bg:#e7f5ec;
+    --red:#b3261e;
+    --red-bg:#fbe9e8;
+    --gold:#c9a227;
+    --cream:#f8f0df;
+    --shadow: 0 2px 10px rgba(99,0,25,0.10);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+    background: #faf6f2;
+    color: var(--ink);
+  }
+  .wrap{ max-width: 1280px; margin: 0 auto; padding: 24px 28px 60px; }
+
+  /* Header */
+  .header{
+    display:flex; align-items:center; justify-content:space-between;
+    background: linear-gradient(135deg, var(--maroon) 0%, var(--maroon-dark) 100%);
+    color:#fff; padding: 18px 26px; border-radius: 12px;
+    box-shadow: var(--shadow); margin-bottom: 18px;
+    border-bottom: 3px solid var(--gold);
+  }
+  .brand{ display:flex; align-items:center; gap:14px; }
+  .logo{
+    width:48px; height:48px; border-radius:10px; background: var(--cream); color: var(--maroon-dark);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:16px; letter-spacing:0.5px; border: 2px solid var(--gold);
+  }
+  .brand h1{ margin:0; font-size:19px; font-weight:700; }
+  .brand p{ margin:2px 0 0; font-size:12px; color: var(--cream); letter-spacing:0.03em; }
+  .user-chip{ display:flex; align-items:center; gap:10px; font-size:13px; }
+  .avatar{
+    width:34px; height:34px; border-radius:50%; background: var(--cream); color: var(--maroon-dark);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;
+  }
+  .model-banner{
+    background: var(--maroon-tint); border:1px solid var(--maroon-tint-2);
+    color: var(--maroon-dark); font-size: 12px; padding: 8px 16px;
+    border-radius: 8px; margin-bottom: 18px;
+  }
+
+  /* Tabs */
+  .tabbar{ display:flex; gap:6px; border-bottom: 2px solid var(--border); margin-bottom: 24px; flex-wrap: wrap; }
+  .tabbtn{
+    appearance:none; border:none; background:none; cursor:pointer;
+    padding: 12px 20px; font-size: 14px; font-weight:600; color: var(--muted);
+    border-bottom: 3px solid transparent; margin-bottom:-2px; transition: all .15s ease;
+  }
+  .tabbtn:hover{ color: var(--maroon); }
+  .tabbtn.active{ color: var(--maroon); border-bottom-color: var(--gold); }
+  .tabpanel{ display:none; animation: fadeIn .25s ease; }
+  .tabpanel.active{ display:block; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(5px);} to{opacity:1; transform:translateY(0);} }
+
+  /* Card */
+  .card{
+    background: var(--white); border:1px solid var(--border); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 22px 24px; margin-bottom: 22px;
+  }
+  .card-head{ display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap: 12px; margin-bottom: 18px; }
+  .card-head h2{ margin:0 0 4px; font-size: 17px; color: var(--maroon-dark); }
+  .card-head p{ margin:0; font-size: 13px; color: var(--muted); }
+
+  /* Buttons */
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; padding: 10px 18px; border-radius: 8px;
+    font-size: 13.5px; font-weight:600; cursor:pointer; border:1px solid transparent;
+    transition: all .15s ease; text-decoration:none;
+  }
+  .btn-primary{ background: var(--maroon); color:#fff; }
+  .btn-primary:hover{ background: var(--maroon-dark); }
+  .btn-outline{ background:#fff; color: var(--maroon); border:1px solid var(--maroon-light); }
+  .btn-outline:hover{ background: var(--maroon-tint); }
+  .btn-ghost{ background:#fff; color: var(--muted); border:1px solid var(--border); }
+  .btn-ghost:hover{ background:#f5f0f0; }
+  .btn-reset{ background:#fff; color: var(--gold); border:1px solid var(--gold); }
+  .btn-reset:hover{ background: var(--cream); }
+
+  /* Search */
+  .search-box{ position:relative; width: 260px; }
+  .search-box input{ width:100%; padding: 10px 12px 10px 34px; border-radius: 8px; border: 1px solid var(--border); font-size: 13.5px; }
+  .search-box input:focus{ outline:2px solid var(--maroon-light); border-color:transparent; }
+  .search-icon{ position:absolute; left:11px; top:50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; }
+
+  /* Table */
+  table{ width:100%; border-collapse: collapse; font-size: 13px; }
+  thead th{
+    text-align:left; background: var(--maroon-tint); color: var(--maroon-dark);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;
+    padding: 10px 12px; font-weight:700; border-bottom: 1px solid var(--border); white-space:nowrap;
+  }
+  tbody td{ padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--ink); white-space:nowrap; }
+  tbody tr:hover{ background: #fdf6f4; }
+  td.num, th.num{ text-align:right; }
+  .scroll-x{ overflow-x:auto; }
+
+  .badge{ display:inline-flex; align-items:center; gap:6px; padding: 4px 11px; border-radius: 20px; font-size: 11.5px; font-weight:700; }
+  .badge-dot{ width:7px; height:7px; border-radius:50%; }
+  .badge.completed{ background: var(--green-bg); color: var(--green); }
+  .badge.completed .badge-dot{ background: var(--green); }
+  .badge.failed{ background: var(--red-bg); color: var(--red); }
+  .badge.failed .badge-dot{ background: var(--red); }
+
+  .platform-chip{
+    display:inline-block; padding:2px 9px; border-radius:12px; font-size:11px; font-weight:700;
+    background: var(--cream); color: var(--maroon-dark); border:1px solid var(--gold);
+  }
+
+  .link-btn{ background:none; border:none; cursor:pointer; color: var(--maroon); font-weight:600; font-size: 13px; }
+  .link-btn:hover{ text-decoration: underline; }
+
+  /* Monthly Simulation Controls */
+  .sim-controls{ background: var(--maroon-tint); border: 1px solid var(--maroon-tint-2); border-radius: 10px; padding: 18px 20px; margin-bottom: 22px; }
+  .sim-controls h3{ margin:0 0 4px; font-size: 13px; color: var(--maroon-dark); text-transform: uppercase; letter-spacing:0.05em; font-weight:800; }
+  .sim-controls > p{ margin:0 0 14px; font-size:12.5px; color:var(--muted); }
+  .sim-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 950px){ .sim-grid{ grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 520px){ .sim-grid{ grid-template-columns: 1fr; } }
+  .sim-field label{ display:block; font-size: 12px; font-weight:700; margin-bottom: 6px; color: var(--maroon-dark); }
+  .sim-field .sub{ font-weight:400; color:var(--muted); font-size:11px; }
+  .sim-field input, .sim-field select{
+    width:100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--maroon-light);
+    font-size: 13.5px; background:#fff; color: var(--ink);
+  }
+  .sim-field input:focus, .sim-field select:focus{ outline:2px solid var(--gold); border-color:transparent; }
+  .sim-field .range-row{ display:flex; align-items:center; gap:10px; }
+  .sim-field input[type=range]{ accent-color: var(--maroon); padding:0; border:none; }
+  .sim-field .range-val{ width:54px; text-align:right; font-weight:700; color:var(--maroon-dark); font-size:12.5px; flex-shrink:0; }
+
+  /* Price grid inputs */
+  .pct-input, .ptc-input{ width: 80px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 12.5px; text-align:right; }
+  .pct-input:focus, .ptc-input:focus{ outline:2px solid var(--maroon-light); border-color:transparent; }
+  .toolbar{ display:flex; gap:10px; flex-wrap:wrap; }
+  .note{ margin-top: 10px; font-size: 12.5px; color: var(--green); display:none; }
+  .note.show{ display:block; }
+  .delta-up{ color: var(--green); font-weight:700; }
+  .delta-down{ color: var(--red); font-weight:700; }
+
+  /* Metric cards */
+  .metric-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 22px; }
+  @media (max-width: 900px){ .metric-grid{ grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 520px){ .metric-grid{ grid-template-columns: 1fr; } }
+  .metric-card{ background: var(--white); border:1px solid var(--border); border-left: 4px solid var(--maroon); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .metric-card .m-label{ font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .metric-card .m-value{ font-size: 22px; font-weight: 800; color: var(--maroon-dark); margin-bottom: 6px; }
+  .m-delta{ font-size: 12.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; }
+
+  .two-col{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap: 22px; }
+  @media (max-width: 900px){ .two-col{ grid-template-columns: 1fr; } }
+
+  .bar-row{ display:flex; align-items:center; gap:10px; margin-bottom:9px; font-size:12px; }
+  .bar-label{ width:150px; flex-shrink:0; color: var(--muted); }
+  .bar-track{ flex:1; background: #f3e4e8; border-radius: 6px; height: 14px; overflow:hidden; }
+  .bar-fill{ height:100%; background: linear-gradient(90deg, var(--maroon-light), var(--maroon)); border-radius:6px 0 0 6px; }
+  .bar-val{ width:60px; text-align:right; font-weight:700; color: var(--maroon-dark); flex-shrink:0; font-size:11.5px; }
+
+  .formula-note{ font-size:11.5px; color:var(--muted); background:#fbf4ee; border:1px dashed var(--border); border-radius:8px; padding:10px 12px; margin-top:14px; font-family: Consolas, monospace; line-height:1.6; }
+  .footer-note{ text-align:center; font-size:11.5px; color:var(--muted); margin-top: 30px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">
+      <div class="logo">KRBL</div>
+      <div>
+        <h1>KRBL Pricing Simulator</h1>
+        <p>KRBL Limited &mdash; India Gate Brand Pricing &amp; Trade Spend Simulation</p>
+      </div>
+    </div>
+    <div class="user-chip">
+      <span>Data Guy</span>
+      <div class="avatar">DG</div>
+    </div>
+  </div>
+  <div class="model-banner">
+    Model: OLS elasticities + VTM cross-substitution &middot; Anchored to last 30-day actuals (Apr 2026) &middot; Day-level model &middot; Source: <strong>blinkit_pricing_simulator.xlsx</strong>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabbar">
+    <button class="tabbtn active" data-tab="tab1" onclick="goToTab('tab1')">1. Scenario Library</button>
+    <button class="tabbtn" data-tab="tab2" onclick="goToTab('tab2')">2. Pricing Simulator</button>
+    <button class="tabbtn" data-tab="tab3" onclick="goToTab('tab3')">3. Output Dashboard</button>
+  </div>
+
+  <!-- ============ TAB 1: SCENARIO LIBRARY ============ -->
+  <div class="tabpanel active" id="tab1">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Scenario Library</h2>
+          <p>Blinkit pricing simulation scenarios for India Gate.</p>
+        </div>
+        <div class="toolbar">
+          <div class="search-box">
+            <span class="search-icon">&#128269;</span>
+            <input type="text" id="scenarioSearch" placeholder="Search scenarios...">
+          </div>
+          <button class="btn btn-primary" onclick="goToTab('tab2')">+ Create Base Scenario</button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Scenario Name</th>
+            <th>Created On</th>
+            <th>Created By</th>
+            <th>Status</th>
+            <th>View Output</th>
+          </tr>
+        </thead>
+        <tbody id="scenarioTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ TAB 2: PRICING SIMULATOR ============ -->
+  <div class="tabpanel" id="tab2">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Pricing Simulator</h2>
+          <p>Blinkit_IG_Everyday5kg_Apr2026 &middot; Unified control center for India Gate SKU pricing simulation</p>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-outline" onclick="downloadExcel()">&#11015; Download Excel</button>
+          <button class="btn btn-reset" onclick="resetAll()">&#10227; Reset to Base</button>
+        </div>
+      </div>
+
+      <div class="sim-controls">
+        <h3>Monthly Simulation Controls</h3>
+        <p>Global levers &mdash; each one applies the same value to every row in one shot. Editing an individual row's input in the grid below overrides only that SKU.</p>
+        <div class="sim-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+          <div class="sim-field">
+            <label>PTC Change (%) <span class="sub">— applies to all rows; overwrites individual PTC Change inputs in the grid</span></label>
+            <div class="range-row">
+              <input type="range" id="globalPtcChange" min="-50" max="50" step="0.5" value="0" oninput="syncRange('globalPtcChange','globalPtcChangeVal','%')">
+              <span class="range-val" id="globalPtcChangeVal">0%</span>
+            </div>
+          </div>
+          <div class="sim-field">
+            <label>Simulated OSA (%) <span class="sub">— applies to all rows; overwrites individual Simulated OSA inputs in the grid</span></label>
+            <div class="range-row">
+              <input type="range" id="globalOsa" min="0" max="100" step="1" value="100" oninput="syncRange('globalOsa','globalOsaVal','%')">
+              <span class="range-val" id="globalOsaVal">100%</span>
+            </div>
+          </div>
+          <div class="sim-field">
+            <label>Simulated Avg Position <span class="sub">— applies to all rows; overwrites individual Simulated Avg Position inputs in the grid</span></label>
+            <div class="range-row">
+              <input type="range" id="globalPosition" min="1" max="10" step="0.1" value="5.36" oninput="syncRange('globalPosition','globalPositionVal','')">
+              <span class="range-val" id="globalPositionVal">5.36</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="scroll-x">
+        <table>
+          <thead>
+            <tr>
+              <th colspan="11" style="text-align:center; background:var(--gold); color:var(--maroon-dark);">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
+              <th colspan="11" style="text-align:center; background:var(--maroon); color:#fff;">SIMULATION PROJECTIONS / OUTPUTS</th>
+            </tr>
+            <tr>
+              <th>SKU</th>
+              <th>Period</th>
+              <th>Scenario</th>
+              <th class="num">Current PTC<br>(&#8377;)</th>
+              <th class="num">PTC Change<br>(%)</th>
+              <th class="num">Simulated PTC<br>(&#8377;)</th>
+              <th class="num">Current OSA<br>(%)</th>
+              <th class="num">Simulated OSA<br>(%)</th>
+              <th class="num">Current Avg<br>Position</th>
+              <th class="num">Simulated Avg<br>Position</th>
+              <th class="num">Avg_Daily_Volume<br>(Current)</th>
+              <th class="num">Avg_Daily_Volume<br>(Simulated)</th>
+              <th class="num">Volume lost &Delta;</th>
+              <th class="num">VTM Gain</th>
+              <th class="num">Final Avg_Daily_Volume<br>(Simulated)</th>
+              <th class="num">Monthly_Volume<br>(Current)</th>
+              <th class="num">Final Monthly_Volume<br>(nextmonth)(Simulated)</th>
+              <th class="num">Volume &Delta;%</th>
+              <th class="num">Revenue (&#8377;)<br>(Current)</th>
+              <th class="num">Revenue (&#8377;)<br>(Simulated)</th>
+              <th class="num">Revenue &Delta; (&#8377;)</th>
+              <th class="num">Revenue &Delta; %</th>
+            </tr>
+          </thead>
+          <tbody id="priceTableBody"></tbody>
+        </table>
+      </div>
+      <div class="formula-note">
+        1. SimPTC = CurPTC &times; (1 + PTCChange%/100)<br>
+        2. SimVolume = CurVol &times; (SimPTC/CurPTC)^&beta;1 &times; (SimPosition/CurPosition)^&beta;3 &times; e^(&beta;4&times;((SimOSA&minus;CurOSA)/100)) &nbsp;(&beta;1=&minus;0.4246, &beta;3=&minus;0.04, &beta;4=0.03) &mdash; budget term removed; baseline-neutral so &Delta;=0 when no inputs change<br>
+        3. VolumeLostΔ = CurVol(daily) &minus; SimVolume(daily) &nbsp;|&nbsp; 4. VTM Gain = &Sigma; VolumeLostΔ(j) &times; VTM[j&rarr;i] &nbsp;|&nbsp; 5. FinalSimVolume(daily) = SimVolume + VTM Gain<br>
+        6. Monthly = Daily &times; 30, VolumeΔ% = (FinalSimMonthly &minus; CurMonthly)/CurMonthly &times; 100 &nbsp;|&nbsp; 7. RevenueCur = MonthlyCur&times;CurPTC, RevenueSim = FinalSimMonthly&times;SimPTC, RevenueΔ(&#8377;) = RevenueSim&minus;RevenueCur, RevenueΔ% = RevenueΔ/RevenueCur&times;100
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 3: OUTPUT DASHBOARD ============ -->
+  <div class="tabpanel" id="tab3">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Output Dashboard</h2>
+          <p>Live impact summary, recalculated from the Pricing Simulator inputs &mdash; India Gate, KRBL Limited</p>
+        </div>
+      </div>
+
+      <div class="metric-grid" id="metricGrid"></div>
+
+      <div class="two-col">
+        <div>
+          <h3 style="font-size:14px; color:var(--maroon-dark); margin-bottom:14px;">Monthly Volume by SKU &mdash; Final Simulated</h3>
+          <div id="volumeBars"></div>
+        </div>
+        <div>
+          <h3 style="font-size:14px; color:var(--maroon-dark); margin-bottom:14px;">Revenue Mix by SKU (Simulated)</h3>
+          <div id="mixBars"></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer-note">KRBL Limited &middot; India Gate &mdash; Internal Pricing Simulation Prototype &middot; Source: blinkit_pricing_simulator.xlsx</p>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   DATA — extracted directly from blinkit_pricing_simulator.xlsx
+   (Simulator sheet rows 6-31, Model Reference sheet, VTM sheet)
+   ============================================================ */
+const ELASTICITY = { price: -0.4246, position: -0.04, osa: 0.03 }; // budget elasticity removed — no budget variable in this model anymore
+
+// dailyVolume figures pulled from the Simulator sheet's "Avg_Daily_Volume (Current)" column.
+// osa is stored as a percentage (Current OSA = 100%). IG Mogra 5's Current PTC is verified as ₹375.00
+// against the source workbook (a later brief referenced ₹275.00, which looked like a typo — flagged, not applied).
+const skus = [
+  { name: 'IG Everyday 1',       ptc: 79,  osa: 100, position: 5.36, dailyVolume: 4043 },
+  { name: 'IG Everyday 5',       ptc: 366, osa: 100, position: 5.36, dailyVolume: 2084 },
+  { name: 'IG Feast Rozzana 1',  ptc: 101, osa: 100, position: 5.36, dailyVolume: 1737 },
+  { name: 'IG Mogra 5',          ptc: 375, osa: 100, position: 5.36, dailyVolume: 999 },
+  { name: 'IG Feast Rozzana 5',  ptc: 460, osa: 100, position: 5.36, dailyVolume: 885 },
+  { name: 'IG Super 5',          ptc: 793, osa: 100, position: 5.36, dailyVolume: 787 },
+  { name: 'IG Mini Mogra II 10', ptc: 488, osa: 100, position: 5.36, dailyVolume: 615 },
+  { name: 'IG Mini Mogra 5',     ptc: 319, osa: 100, position: 5.36, dailyVolume: 567 },
+  { name: 'IG Everyday 10',      ptc: 655, osa: 100, position: 5.36, dailyVolume: 370 },
+  { name: 'IG Mini Mogra 10',    ptc: 612, osa: 100, position: 5.36, dailyVolume: 247 },
+  { name: 'IG Mogra 10',         ptc: 708, osa: 100, position: 5.36, dailyVolume: 235 },
+];
+
+// VTM substitution matrix (fractions, from VTM sheet — row "From" loses share to column "To")
+const vtmNames = skus.map(s => s.name);
+const vtmMatrix = [
+  [0,    0.22, 0.24, 0.14, 0.13, 0.12, 0.03, 0.08, 0.02, 0.01, 0.02],
+  [0.10, 0,    0.09, 0.12, 0.11, 0.09, 0.09, 0.11, 0.09, 0.09, 0.09],
+  [0.19, 0.16, 0,    0.13, 0.15, 0.18, 0.01, 0.08, 0.03, 0.02, 0.03],
+  [0.06, 0.11, 0.07, 0,    0.12, 0.09, 0.10, 0.12, 0.11, 0.11, 0.11],
+  [0.06, 0.11, 0.08, 0.12, 0,    0.11, 0.09, 0.11, 0.10, 0.10, 0.10],
+  [0.06, 0.10, 0.13, 0.13, 0.15, 0,    0.07, 0.11, 0.09, 0.08, 0.09],
+  [0.01, 0.10, 0.01, 0.13, 0.11, 0.06, 0,    0.14, 0.15, 0.15, 0.14],
+  [0.03, 0.10, 0.04, 0.12, 0.12, 0.08, 0.12, 0,    0.12, 0.12, 0.12],
+  [0.01, 0.10, 0.02, 0.12, 0.11, 0.08, 0.14, 0.14, 0,    0.14, 0.14],
+  [0.01, 0.10, 0.01, 0.13, 0.11, 0.07, 0.14, 0.14, 0.14, 0,    0.14],
+  [0.01, 0.10, 0.02, 0.12, 0.12, 0.08, 0.14, 0.14, 0.14, 0.14, 0],
+];
+
+// per-row simulation inputs: change (PTC %), simOsa (%), simPosition — independent per SKU
+let priceRows = skus.map(s => ({ ...s, change: 0, simOsa: s.osa, simPosition: s.position }));
+
+/* ---------------- TAB SWITCHING ---------------- */
+function goToTab(id){
+  document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector('.tabbtn[data-tab="'+id+'"]').classList.add('active');
+  if(id === 'tab3') renderDashboard();
+}
+
+/* ---------------- TAB 1: SCENARIO LIBRARY (Blinkit only) ---------------- */
+const scenarios = [
+  { name: 'Blinkit_IG_Everyday5kg_Apr2026', date: '18-Jun-2026', by: 'Aditi Sharma', status: 'Completed' },
+  { name: 'Blinkit_IG_Super5_PromoTest', date: '15-Jun-2026', by: 'Rohan Mehta', status: 'Completed' },
+  { name: 'Blinkit_IG_Mogra_Q3', date: '12-Jun-2026', by: 'Aditi Sharma', status: 'Failed' },
+  { name: 'Blinkit_FeastRozzana_Trial', date: '03-Jun-2026', by: 'Priya Nair', status: 'Failed' },
+  { name: 'Blinkit_IG_Winter_Scenario', date: '29-May-2026', by: 'Rohan Mehta', status: 'Completed' },
+];
+function statusBadge(status){
+  if(status === 'Completed') return '<span class="badge completed"><span class="badge-dot"></span>Completed</span>';
+  return '<span class="badge failed"><span class="badge-dot"></span>Failed</span>';
+}
+function renderScenarios(filter){
+  filter = (filter || '').toLowerCase();
+  const tbody = document.getElementById('scenarioTableBody');
+  const rows = scenarios.filter(s => s.name.toLowerCase().includes(filter) || s.by.toLowerCase().includes(filter));
+  tbody.innerHTML = rows.map(s => `
+    <tr>
+      <td><strong>${s.name}</strong> <span class="platform-chip">Blinkit</span></td>
+      <td>${s.date}</td>
+      <td>${s.by}</td>
+      <td>${statusBadge(s.status)}</td>
+      <td><button class="link-btn" onclick="goToTab('tab3')">View Output &rarr;</button></td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" style="text-align:center; color:#b08a90; padding:24px;">No scenarios found.</td></tr>';
+}
+renderScenarios();
+document.getElementById('scenarioSearch').addEventListener('input', e => renderScenarios(e.target.value));
+
+/* ---------------- TAB 2: PRICING SIMULATOR — multi-step engine (A–I) ---------------- */
+function syncRange(inputId, labelId, suffix, scale){
+  const el = document.getElementById(inputId);
+  let v = parseFloat(el.value);
+  document.getElementById(labelId).textContent = (scale ? (v*scale).toFixed(0) : v) + suffix;
+  renderPriceTable();
+}
+
+// Steps 1–5: compute simulated PTC, isolated simulated volume, volume lost, VTM gain, final simulated volume — for ALL SKUs at once
+function computeAllVolumes(){
+  // Step 1 — simulated PTC, Step 2 — isolated simulated daily volume per SKU (per-row OSA & Position inputs, no budget term)
+  const stepA = priceRows.map(r => {
+    const simPtc = r.ptc * (1 + r.change/100);
+    const simVolume = r.dailyVolume
+      * Math.pow(simPtc / r.ptc, ELASTICITY.price)
+      * Math.pow(r.simPosition / r.position, ELASTICITY.position)
+      * Math.exp(ELASTICITY.osa * ((r.simOsa - r.osa) / 100));
+    return { row: r, simPtc, simVolume };
+  });
+
+  // Step 3 — volume lost delta per SKU (current - simulated; positive = lost to market)
+  const volumeLostDelta = stepA.map(x => x.row.dailyVolume - x.simVolume);
+
+  // Step 4 — VTM Gain_i = SUMPRODUCT(volumeLostDelta_j , VTM[j][i]) for all j
+  const vtmGain = stepA.map((x, i) => {
+    let gain = 0;
+    for(let j = 0; j < stepA.length; j++){
+      if(j === i) continue;
+      gain += volumeLostDelta[j] * vtmMatrix[j][i];
+    }
+    return gain;
+  });
+
+  // Step 5 — final simulated daily volume
+  return stepA.map((x, i) => ({
+    ...x,
+    volumeLostDelta: volumeLostDelta[i],
+    vtmGain: vtmGain[i],
+    finalSimVolume: x.simVolume + vtmGain[i],
+  }));
+}
+
+// Steps 6–7: project to monthly, compute revenue and deltas
+function computeAll(){
+  return computeAllVolumes().map(x => {
+    const r = x.row;
+    const monthlyCurrent = r.dailyVolume * 30;
+    const monthlySimulated = x.finalSimVolume * 30;
+    const volDeltaPct = monthlyCurrent ? ((monthlySimulated - monthlyCurrent) / monthlyCurrent) * 100 : 0;
+
+    const revenueCurrent = monthlyCurrent * r.ptc;
+    const revenueSimulated = monthlySimulated * x.simPtc;
+    const revenueDelta = revenueSimulated - revenueCurrent;
+    const revDeltaPct = revenueCurrent ? (revenueDelta / revenueCurrent) * 100 : 0;
+
+    return {
+      row: r, simPtc: x.simPtc,
+      simVolume: x.simVolume, volumeLostDelta: x.volumeLostDelta, vtmGain: x.vtmGain, finalSimVolume: x.finalSimVolume,
+      monthlyCurrent, monthlySimulated, volDeltaPct,
+      revenueCurrent, revenueSimulated, revenueDelta, revDeltaPct,
+    };
+  });
+}
+
+function scenarioLabel(c){
+  const osaChanged = Math.abs(c.row.simOsa - c.row.osa) > 1e-9;
+  const posChanged = Math.abs(c.row.simPosition - c.row.position) > 1e-9;
+  if(c.row.change !== 0 && (osaChanged || posChanged)) return 'PTC + Levers';
+  if(c.row.change !== 0) return 'PTC Change Only';
+  if(osaChanged || posChanged) return 'OSA/Position Change';
+  return 'No Change';
+}
+
+function deltaSpan(pct){
+  const cls = pct >= 0 ? 'delta-up' : 'delta-down';
+  const arrow = pct >= 0 ? '&#9650;' : '&#9660;';
+  return `<span class="${cls}">${arrow} ${Math.abs(pct).toFixed(2)}%</span>`;
+}
+
+function renderPriceTable(){
+  const computed = computeAll();
+  const tbody = document.getElementById('priceTableBody');
+  const fmtInt = v => Math.round(v).toLocaleString('en-IN');
+  const fmtSigned = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString('en-IN');
+  const fmtCur = v => '&#8377;' + Math.round(v).toLocaleString('en-IN');
+  const fmtCurSigned = v => (v >= 0 ? '+&#8377;' : '&minus;&#8377;') + Math.round(Math.abs(v)).toLocaleString('en-IN');
+  tbody.innerHTML = computed.map((c, i) => `
+    <tr>
+      <td><strong>${c.row.name}</strong></td>
+      <td>1 Month</td>
+      <td>${scenarioLabel(c)}</td>
+      <td class="num">${c.row.ptc.toFixed(2)}</td>
+      <td class="num"><input type="number" step="0.1" class="pct-input" value="${c.row.change}" data-idx="${i}" oninput="onPctChange(this)"></td>
+      <td class="num"><input type="number" step="0.01" class="ptc-input" value="${c.simPtc.toFixed(2)}" data-idx="${i}" oninput="onSimChange(this)"></td>
+      <td class="num">${c.row.osa.toFixed(0)}</td>
+      <td class="num"><input type="number" step="1" min="0" max="100" class="pct-input" value="${c.row.simOsa}" data-idx="${i}" oninput="onOsaChange(this)"></td>
+      <td class="num">${c.row.position.toFixed(2)}</td>
+      <td class="num"><input type="number" step="0.1" min="1" max="10" class="pct-input" value="${c.row.simPosition}" data-idx="${i}" oninput="onPositionChange(this)"></td>
+      <td class="num">${fmtInt(c.row.dailyVolume)}</td>
+      <td class="num">${fmtInt(c.simVolume)}</td>
+      <td class="num">${fmtSigned(c.volumeLostDelta)}</td>
+      <td class="num">${fmtSigned(c.vtmGain)}</td>
+      <td class="num"><strong>${fmtInt(c.finalSimVolume)}</strong></td>
+      <td class="num">${fmtInt(c.monthlyCurrent)}</td>
+      <td class="num">${fmtInt(c.monthlySimulated)}</td>
+      <td class="num">${deltaSpan(c.volDeltaPct)}</td>
+      <td class="num">${fmtCur(c.revenueCurrent)}</td>
+      <td class="num">${fmtCur(c.revenueSimulated)}</td>
+      <td class="num">${fmtCurSigned(c.revenueDelta)}</td>
+      <td class="num">${deltaSpan(c.revDeltaPct)}</td>
+    </tr>
+  `).join('');
+}
+function onPctChange(el){
+  const i = +el.dataset.idx;
+  priceRows[i].change = parseFloat(el.value) || 0;
+  renderPriceTable();
+}
+function onSimChange(el){
+  const i = +el.dataset.idx;
+  const sim = parseFloat(el.value) || 0;
+  priceRows[i].change = priceRows[i].ptc ? ((sim - priceRows[i].ptc) / priceRows[i].ptc) * 100 : 0;
+  renderPriceTable();
+}
+function onOsaChange(el){
+  const i = +el.dataset.idx;
+  priceRows[i].simOsa = parseFloat(el.value);
+  if(isNaN(priceRows[i].simOsa)) priceRows[i].simOsa = priceRows[i].osa;
+  renderPriceTable();
+}
+function onPositionChange(el){
+  const i = +el.dataset.idx;
+  priceRows[i].simPosition = parseFloat(el.value);
+  if(isNaN(priceRows[i].simPosition)) priceRows[i].simPosition = priceRows[i].position;
+  renderPriceTable();
+}
+function resetAll(){
+  priceRows = skus.map(s => ({ ...s, change: 0, simOsa: s.osa, simPosition: s.position }));
+  document.getElementById('globalPtcChange').value = 0;
+  document.getElementById('globalPtcChangeVal').textContent = '0%';
+  document.getElementById('globalOsa').value = 100;
+  document.getElementById('globalOsaVal').textContent = '100%';
+  document.getElementById('globalPosition').value = 5.36;
+  document.getElementById('globalPositionVal').textContent = '5.36';
+  renderPriceTable();
+}
+document.getElementById('globalPtcChange').addEventListener('input', function(e){
+  const pct = parseFloat(e.target.value) || 0;
+  priceRows = priceRows.map(r => ({ ...r, change: pct }));
+});
+document.getElementById('globalOsa').addEventListener('input', function(e){
+  const val = parseFloat(e.target.value) || 0;
+  priceRows = priceRows.map(r => ({ ...r, simOsa: val }));
+});
+document.getElementById('globalPosition').addEventListener('input', function(e){
+  const val = parseFloat(e.target.value) || 0;
+  priceRows = priceRows.map(r => ({ ...r, simPosition: val }));
+});
+renderPriceTable();
+
+function downloadExcel(){
+  const computed = computeAll();
+  const headers = [
+    'SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)',
+    'Current OSA (%)','Simulated OSA (%)','Current Avg Position','Simulated Avg Position',
+    'Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain',
+    'Final Avg_Daily_Volume (Simulated)','Monthly_Volume (Current)','Final Monthly_Volume (Simulated)',
+    'Volume Delta %','Revenue (Current)','Revenue (Simulated)','Revenue Delta (Rs)','Revenue Delta %'
+  ];
+  const csvEscape = v => {
+    const s = String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const rows = computed.map(c => [
+    c.row.name, '1 Month', scenarioLabel(c),
+    c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2),
+    c.row.osa.toFixed(0), c.row.simOsa, c.row.position.toFixed(2), c.row.simPosition,
+    Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain),
+    Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated),
+    c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated),
+    Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2)
+  ]);
+  const csvLines = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))];
+  const csvContent = csvLines.join('\r\n');
+  const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'KRBL_PTC_Simulated_Output.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------------- TAB 3: OUTPUT DASHBOARD (derived from Tab 2 inputs) ---------------- */
+const COGS_RATE = 0.65; // assumed cost-of-goods rate, used only to illustrate gross profit
+// Note: the Budget/Trade-Spend lever has been removed from the model entirely (per the latest brief),
+// so Net Revenue is now equal to Gross Revenue (no trade-spend deduction), and Gross Profit = Net Revenue * (1 - COGS_RATE).
+
+function renderDashboard(){
+  const computed = computeAll();
+
+  const grossRevenueSim = computed.reduce((s, x) => s + x.revenueSimulated, 0);
+  const grossRevenueCur = computed.reduce((s, x) => s + x.revenueCurrent, 0);
+  const unitsSim = computed.reduce((s, x) => s + x.monthlySimulated, 0);
+  const unitsCur = computed.reduce((s, x) => s + x.monthlyCurrent, 0);
+  const netRevenueSim = grossRevenueSim;
+  const netRevenueCur = grossRevenueCur;
+  const grossProfitSim = netRevenueSim * (1 - COGS_RATE);
+  const grossProfitCur = netRevenueCur * (1 - COGS_RATE);
+
+  const pct = (sim, cur) => cur ? ((sim - cur) / cur) * 100 : 0;
+  const fmtL = v => '₹' + (v/100000).toFixed(1) + 'L';
+
+  const metrics = [
+    { label: 'Gross Revenue', value: fmtL(grossRevenueSim), delta: pct(grossRevenueSim, grossRevenueCur) },
+    { label: 'Units', value: Math.round(unitsSim).toLocaleString('en-IN'), delta: pct(unitsSim, unitsCur) },
+    { label: 'Net Revenue', value: fmtL(netRevenueSim), delta: pct(netRevenueSim, netRevenueCur) },
+    { label: 'Gross Profit', value: fmtL(grossProfitSim), delta: pct(grossProfitSim, grossProfitCur) },
+  ];
+
+  document.getElementById('metricGrid').innerHTML = metrics.map(m => `
+    <div class="metric-card">
+      <div class="m-label">${m.label}</div>
+      <div class="m-value">${m.value}</div>
+      <div class="m-delta ${m.delta >= 0 ? 'delta-up' : 'delta-down'}">${m.delta >= 0 ? '&#9650;' : '&#9660;'} ${Math.abs(m.delta).toFixed(1)}% vs base</div>
+    </div>
+  `).join('');
+
+  const maxVol = Math.max(...computed.map(x => Math.max(x.monthlyCurrent, x.monthlySimulated)));
+  document.getElementById('volumeBars').innerHTML = computed.map(x => `
+    <div class="bar-row">
+      <div class="bar-label">${x.row.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(x.monthlySimulated/maxVol*100).toFixed(1)}%"></div></div>
+      <div class="bar-val">${Math.round(x.monthlySimulated).toLocaleString('en-IN')}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('mixBars').innerHTML = computed.map(x => {
+    const share = grossRevenueSim ? (x.revenueSimulated / grossRevenueSim) * 100 : 0;
+    return `
+    <div class="bar-row">
+      <div class="bar-label">${x.row.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${share.toFixed(1)}%"></div></div>
+      <div class="bar-val">${share.toFixed(1)}%</div>
+    </div>`;
+  }).join('');
+}
+renderDashboard();
+</script>
+</body>
+</html>
