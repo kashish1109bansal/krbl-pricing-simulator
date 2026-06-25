@@ -307,6 +307,21 @@
   .bar-row .bar-value{ width:148px; flex-shrink:0; text-align:right; font-size:11px; font-weight:800; color:var(--maroon-dark); font-variant-numeric: tabular-nums; white-space:nowrap; }
   .bar-row .bar-value .bar-pct{ font-weight:700; color:var(--muted); font-size:10px; }
 
+  /* ================= AI BUSINESS INSIGHTS & STRATEGY ENGINE (Step 3) ================= */
+  .ai-insights-card{ background:linear-gradient(135deg, rgba(122,6,36,0.04), rgba(212,175,55,0.07)); border:1.5px solid var(--gold); }
+  .ai-insights-sub{ margin:0 0 16px; font-size:12px; color:var(--muted); }
+  .ai-insights-body{ display:flex; flex-direction:column; gap:10px; }
+  .ai-insight-row{ display:flex; gap:12px; align-items:flex-start; padding:13px 15px; border-radius:12px; background:#fff; border:1px solid var(--border); box-shadow:0 1px 4px rgba(122,6,36,0.05); }
+  .ai-insight-row .ai-badge{ flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; padding:5px 11px; border-radius:999px; font-size:9.5px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; white-space:nowrap; margin-top:1px; }
+  .ai-badge.badge-lift{ background:linear-gradient(90deg,var(--gold),#c79a1f); color:#3a2a05; }
+  .ai-badge.badge-expansion{ background:rgba(30,130,76,0.14); color:var(--green); border:1px solid rgba(30,130,76,0.3); }
+  .ai-badge.badge-revenue{ background:rgba(212,175,55,0.22); color:#8a6d10; border:1px solid rgba(212,175,55,0.45); }
+  .ai-badge.badge-risk{ background:rgba(179,38,30,0.12); color:var(--red); border:1px solid rgba(179,38,30,0.3); }
+  .ai-badge.badge-cannibalization{ background:var(--maroon); color:#fff; }
+  .ai-insight-text{ font-size:12.5px; line-height:1.55; color:var(--ink); }
+  .ai-insight-text b{ color:var(--maroon-dark); }
+  .ai-insights-empty{ font-size:12.5px; color:var(--muted); padding:6px 2px; }
+
   /* ===== ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, with floating Delta% callouts ===== */
   /* ===== HIGH-CONTRAST ENTERPRISE REVAMP — Baseline vs Simulated comparison section ===== */
   .compare-card{ padding:22px 26px 26px; }
@@ -490,7 +505,7 @@
               <thead>
                 <tr>
                   <th colspan="9" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
-                  <th colspan="13" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
+                  <th colspan="12" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
                 </tr>
                 <tr>
                   <th>SKU</th>
@@ -505,7 +520,6 @@
                   <th>Scenario</th>
                   <th class="num">Avg_Daily_Volume (Current)</th>
                   <th class="num">Avg_Daily_Volume (Simulated)</th>
-                  <th class="num">Average Daily Volume (Next Month Baseline)</th>
                   <th class="num">Volume lost &Delta;</th>
                   <th class="num">VTM Gain</th>
                   <th class="num">Final Avg_Daily_Volume (Simulated)</th>
@@ -520,6 +534,17 @@
               <tbody id="outputTableBody"></tbody>
             </table>
           </div>
+        </div>
+
+        <!-- AI BUSINESS INSIGHTS & STRATEGY ENGINE — auto-generated executive bullets, regenerated every
+             time Run Simulation fires (and every time the Output Dashboard table re-renders), reading the
+             current run's Volume Δ% / Revenue Δ% / VTM Gain to explain elasticity and cross-cannibalization
+             performance in plain executive language. Purely derived from computeAll() output — no separate
+             state of its own beyond the rendered HTML below. -->
+        <div class="glass-card ai-insights-card">
+          <h3 class="section-title">&#10024; AI Business Insights &amp; Strategy Engine</h3>
+          <p class="ai-insights-sub">Auto-generated executive read-out of this run's elasticity response and VTM cross-cannibalization, refreshed every time the simulation runs.</p>
+          <div id="aiInsightsBody" class="ai-insights-body"></div>
         </div>
 
         <!-- ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, with floating Delta% callouts -->
@@ -905,42 +930,16 @@ function getCurrentMonthDays(baselineMonthLabel){
   // Day 0 of (monthIndex+1) is the last day of monthIndex -> exact day count for the selected month itself.
   return new Date(year, monthIndex + 1, 0).getDate();
 }
-// "Average Daily Volume (Next Month Baseline)" — the organic, un-simulated daily run-rate for the month
-// the simulation is actually projecting INTO (one calendar month after the selected baseline). If that
-// next month already exists as real historical-actuals data in baseData (e.g. baseline=April 2026 ->
-// next month=May 2026, which we have), this returns those real actuals directly. If the selected baseline
-// is the LAST month present in baseData (e.g. May 2026, with no June 2026 actuals on file yet), there is no
-// historical figure to show — so it is extrapolated forward using that SKU's own most recent observed
-// month-over-month growth ratio (previous month -> selected month), applied one more month forward. This
-// keeps the benchmarking column populated and meaningful regardless of which baseline month is selected,
-// without ever fabricating a number disconnected from the SKU's own real trend.
-function getNextMonthBaselineVolume(skuName){
-  const months = Object.keys(baseData);
-  const idx = months.indexOf(selectedMonth);
-  if(idx >= 0 && idx < months.length - 1){
-    const nextMonthRow = baseData[months[idx+1]].find(r => r.name === skuName);
-    if(nextMonthRow) return nextMonthRow.dailyVolume;
-  }
-  const curRow = baseData[selectedMonth].find(r => r.name === skuName);
-  if(idx > 0){
-    const prevRow = baseData[months[idx-1]].find(r => r.name === skuName);
-    if(prevRow && curRow && prevRow.dailyVolume){
-      const growthRatio = curRow.dailyVolume / prevRow.dailyVolume;
-      return curRow.dailyVolume * growthRatio;
-    }
-  }
-  return curRow ? curRow.dailyVolume : 0; // fallback: no trend signal available, hold flat
-}
 function computeAll(){
   // Monthly Volume (Current) and Final Monthly Volume (Simulated) are anchored to the SELECTED BASELINE
   // MONTH'S OWN calendar day count — e.g. baseline = April 2026 -> multiply by 30, baseline = May 2026 ->
-  // multiply by 31. getSimulationMonthDays() (next-month day count) is intentionally NOT used here anymore;
-  // it still powers the separate "Average Daily Volume (Next Month Baseline)" column via
-  // getNextMonthBaselineVolume() below, which is the only place a next-month figure belongs.
+  // multiply by 31. getSimulationMonthDays() (next-month day count) is intentionally NOT used here. The
+  // "Average Daily Volume (Next Month Baseline)" benchmarking column and its getNextMonthBaselineVolume()
+  // helper have been fully removed from the calculation engine and the Output Dashboard per directive —
+  // the table now goes straight from simulated daily runs to the core monthly outputs below.
   const daysInCurrentMonth = getCurrentMonthDays(selectedMonth);
   return computeAllVolumes().map(x => {
     const r = x.row;
-    const nextMonthBaselineVolume = getNextMonthBaselineVolume(r.name);
     const monthlyCurrent = r.dailyVolume * daysInCurrentMonth;
     // Final_Monthly_Volume = Monthly_Volume_Current * (Avg_Daily_Volume_Simulated / Avg_Daily_Volume_Current)
     // i.e. the monthly simulated total is held in EXACT proportion to the monthly current total — the ratio of
@@ -954,7 +953,7 @@ function computeAll(){
     const revenueSimulated = monthlySimulated * x.simPtc;
     const revenueDelta = revenueSimulated - revenueCurrent;
     const revDeltaPct = revenueCurrent ? (revenueDelta/revenueCurrent)*100 : 0;
-    return { row:r, simPtc:x.simPtc, simVolume:x.simVolume, nextMonthBaselineVolume, volumeLostDelta:x.volumeLostDelta, vtmGain:x.vtmGain, finalSimVolume:x.finalSimVolume, monthlyCurrent, monthlySimulated, volDeltaPct, revenueCurrent, revenueSimulated, revenueDelta, revDeltaPct };
+    return { row:r, simPtc:x.simPtc, simVolume:x.simVolume, volumeLostDelta:x.volumeLostDelta, vtmGain:x.vtmGain, finalSimVolume:x.finalSimVolume, monthlyCurrent, monthlySimulated, volDeltaPct, revenueCurrent, revenueSimulated, revenueDelta, revDeltaPct };
   });
 }
 // Dynamic per-row Scenario classifier: compares each SKU's simulated inputs against
@@ -1054,7 +1053,6 @@ function renderOutputTable(){
       <td><span class="scenario-tag scenario-${scenarioLabel(c).replace(/[^a-zA-Z]+/g,'')}">${scenarioLabel(c)}</span></td>
       <td class="num">${Math.round(c.row.dailyVolume)}</td>
       <td class="num">${Math.round(c.simVolume)}</td>
-      <td class="num readonly-cell">${Math.round(c.nextMonthBaselineVolume)}</td>
       <td class="num">${Math.round(c.volumeLostDelta)}</td>
       <td class="num">${Math.round(c.vtmGain)}</td>
       <td class="num">${Math.round(c.finalSimVolume)}</td>
@@ -1069,6 +1067,88 @@ function renderOutputTable(){
   lastVisibleComputed = visibleComputed;
   populateComparisonDropdown();
   renderComparisonCharts(visibleComputed);
+  renderAiInsights(computed); // always reasons over the FULL 6-SKU set so cross-SKU VTM commentary stays correct
+}
+
+// ---------- AI BUSINESS INSIGHTS & STRATEGY ENGINE ----------
+// Reads this run's computeAll() output (Volume Δ%, Revenue Δ%, VTM Gain, Volume Lost Δ) and the static
+// vtmMatrix to synthesize crisp, executive-level strategy bullets. Pure read-only function of `computed`
+// — it never mutates state and is safe to call every time the Output Dashboard re-renders, including on
+// every "Run Simulation & View Outputs" click.
+function renderAiInsights(computed){
+  const body = document.getElementById('aiInsightsBody');
+  if(!body) return;
+  if(!computed || computed.length === 0){
+    body.innerHTML = `<div class="ai-insights-empty">Run a simulation to generate strategy insights.</div>`;
+    return;
+  }
+  const fmtPct = v => `${v>=0?'+':''}${v.toFixed(2)}%`;
+  const fmtRs = v => `&#8377;${Math.round(Math.abs(v)).toLocaleString('en-IN')}`;
+  const rows = []; // each: { badgeCls, badgeLabel, html }
+
+  // ---- 1) PORTFOLIO LIFT (Gold Badge) — always rendered once, aggregate across the full 6-SKU set. ----
+  const totalCur = computed.reduce((s,c)=>s+c.monthlyCurrent,0);
+  const totalSim = computed.reduce((s,c)=>s+c.monthlySimulated,0);
+  const totalRevCur = computed.reduce((s,c)=>s+c.revenueCurrent,0);
+  const totalRevSim = computed.reduce((s,c)=>s+c.revenueSimulated,0);
+  const portfolioVolPct = totalCur ? ((totalSim-totalCur)/totalCur*100) : 0;
+  const portfolioRevPct = totalRevCur ? ((totalRevSim-totalRevCur)/totalRevCur*100) : 0;
+  const portfolioRevDelta = totalRevSim - totalRevCur;
+  rows.push({
+    badgeCls:'badge-lift', badgeLabel:'Portfolio Lift',
+    html: `Overall portfolio volume is projected to <b>${portfolioVolPct>=0?'expand':'contract'} by ${Math.abs(portfolioVolPct).toFixed(2)}%</b> versus baseline, translating into a revenue <b>${portfolioRevPct>=0?'gain':'loss'} of ${Math.abs(portfolioRevPct).toFixed(2)}%</b> (${fmtRs(portfolioRevDelta)} incremental this period).`
+  });
+
+  // ---- 2) VOLUME EXPANSION (Green Badge) — one row per SKU showing positive simulated volume growth. ----
+  computed.filter(c => c.volDeltaPct > 0.01).sort((a,b)=>b.volDeltaPct-a.volDeltaPct).forEach(c => {
+    rows.push({
+      badgeCls:'badge-expansion', badgeLabel:'Volume Expansion',
+      html: `<b>${c.row.name}</b> is set to expand volume by <b>${fmtPct(c.volDeltaPct)}</b> (Sim PTC &#8377;${c.simPtc.toFixed(2)} vs current &#8377;${c.row.ptc.toFixed(2)}) &mdash; the price mix on this SKU is operating in a favorable elasticity zone and is the strongest organic volume driver in this scenario.`
+    });
+  });
+
+  // ---- 3) REVENUE DRIVER (Yellow Badge) — top positive incremental-revenue contributors. ----
+  computed.filter(c => c.revenueDelta > 0).sort((a,b)=>b.revenueDelta-a.revenueDelta).slice(0,3).forEach(c => {
+    rows.push({
+      badgeCls:'badge-revenue', badgeLabel:'Revenue Driver',
+      html: `<b>${c.row.name}</b> contributes ${fmtRs(c.revenueDelta)} of incremental monthly revenue (<b>${fmtPct(c.revDeltaPct)}</b>), making it a key lever to prioritize if budget/shelf support needs to be concentrated on the highest-yield SKU.`
+    });
+  });
+
+  // ---- 4) AT RISK (Red Badge) — any SKU dropping in volume and/or revenue. ----
+  computed.filter(c => c.volDeltaPct < -0.01 || c.revDeltaPct < -0.01).sort((a,b)=>a.revDeltaPct-b.revDeltaPct).forEach(c => {
+    rows.push({
+      badgeCls:'badge-risk', badgeLabel:'At Risk',
+      html: `<b>${c.row.name}</b> is projected to lose <b>${Math.abs(c.volDeltaPct).toFixed(2)}%</b> volume and <b>${Math.abs(c.revDeltaPct).toFixed(2)}%</b> revenue (${fmtRs(c.revenueDelta)}) under this scenario &mdash; review the simulated inputs on this SKU before finalizing.`
+    });
+  });
+
+  // ---- 5) CANNIBALIZATION (Maroon Badge) — every material 6x6 VTM transfer this run, source->target. ----
+  const transfers = [];
+  computed.forEach(from => {
+    const lost = Math.abs(from.volumeLostDelta || 0);
+    if(lost <= 0) return;
+    Object.keys(vtmMatrix[from.row.name] || {}).forEach(toName => {
+      const frac = vtmMatrix[from.row.name][toName];
+      if(!frac) return;
+      const unitsPerDay = lost * frac;
+      if(unitsPerDay <= 0.05) return;
+      const daysInCurrentMonth = getCurrentMonthDays(selectedMonth);
+      transfers.push({ from: from.row.name, to: toName, unitsPerMonth: unitsPerDay * daysInCurrentMonth, pct: frac*100 });
+    });
+  });
+  transfers.sort((a,b)=>b.unitsPerMonth-a.unitsPerMonth).forEach(t => {
+    rows.push({
+      badgeCls:'badge-cannibalization', badgeLabel:'Cannibalization',
+      html: `~${Math.round(t.unitsPerMonth).toLocaleString('en-IN')} units/month of <b>${t.from}</b>'s lost volume are being absorbed by <b>${t.to}</b> (${t.pct.toFixed(1)}% cross-elasticity capture) &mdash; this is a within-portfolio share shift rather than true incremental demand, and should be netted out before reporting category growth.`
+    });
+  });
+
+  body.innerHTML = rows.map(r => `
+    <div class="ai-insight-row">
+      <span class="ai-badge ${r.badgeCls}">${r.badgeLabel}</span>
+      <div class="ai-insight-text">${r.html}</div>
+    </div>`).join('');
 }
 
 // ---------- COMPARISON CHART VIEW TOGGLE (Overall Portfolio vs Individual SKU) ----------
@@ -1153,9 +1233,9 @@ function renderComparisonCharts(computedFull){
 // ---------- DOWNLOAD CSV ----------
 function downloadExcel(){
   const computed = computeAll();
-  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Current Avg Position','Simulated Avg Position','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Average Daily Volume (Next Month Baseline)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Monthly_Volume (Current)','Final Monthly_Volume (Simulated)','Volume Delta %','Revenue (Current)','Revenue (Simulated)','Revenue Delta (Rs)','Revenue Delta %'];
+  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Current Avg Position','Simulated Avg Position','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Monthly_Volume (Current)','Final Monthly_Volume (Simulated)','Volume Delta %','Revenue (Current)','Revenue (Simulated)','Revenue Delta (Rs)','Revenue Delta %'];
   const csvEscape = v => { const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const rows = computed.map(c => [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.position.toFixed(2), c.row.simPosition, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.nextMonthBaselineVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2)]);
+  const rows = computed.map(c => [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.position.toFixed(2), c.row.simPosition, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2)]);
   const csvLines = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))];
   const csvContent = csvLines.join('\r\n');
   const blob = new Blob(['﻿'+csvContent], { type:'text/csv;charset=utf-8;' });
