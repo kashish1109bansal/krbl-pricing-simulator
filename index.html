@@ -586,7 +586,7 @@
               <div class="kpi-tile-sub" id="kpiDeltaContext">Simulated &#8377;0 &#8722; Current &#8377;0</div>
             </div>
             <div class="kpi-tile kpi-tile-delta" id="kpiVolumeCard">
-              <div class="kpi-tile-label">&#9889; PORTFOLIO VOLUME MOVEMENT</div>
+              <div class="kpi-tile-label">&#9889; MONTHLY PORTFOLIO VOLUME MOVEMENT</div>
               <div class="kpi-tile-value" id="kpiDeltaValue">0 units</div>
               <span class="kpi-badge" id="kpiVolVarianceBadge">+0.00%</span>
             </div>
@@ -614,22 +614,16 @@
                   <th class="num">Volume lost &Delta;</th>
                   <th class="num">VTM Gain</th>
                   <th class="num">Final Avg_Daily_Volume (Simulated)</th>
-                  <th class="num">Monthly_Volume (Current)</th>
-                  <th class="num">Final Monthly_Volume (Simulated)</th>
+                  <th class="num">Baseline Monthly Volume</th>
+                  <th class="num">Simulated Monthly Volume</th>
                   <th class="num">Volume &Delta;%</th>
-                  <th class="num">Monthly Revenue (&#8377;) (Current)</th>
-                  <th class="num">Monthly Revenue (&#8377;) (Simulated)</th>
+                  <th class="num">Baseline Monthly Revenue (&#8377;)</th>
+                  <th class="num">Simulated Monthly Revenue (&#8377;)</th>
                   <th class="num">Revenue &Delta; %</th>
                 </tr>
               </thead>
               <tbody id="outputTableBody"></tbody>
             </table>
-          </div>
-          <div class="glass-card" style="padding:16px 20px 10px; margin-top:16px;">
-            <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Revenue &amp; Volume Lift Drivers</div>
-            <div style="position:relative; height:280px;">
-              <canvas id="top5SkusChart" style="max-height: 280px; width: 100%;"></canvas>
-            </div>
           </div>
         </div>
 
@@ -645,6 +639,29 @@
           </div>
           <p class="ai-insights-sub">Macro commercial intelligence synthesized from this run's price elasticity response, VTM cross-elasticity capture, and portfolio revenue variance &mdash; regenerated on every simulation pass.</p>
           <div id="aiInsightsBody" class="ai-insights-body"></div>
+        </div>
+
+        <!-- TOP 5 SKUs — REVENUE & VOLUME LIFT DRIVERS — split into two independent side-by-side Chart.js
+             instances (visual-only, read-only over `computed`). Positioned directly below the AI Insights
+             suite above and strictly above the Baseline vs Simulated Comparison container below. Both
+             canvases are kept in sync with the global SKU Filter selection — see renderTop5SkuChart() /
+             toggleSkuVisibility(), which calls .destroy() on both chart instances before every re-render. -->
+        <div class="glass-card" style="padding:16px 20px 10px; margin-top:16px;">
+          <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Monthly Revenue &amp; Volume Lift Drivers</div>
+          <div class="charts-grid" style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1 1 320px; min-width:280px;">
+              <div style="font-size:12px; font-weight:700; color:#4A0E17; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY REVENUE LIFT DRIVERS</div>
+              <div style="position:relative; height:280px;">
+                <canvas id="revenueLiftChart" style="max-height: 280px; width: 100%;"></canvas>
+              </div>
+            </div>
+            <div style="flex:1 1 320px; min-width:280px;">
+              <div style="font-size:12px; font-weight:700; color:#9C7B2E; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY VOLUME LIFT DRIVERS (UNITS)</div>
+              <div style="position:relative; height:280px;">
+                <canvas id="volumeLiftChart" style="max-height: 280px; width: 100%;"></canvas>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, with floating Delta% callouts -->
@@ -1203,30 +1220,37 @@ function renderKpiTiles(computed){
 // horizontal Chart.js bar chart (Revenue Lift + Volume Lift side-by-side per SKU) themed to the
 // maroon/gold palette. Pure presentation layer — never reads/writes calc-engine state, only the
 // already-computed, already-filtered array handed in by renderOutputTable().
-let top5SkuChartInstance = null;
+let revenueLiftChartInstance = null;
+let volumeLiftChartInstance = null;
 let top5SkuChartRetryCount = 0;
 function renderTop5SkuChart(computed){
-  const canvas = document.getElementById('top5SkusChart');
-  if(!canvas) return;
+  const revCanvas = document.getElementById('revenueLiftChart');
+  const volCanvas = document.getElementById('volumeLiftChart');
+  if(!revCanvas || !volCanvas) return;
   // Chart.js loads from a CDN <script> tag in <head>; on slow networks the global `Chart` object
   // may not exist yet at the exact instant the very first renderTop5SkuChart() call fires (e.g. user
   // jumps straight to the Output Dashboard before the script finishes downloading). Rather than silently
-  // giving up and leaving the card permanently blank, retry on a short timer until the library is ready.
+  // giving up and leaving the cards permanently blank, retry on a short timer until the library is ready.
   if(typeof Chart === 'undefined'){
     if(top5SkuChartRetryCount < 40){ // ~10s max retry window
       top5SkuChartRetryCount++;
       setTimeout(() => renderTop5SkuChart(computed), 250);
     } else {
-      console.warn('Top 5 SKU chart: Chart.js failed to load from CDN.');
+      console.warn('Top 5 SKU charts: Chart.js failed to load from CDN.');
     }
     return;
   }
   top5SkuChartRetryCount = 0;
 
-  if(top5SkuChartInstance){ top5SkuChartInstance.destroy(); top5SkuChartInstance = null; }
+  // Destroy BOTH chart instances cleanly before re-rendering — this is the shared sync pipeline the
+  // global SKU Filter dropdown drives (toggleSkuVisibility() -> renderOutputTable() -> renderTop5SkuChart()),
+  // guaranteeing the Revenue Lift and Volume Lift canvases always stay perfectly in sync with each other
+  // and with the active filter selection.
+  if(revenueLiftChartInstance){ revenueLiftChartInstance.destroy(); revenueLiftChartInstance = null; }
+  if(volumeLiftChartInstance){ volumeLiftChartInstance.destroy(); volumeLiftChartInstance = null; }
 
   if(!computed || computed.length === 0){
-    return; // nothing in the active SKU Filter selection — leave the canvas blank rather than chart nothing
+    return; // nothing in the active SKU Filter selection — leave both canvases blank rather than chart nothing
   }
 
   const ranked = computed
@@ -1246,58 +1270,31 @@ function renderTop5SkuChart(computed){
   const revPctByIdx = ranked.map(r => r.revDeltaPct);
   const volPctByIdx = ranked.map(r => r.volDeltaPct);
 
-  const ctx = canvas.getContext('2d');
+  // Shared visual config applied to both standalone charts — horizontal bars, rounded corners, and a
+  // %-aware tooltip callback wired to that chart's own percentage array.
+  const baseScaleTextStyle = { color:'#555555', font:{ size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' } };
 
-  // Revenue lifts run into the lakhs of ₹ while volume lifts run into the hundreds/thousands of units —
-  // sharing one value axis would flatten the Volume Lift bars to near-invisible slivers. Each dataset gets
-  // its OWN independent x-axis (xRevenue / xVolume) scaled to its own data range; xVolume stays hidden
-  // (display:false) so it never shows a second, confusing axis — it only exists to give the Gold bars
-  // their own scale headroom. Both datasets still share the single category (y) axis, so the Maroon and
-  // Gold bars render grouped side-by-side per SKU rather than overlapping or hiding each other.
-  top5SkuChartInstance = new Chart(ctx, {
+  revenueLiftChartInstance = new Chart(revCanvas.getContext('2d'), {
     type: 'bar',
     data: {
       labels,
-      datasets: [
-        {
-          label: 'Revenue Lift (₹)',
-          data: revenueData,
-          backgroundColor: '#4A0E17',
-          borderColor: '#4A0E17',
-          borderWidth: 1,
-          borderRadius: 6,
-          borderSkipped: false,
-          maxBarThickness: 18,
-          xAxisID: 'xRevenue',
-          yAxisID: 'y',
-          grouped: true
-        },
-        {
-          label: 'Volume Lift (units)',
-          data: volumeData,
-          backgroundColor: '#C5A059',
-          borderColor: '#C5A059',
-          borderWidth: 1,
-          borderRadius: 6,
-          borderSkipped: false,
-          maxBarThickness: 18,
-          xAxisID: 'xVolume',
-          yAxisID: 'y',
-          grouped: true
-        }
-      ]
+      datasets: [{
+        label: 'Monthly Revenue Lift (₹)',
+        data: revenueData,
+        backgroundColor: '#4A0E17',
+        borderColor: '#4A0E17',
+        borderWidth: 1,
+        borderRadius: 6,
+        borderSkipped: false,
+        maxBarThickness: 22
+      }]
     },
     options: {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-          align: 'end',
-          labels: { color:'#555555', font:{ size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' }, boxWidth:12 }
-        },
+        legend: { display: false },
         tooltip: {
           backgroundColor: '#1E1E1E',
           titleColor: '#fff',
@@ -1310,39 +1307,74 @@ function renderTop5SkuChart(computed){
               const idx = ctx.dataIndex;
               const v = ctx.parsed.x;
               const sign = v >= 0 ? '+' : '';
-              if(ctx.dataset.label.indexOf('Revenue') === 0){
-                const pct = revPctByIdx[idx];
-                return `Revenue Lift: ${sign}₹${Math.abs(v).toLocaleString('en-IN')} (${pct>=0?'+':''}${pct.toFixed(1)}%)`;
-              }
-              const pct = volPctByIdx[idx];
-              return `Volume Lift: ${sign}${Math.abs(v).toLocaleString('en-IN')} units (${pct>=0?'+':''}${pct.toFixed(1)}%)`;
+              const pct = revPctByIdx[idx];
+              return `Monthly Revenue Lift: ${sign}₹${Math.abs(v).toLocaleString('en-IN')} (${pct>=0?'+':''}${pct.toFixed(1)}%)`;
             }
           }
         }
       },
       scales: {
-        xRevenue: {
+        x: {
           type: 'linear',
-          position: 'bottom',
-          grid: { display:false },
-          ticks: {
-            color: '#555555',
-            font: { size:11, weight:'700', family: 'Inter, "Helvetica Neue", sans-serif' },
-            callback: (v) => '₹' + Number(v).toLocaleString('en-IN')
-          }
-        },
-        xVolume: {
-          type: 'linear',
-          position: 'top',
-          grid: { display:false },
-          display: false
+          grid: { color:'rgba(74,14,23,0.05)', borderDash:[5,5] },
+          ticks: { ...baseScaleTextStyle, callback: (v) => '₹' + Number(v).toLocaleString('en-IN') }
         },
         y: {
-          ticks: {
-            color: '#555555',
-            font: { size:11, weight:'700', family: 'Inter, "Helvetica Neue", sans-serif' }
-          },
-          grid: { color:'rgba(74,14,23,0.05)', borderDash:[5,5] }
+          ticks: baseScaleTextStyle,
+          grid: { display:false }
+        }
+      }
+    }
+  });
+
+  volumeLiftChartInstance = new Chart(volCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Monthly Volume Lift (units)',
+        data: volumeData,
+        backgroundColor: '#C5A059',
+        borderColor: '#C5A059',
+        borderWidth: 1,
+        borderRadius: 6,
+        borderSkipped: false,
+        maxBarThickness: 22
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1E1E1E',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          padding: 8,
+          titleFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
+          bodyFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
+          callbacks: {
+            label: (ctx) => {
+              const idx = ctx.dataIndex;
+              const v = ctx.parsed.x;
+              const sign = v >= 0 ? '+' : '';
+              const pct = volPctByIdx[idx];
+              return `Monthly Volume Lift: ${sign}${Math.abs(v).toLocaleString('en-IN')} units (${pct>=0?'+':''}${pct.toFixed(1)}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          grid: { color:'rgba(197,160,89,0.10)', borderDash:[5,5] },
+          ticks: { ...baseScaleTextStyle, callback: (v) => Number(v).toLocaleString('en-IN') }
+        },
+        y: {
+          ticks: baseScaleTextStyle,
+          grid: { display:false }
         }
       }
     }
@@ -1533,7 +1565,7 @@ function renderComparisonCharts(computedFull){
 // ---------- DOWNLOAD CSV ----------
 function downloadExcel(){
   const computed = computeAll();
-  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Marketing Budget (Rs)','Simulated Budget (Rs)','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Monthly_Volume (Current)','Final Monthly_Volume (Simulated)','Volume Delta %','Revenue (Current)','Revenue (Simulated)','Revenue Delta (Rs)','Revenue Delta %'];
+  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Marketing Budget (Rs)','Simulated Budget (Rs)','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %'];
   const csvEscape = v => { const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
   const rows = computed.map(c => [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.budget.toFixed(2), c.row.simBudget, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2)]);
   const csvLines = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))];
