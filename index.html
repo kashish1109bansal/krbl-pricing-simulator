@@ -372,21 +372,21 @@
               <div class="sim-field">
                 <label>PTC Change (%) <span class="sub">applies to all rows; overrides individual PTC Change inputs in the grid</span></label>
                 <div class="range-row">
-                  <input type="range" id="globalPtcChange" min="-50" max="50" step="0.5" value="0" oninput="syncRange('globalPtcChange','globalPtcChangeVal','%')">
+                  <input type="range" id="globalPtcChange" min="-50" max="50" step="0.5" value="0" oninput="syncRange('globalPtcChange','globalPtcChangeVal','%','change')">
                   <span class="range-val" id="globalPtcChangeVal">0%</span>
                 </div>
               </div>
               <div class="sim-field">
                 <label>Simulated OSA (%) <span class="sub">applies to all rows; overrides individual Simulated OSA inputs in the grid</span></label>
                 <div class="range-row">
-                  <input type="range" id="globalOsa" min="0" max="100" step="1" value="80" oninput="syncRange('globalOsa','globalOsaVal','%')">
+                  <input type="range" id="globalOsa" min="0" max="100" step="1" value="80" oninput="syncRange('globalOsa','globalOsaVal','%','simOsa')">
                   <span class="range-val" id="globalOsaVal">80%</span>
                 </div>
               </div>
               <div class="sim-field">
                 <label>Simulated Avg Position <span class="sub">applies to all rows; overrides individual Simulated Avg Position inputs in the grid</span></label>
                 <div class="range-row">
-                  <input type="range" id="globalPosition" min="0" max="10" step="0.1" value="4" oninput="syncRange('globalPosition','globalPositionVal','')">
+                  <input type="range" id="globalPosition" min="0" max="10" step="0.1" value="4" oninput="syncRange('globalPosition','globalPositionVal','','simPosition')">
                   <span class="range-val" id="globalPositionVal">4</span>
                 </div>
               </div>
@@ -825,24 +825,23 @@ function resetAll(){
   renderInputsTable();
 }
 
-function syncRange(inputId, labelId, suffix){
+// syncRange now does the priceRows mutation itself, synchronously, BEFORE renderInputsTable() runs.
+// Previously the inline oninput="syncRange(...)" attribute (set during HTML parsing, so it registers as
+// this element's FIRST 'input' listener) called renderInputsTable() immediately, while a SEPARATE
+// addEventListener('input', ...) registered later in the script (and therefore firing SECOND) was the one
+// actually writing the new value into priceRows. That ordering meant every render used the previous tick's
+// stale priceRows, so the yellow grid inputs always lagged one step behind the slider. Folding the
+// priceRows update into syncRange itself — and removing the old addEventListener blocks entirely —
+// guarantees the grid is rebuilt from the just-updated value on every single 'input' event.
+function syncRange(inputId, labelId, suffix, rowField){
   const el = document.getElementById(inputId);
-  const v = parseFloat(el.value);
+  const v = parseFloat(el.value) || 0;
   document.getElementById(labelId).textContent = v + suffix;
+  if(rowField){
+    priceRows = priceRows.map(r => ({ ...r, [rowField]: v }));
+  }
   renderInputsTable();
 }
-document.getElementById('globalPtcChange').addEventListener('input', function(e){
-  const pct = parseFloat(e.target.value) || 0;
-  priceRows = priceRows.map(r => ({ ...r, change: pct }));
-});
-document.getElementById('globalOsa').addEventListener('input', function(e){
-  const val = parseFloat(e.target.value) || 0;
-  priceRows = priceRows.map(r => ({ ...r, simOsa: val }));
-});
-document.getElementById('globalPosition').addEventListener('input', function(e){
-  const val = parseFloat(e.target.value) || 0;
-  priceRows = priceRows.map(r => ({ ...r, simPosition: val }));
-});
 
 // ---------- STEP 3: OUTPUT TABLE ----------
 function renderOutputTable(){
