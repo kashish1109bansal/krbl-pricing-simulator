@@ -136,6 +136,10 @@
   .kpi-tile-simulated:hover{ box-shadow: 0 10px 28px rgba(197,160,89,0.30); transform: translateY(-2px); }
   .kpi-tile-delta{ border-left:4px solid var(--green); }
   .kpi-tile-delta .kpi-tile-value{ color: var(--green); }
+  /* Negative-state override — Portfolio Volume Movement card switches its left accent border and
+     primary numeric text from Green to Crimson/Coral Warning Red whenever volume movement is negative. */
+  .kpi-tile-delta.kpi-tile-delta-negative{ border-left:4px solid #D9383A; }
+  .kpi-tile-delta.kpi-tile-delta-negative .kpi-tile-value{ color: #D9383A; }
   .kpi-badge{ display:inline-block; margin-top:8px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:800; letter-spacing:0.02em; }
   .kpi-badge.kpi-up{ background: rgba(14,122,78,0.12); color: var(--green); }
   .kpi-badge.kpi-down{ background: rgba(199,90,69,0.12); color: var(--red); }
@@ -581,16 +585,10 @@
               <div class="kpi-tile-value" id="kpiSimulatedValue">&#8377;0</div>
               <div class="kpi-tile-sub" id="kpiDeltaContext">Simulated &#8377;0 &#8722; Current &#8377;0</div>
             </div>
-            <div class="kpi-tile kpi-tile-delta">
+            <div class="kpi-tile kpi-tile-delta" id="kpiVolumeCard">
               <div class="kpi-tile-label">&#9889; PORTFOLIO VOLUME MOVEMENT</div>
               <div class="kpi-tile-value" id="kpiDeltaValue">0 units</div>
               <span class="kpi-badge" id="kpiVolVarianceBadge">+0.00%</span>
-            </div>
-          </div>
-          <div class="glass-card" style="padding:16px 20px 10px;">
-            <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Revenue Lift Drivers</div>
-            <div style="position:relative; height:280px;">
-              <canvas id="top5SkusChart" style="max-height: 280px; width: 100%;"></canvas>
             </div>
           </div>
           <div class="scroll-x">
@@ -619,13 +617,19 @@
                   <th class="num">Monthly_Volume (Current)</th>
                   <th class="num">Final Monthly_Volume (Simulated)</th>
                   <th class="num">Volume &Delta;%</th>
-                  <th class="num">Revenue (&#8377;) (Current)</th>
-                  <th class="num">Revenue (&#8377;) (Simulated)</th>
+                  <th class="num">Monthly Revenue (&#8377;) (Current)</th>
+                  <th class="num">Monthly Revenue (&#8377;) (Simulated)</th>
                   <th class="num">Revenue &Delta; %</th>
                 </tr>
               </thead>
               <tbody id="outputTableBody"></tbody>
             </table>
+          </div>
+          <div class="glass-card" style="padding:16px 20px 10px; margin-top:16px;">
+            <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Revenue &amp; Volume Lift Drivers</div>
+            <div style="position:relative; height:280px;">
+              <canvas id="top5SkusChart" style="max-height: 280px; width: 100%;"></canvas>
+            </div>
           </div>
         </div>
 
@@ -1145,7 +1149,7 @@ function renderOutputTable(){
   renderComparisonCharts(visibleComputed);
   renderAiInsights(computed); // always reasons over the FULL 6-SKU set so cross-SKU VTM commentary stays correct
   renderKpiTiles(computed); // purely additive, read-only Executive KPI Hero Tiles — does not touch calc engine
-  renderTop5SkuChart(computed); // purely additive, read-only Top 5 SKU revenue-lift chart — does not touch calc engine
+  renderTop5SkuChart(visibleComputed); // purely additive, read-only Top 5 SKU chart — bound to the active SKU Filter selection, never the full unfiltered set
 }
 
 // ---------- EXECUTIVE KPI HERO CARDS (visual-only, read-only over `computed`) ----------
@@ -1160,6 +1164,7 @@ function renderKpiTiles(computed){
   const elDeltaCtx = document.getElementById('kpiDeltaContext');
   const elDelta = document.getElementById('kpiDeltaValue');
   const elVolBadge = document.getElementById('kpiVolVarianceBadge');
+  const elVolumeCard = document.getElementById('kpiVolumeCard');
   if(!elCur || !elSim || !elDelta || !elRevBadge || !elVolBadge) return;
 
   const totalCurrentRev = computed.reduce((s,c)=>s+c.revenueCurrent,0);
@@ -1181,16 +1186,23 @@ function renderKpiTiles(computed){
   elSim.textContent = (revDelta>=0?'+':'-') + '₹' + Math.round(Math.abs(revDelta)).toLocaleString('en-IN');
   if(elDeltaCtx) elDeltaCtx.textContent = 'Simulated ₹' + Math.round(totalSimulatedRev).toLocaleString('en-IN') + ' − Current ₹' + Math.round(totalCurrentRev).toLocaleString('en-IN');
 
-  // Card 3 — primary text is the simulated active monthly volume, badge tracks Volume Δ%.
+  // Card 3 — primary text is the simulated active monthly volume, badge tracks Volume Δ%. Whenever the
+  // portfolio volume movement is negative, the card's left accent border and primary numeric text switch
+  // from Green to Crimson/Coral Warning Red (#D9383A) to visually match the negative badge state.
   elDelta.textContent = Math.round(totalSimulatedVol).toLocaleString('en-IN') + ' units';
   elVolBadge.textContent = (volDeltaPct>=0?'+':'') + volDeltaPct.toFixed(2) + '%';
   elVolBadge.className = 'kpi-badge ' + (volDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
+  if(elVolumeCard){
+    elVolumeCard.classList.toggle('kpi-tile-delta-negative', volDeltaPct < 0);
+  }
 }
 
-// ---------- TOP 5 SKUs REVENUE LIFT DRIVERS CHART (visual-only, read-only over `computed`) ----------
-// Sorts the live computed grid rows by absolute revenue lift (revenueSimulated - revenueCurrent),
-// takes the top 5, and renders a horizontal Chart.js bar chart themed to the maroon/gold palette.
-// Pure presentation layer — never reads/writes calc-engine state, only the already-computed array.
+// ---------- TOP 5 SKUs REVENUE & VOLUME LIFT DRIVERS CHART (visual-only, read-only over `computed`) ----------
+// Sorts the SKUs CURRENTLY VISIBLE under the active SKU Filter dropdown selection by absolute revenue
+// lift (revenueSimulated - revenueCurrent), takes the top 5 of THAT filtered set, and renders a grouped
+// horizontal Chart.js bar chart (Revenue Lift + Volume Lift side-by-side per SKU) themed to the
+// maroon/gold palette. Pure presentation layer — never reads/writes calc-engine state, only the
+// already-computed, already-filtered array handed in by renderOutputTable().
 let top5SkuChartInstance = null;
 let top5SkuChartRetryCount = 0;
 function renderTop5SkuChart(computed){
@@ -1211,49 +1223,81 @@ function renderTop5SkuChart(computed){
   }
   top5SkuChartRetryCount = 0;
 
-  const ranked = computed
-    .map(c => ({ name:c.row.name, lift:c.revenueDelta }))
-    .sort((a,b) => Math.abs(b.lift) - Math.abs(a.lift))
-    .slice(0,5);
-  const labels = ranked.map(r => r.name);
-  const data = ranked.map(r => Math.round(r.lift));
-
-  // Canvas linear gradient (top = Deep Wine Maroon, base = semi-transparent Muted Gold) — built fresh off
-  // the live canvas context each render so it always matches the current bar geometry after a resize.
-  const ctx = canvas.getContext('2d');
-  const plotHeight = canvas.height || 280;
-  const buildGradient = () => {
-    const g = ctx.createLinearGradient(0, 0, 0, plotHeight);
-    g.addColorStop(0, '#4A0E17');
-    g.addColorStop(1, 'rgba(197,160,89,0.55)');
-    return g;
-  };
-  const negativeColor = '#4A0E17';
-  const barColors = data.map(v => v >= 0 ? buildGradient() : negativeColor);
-
   if(top5SkuChartInstance){ top5SkuChartInstance.destroy(); top5SkuChartInstance = null; }
 
+  if(!computed || computed.length === 0){
+    return; // nothing in the active SKU Filter selection — leave the canvas blank rather than chart nothing
+  }
+
+  const ranked = computed
+    .map(c => ({
+      name: c.row.name,
+      revenueLift: c.revenueDelta,
+      revDeltaPct: c.revDeltaPct,
+      volumeLift: c.monthlySimulated - c.monthlyCurrent,
+      volDeltaPct: c.volDeltaPct
+    }))
+    .sort((a,b) => Math.abs(b.revenueLift) - Math.abs(a.revenueLift))
+    .slice(0,5);
+
+  const labels = ranked.map(r => r.name);
+  const revenueData = ranked.map(r => Math.round(r.revenueLift));
+  const volumeData = ranked.map(r => Math.round(r.volumeLift));
+  const revPctByIdx = ranked.map(r => r.revDeltaPct);
+  const volPctByIdx = ranked.map(r => r.volDeltaPct);
+
+  const ctx = canvas.getContext('2d');
+
+  // Revenue lifts run into the lakhs of ₹ while volume lifts run into the hundreds/thousands of units —
+  // sharing one value axis would flatten the Volume Lift bars to near-invisible slivers. Each dataset gets
+  // its OWN independent x-axis (xRevenue / xVolume) scaled to its own data range; xVolume stays hidden
+  // (display:false) so it never shows a second, confusing axis — it only exists to give the Gold bars
+  // their own scale headroom. Both datasets still share the single category (y) axis, so the Maroon and
+  // Gold bars render grouped side-by-side per SKU rather than overlapping or hiding each other.
   top5SkuChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
       labels,
-      datasets: [{
-        label: 'Revenue Lift (₹)',
-        data,
-        backgroundColor: barColors,
-        borderColor: '#4A0E17',
-        borderWidth: 1,
-        borderRadius: 6,
-        borderSkipped: false,
-        maxBarThickness: 34
-      }]
+      datasets: [
+        {
+          label: 'Revenue Lift (₹)',
+          data: revenueData,
+          backgroundColor: '#4A0E17',
+          borderColor: '#4A0E17',
+          borderWidth: 1,
+          borderRadius: 6,
+          borderSkipped: false,
+          maxBarThickness: 18,
+          xAxisID: 'xRevenue',
+          yAxisID: 'y',
+          grouped: true
+        },
+        {
+          label: 'Volume Lift (units)',
+          data: volumeData,
+          backgroundColor: '#C5A059',
+          borderColor: '#C5A059',
+          borderWidth: 1,
+          borderRadius: 6,
+          borderSkipped: false,
+          maxBarThickness: 18,
+          xAxisID: 'xVolume',
+          yAxisID: 'y',
+          grouped: true
+        }
+      ]
     },
     options: {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display:false },
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: { color:'#555555', font:{ size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' }, boxWidth:12 }
+        },
         tooltip: {
           backgroundColor: '#1E1E1E',
           titleColor: '#fff',
@@ -1261,17 +1305,37 @@ function renderTop5SkuChart(computed){
           padding: 8,
           titleFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
           bodyFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
-          callbacks: { label: (ctx) => '₹' + ctx.parsed.x.toLocaleString('en-IN') }
+          callbacks: {
+            label: (ctx) => {
+              const idx = ctx.dataIndex;
+              const v = ctx.parsed.x;
+              const sign = v >= 0 ? '+' : '';
+              if(ctx.dataset.label.indexOf('Revenue') === 0){
+                const pct = revPctByIdx[idx];
+                return `Revenue Lift: ${sign}₹${Math.abs(v).toLocaleString('en-IN')} (${pct>=0?'+':''}${pct.toFixed(1)}%)`;
+              }
+              const pct = volPctByIdx[idx];
+              return `Volume Lift: ${sign}${Math.abs(v).toLocaleString('en-IN')} units (${pct>=0?'+':''}${pct.toFixed(1)}%)`;
+            }
+          }
         }
       },
       scales: {
-        x: {
+        xRevenue: {
+          type: 'linear',
+          position: 'bottom',
+          grid: { display:false },
           ticks: {
             color: '#555555',
             font: { size:11, weight:'700', family: 'Inter, "Helvetica Neue", sans-serif' },
             callback: (v) => '₹' + Number(v).toLocaleString('en-IN')
-          },
-          grid: { display:false }
+          }
+        },
+        xVolume: {
+          type: 'linear',
+          position: 'top',
+          grid: { display:false },
+          display: false
         },
         y: {
           ticks: {
