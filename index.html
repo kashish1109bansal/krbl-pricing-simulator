@@ -159,19 +159,25 @@
   .run-row{ display:flex; justify-content:flex-end; margin: 4px 0 18px; }
 
   /* Toolbar / controls */
-  .toolbar{ display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
-  .toolbar-left{ display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; }
-  .field{ display:flex; flex-direction:column; gap:6px; }
+  .toolbar{ display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:18px; flex-wrap:wrap; overflow:visible !important; }
+  .toolbar-left{ display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; overflow:visible !important; }
+  .field{ display:flex; flex-direction:column; gap:6px; overflow:visible !important; }
   .field label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:700; }
   select.month-select{ font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; min-width:170px; cursor:pointer; }
   .toolbar-actions{ display:flex; gap:10px; }
+  /* Every structural wrapper the SKU Filter popup is nested inside (glass card, panel, app shell) must
+     never clip its own overflow, otherwise the absolutely-positioned popup gets sliced by an ancestor's
+     box instead of floating freely above the page content below it. */
+  .glass-card, .panel, .app, .app-shell, .main, .main-content{ overflow:visible !important; }
 
 
   /* Table — ZERO-SCROLL COMPACT LAYOUT: minified vertical paddings + condensed text so the full grid
      (6 SKU rows, 21 columns) fits a standard 1080p viewport with no horizontal or vertical scroll. */
   .scroll-x{ overflow-x:auto; border-radius:14px; border:1px solid var(--border); box-shadow: var(--shadow-sm); }
   table{ border-collapse:collapse; width:100%; min-width:0; table-layout:auto; background:#fff; }
-  thead th{ position:sticky; top:0; font-size:9.5px; text-transform:uppercase; letter-spacing:0.03em; padding:6px 7px; white-space:nowrap; border-bottom:2px solid var(--border); line-height:1.25; }
+  /* Sticky table header gets an explicit LOW z-index so it can never visually out-rank the SKU Filter
+     popup (z-index 999999 below) when the popup overlaps the top of the table while open. */
+  thead th{ position:sticky; top:0; z-index:1; font-size:9.5px; text-transform:uppercase; letter-spacing:0.03em; padding:6px 7px; white-space:nowrap; border-bottom:2px solid var(--border); line-height:1.25; }
   tbody td{ padding:4px 7px; font-size:11px; border-bottom:1px solid rgba(122,6,36,0.06); white-space:nowrap; color:var(--ink); line-height:1.2; }
   tbody tr:hover{ background: rgba(212,175,55,0.06); }
   td.num, th.num{ text-align:right; font-variant-numeric: tabular-nums; }
@@ -185,15 +191,70 @@
   /* Advanced Selection Filters — Baseline Month dropdown (native <select>) & SKU Filter dropdown menu */
   select.month-select{ display:inline-block !important; }
   .sku-dropdown{ position:relative; }
+  /* When a SKU Filter dropdown is open, lift its ENTIRE stacking context (not just the panel) above every
+     other card on the page — including the AI Business Insights card and the data grid below it — so the
+     open panel is never drawn underneath a later sibling in the DOM/paint order. */
+  .sku-dropdown.open{ position:relative; z-index:9999999 !important; }
   .sku-dropdown-btn{ font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; min-width:170px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .sku-dropdown-btn:hover{ border-color:var(--gold); }
   .sku-dropdown-btn .caret{ color:var(--muted); font-size:10px; transition: transform .15s ease; }
   .sku-dropdown.open .sku-dropdown-btn .caret{ transform: rotate(180deg); }
-  .sku-dropdown-panel{ display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:40; min-width:260px; max-width:340px; background:#fff; border:1.5px solid var(--border); border-radius:12px; box-shadow: var(--shadow-md); padding:10px; flex-direction:column; gap:4px; max-height:280px; overflow-y:auto; }
-  .sku-dropdown.open .sku-dropdown-panel{ display:flex; }
-  .sku-chk{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--ink); border-radius:8px; padding:8px 9px; cursor:pointer; user-select:none; transition: background .12s ease; }
+  /* Base (closed) state — kept lightweight; ALL of the sizing/scroll/stacking/positioning rules that matter
+     while OPEN live in the DROPUP FIX block below so there is exactly one source of truth and nothing here
+     can silently override it. */
+  .sku-dropdown-panel{ display:none; position:absolute; left:0; min-width:260px; max-width:340px; background:#fff; border:1.5px solid var(--border); border-radius:12px; box-shadow: var(--shadow-md); padding:10px; flex-direction:column; gap:4px; box-sizing:border-box; }
+  .sku-chk{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--ink); border-radius:8px; padding:8px 9px; cursor:pointer; user-select:none; transition: background .12s ease; flex-shrink:0; }
   .sku-chk:hover{ background: var(--gold-soft); }
   .sku-chk input{ accent-color:var(--maroon); cursor:pointer; }
+
+  /* DROPDOWN SCROLL FIX (v3 — DROPUP MECHANISM) — every downward-opening version of this popup kept getting
+     clipped by the data grid / comparison charts rendered below it, no matter how high the z-index went,
+     because the popup's own bottom edge was running past the visible viewport area those lower sections
+     occupy. The permanent fix: the popup no longer opens DOWNWARD from the SKU Filter button at all — it
+     opens UPWARD (a "dropup"), anchored to the BOTTOM of the trigger button via `bottom:100%` instead of
+     `top:100%`. This means the popup's box is built going up into the open whitespace above the toolbar,
+     which is never occupied by the grid/charts below, so there is nothing left for those lower sections to
+     clip it against. A hard 200px max-height + a forced (non-"auto") scrollbar guarantees all 6 SKU rows are
+     reachable inside that fixed envelope regardless of viewport size. */
+  select.month-select,
+  select.comparison-view-select{
+    max-height: 320px !important;
+    overflow-y: auto !important;
+    z-index: 9999999 !important;
+  }
+  .sku-dropdown.open .sku-dropdown-panel{
+    position: absolute !important;
+    bottom: 100% !important; /* anchors the popup's bottom edge to the trigger button's top -> renders upward */
+    top: auto !important;
+    left: 0 !important;
+    width: 280px !important;
+    max-height: 200px !important; /* tight bound that guarantees a real scrollbar for all 6 SKU rows */
+    overflow-y: scroll !important; /* forced (not auto) so the scrollbar track is always visibly present */
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 9999999 !important; /* supersedes every chart/table/card stacking layer on the page */
+    background: #ffffff !important;
+    border: 1px solid #ccc !important;
+    box-shadow: 0px -8px 16px rgba(0,0,0,0.15) !important; /* shadow points downward since the panel sits above its trigger now */
+    margin-bottom: 6px; /* small gap between the popup's bottom edge and the trigger button beneath it */
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  /* Custom scrollbar track so the popup's scroll affordance is visible/smooth in WebKit/Chromium browsers
+     when the 6 checkbox rows exceed the 200px cap. */
+  .sku-dropdown.open .sku-dropdown-panel::-webkit-scrollbar{ width:7px; }
+  .sku-dropdown.open .sku-dropdown-panel::-webkit-scrollbar-track{ background:transparent; }
+  .sku-dropdown.open .sku-dropdown-panel::-webkit-scrollbar-thumb{ background:rgba(122,6,36,0.25); border-radius:999px; }
+  .sku-dropdown.open .sku-dropdown-panel::-webkit-scrollbar-thumb:hover{ background:rgba(122,6,36,0.45); }
+  /* Closed state stays explicitly hidden — scoped to :not(.open) so it never fights the rule above. */
+  .sku-dropdown:not(.open) .sku-dropdown-panel{
+    display: none !important;
+  }
+  select.month-select option,
+  select.comparison-view-select option{
+    max-height: 320px !important;
+  }
 
   /* "View Comparison For:" dropdown — sits directly above the Baseline vs Simulated Comparison charts;
      defaults to "Overall Portfolio" (aggregated totals) with each of the 6 active SKUs also selectable. */
@@ -329,7 +390,7 @@
           <div class="brand-mark"><img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img"></div>
           <div class="brand-text">
             <h1>KRBL Limited</h1>
-            <p>Blinkit Quick-Commerce &middot; Enterprise Revenue Intelligence</p>
+            <p>Enterprise Revenue Intelligence</p>
           </div>
         </div>
       </div>
@@ -513,6 +574,11 @@ function handleLogin(evt){
     errorBox.style.display = 'none';
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('appShell').classList.add('visible');
+    // Re-hydrate the Scenario Library from localStorage on every successful login — guarantees scenarios
+    // saved in a PRIOR session (before logout / before the tab was closed) are visible again immediately,
+    // not just whatever happened to still be in memory.
+    loadScenariosFromStorage();
+    renderLibrary();
   } else {
     errorBox.style.display = 'block';
   }
@@ -591,7 +657,35 @@ const vtmMatrix = {
 // ---------- STATE ----------
 let selectedMonth = DEFAULT_MONTH;
 let priceRows = [];
-let savedScenarios = []; // in-memory scenario library for this session
+// ---------- SCENARIO LIBRARY — PERSISTENT localStorage-BACKED DATABASE SIMULATION ----------
+// savedScenarios used to live ONLY in memory, so it silently reset to empty on every browser refresh,
+// re-login, or tab close. It is now backed by the browser's localStorage API under a fixed key, so saved
+// scenarios survive refresh/logout/re-login exactly like a real persisted database would. Every mutation
+// (save/delete) writes the full array straight back to localStorage as a JSON string; on initial script
+// load (and again whenever the app returns to the login-gated state) the array is rehydrated from
+// localStorage so the Scenario Library always reflects what was actually saved, not just this page-load's
+// in-memory session.
+const SCENARIO_STORAGE_KEY = 'krbl_pricing_simulator_saved_scenarios_v1';
+function persistScenariosToStorage(){
+  try{
+    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(savedScenarios));
+  }catch(e){
+    // localStorage can throw in rare cases (quota exceeded, privacy mode) — fail silently rather than
+    // breaking the simulation flow; the in-memory copy still works for the rest of this session.
+    console.warn('Could not persist scenarios to localStorage:', e);
+  }
+}
+function loadScenariosFromStorage(){
+  try{
+    const raw = localStorage.getItem(SCENARIO_STORAGE_KEY);
+    savedScenarios = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    console.warn('Could not read saved scenarios from localStorage:', e);
+    savedScenarios = [];
+  }
+}
+let savedScenarios = []; // rehydrated immediately below from localStorage — never starts truly empty if a database already exists
+loadScenariosFromStorage();
 // ADVANCED SELECTION FILTERS — SKU multi-select: controls which of the 6 approved SKUs are shown in the
 // grids AND the charts (display-only filter; the calculation engine still runs on the FULL 6-SKU set so
 // VTM cross-elasticity transfers to/from hidden SKUs remain mathematically correct).
@@ -751,6 +845,19 @@ function getSimulationMonthDays(baselineMonthLabel){
   // Day 0 of (simMonthIndex+1) is the last day of simMonthIndex -> gives exact day count for that month.
   return new Date(simYear, simMonthIndex + 1, 0).getDate();
 }
+// CALENDAR-DAYS ALIGNMENT FIX — "Monthly Volume (Current)" and "Final Monthly Volume (Simulated)" must both
+// be built off the CURRENTLY SELECTED BASELINE MONTH'S own calendar day count (e.g. April 2026 = 30 days,
+// May 2026 = 31 days), not the day count of the month the simulation horizon happens to project into. This
+// keeps Avg_Daily_Volume * Days_In_THIS_Month an exact, internally-consistent monthly figure for the
+// baseline period itself, independent of getSimulationMonthDays() (which remains in place purely to drive
+// the separate "Average Daily Volume (Next Month Baseline)" benchmarking column).
+function getCurrentMonthDays(baselineMonthLabel){
+  const [monthName, yearStr] = baselineMonthLabel.split(' ');
+  const year = parseInt(yearStr, 10);
+  const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth(); // 0-based
+  // Day 0 of (monthIndex+1) is the last day of monthIndex -> exact day count for the selected month itself.
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
 // "Average Daily Volume (Next Month Baseline)" — the organic, un-simulated daily run-rate for the month
 // the simulation is actually projecting INTO (one calendar month after the selected baseline). If that
 // next month already exists as real historical-actuals data in baseData (e.g. baseline=April 2026 ->
@@ -778,11 +885,16 @@ function getNextMonthBaselineVolume(skuName){
   return curRow ? curRow.dailyVolume : 0; // fallback: no trend signal available, hold flat
 }
 function computeAll(){
-  const daysInSimMonth = getSimulationMonthDays(selectedMonth);
+  // Monthly Volume (Current) and Final Monthly Volume (Simulated) are anchored to the SELECTED BASELINE
+  // MONTH'S OWN calendar day count — e.g. baseline = April 2026 -> multiply by 30, baseline = May 2026 ->
+  // multiply by 31. getSimulationMonthDays() (next-month day count) is intentionally NOT used here anymore;
+  // it still powers the separate "Average Daily Volume (Next Month Baseline)" column via
+  // getNextMonthBaselineVolume() below, which is the only place a next-month figure belongs.
+  const daysInCurrentMonth = getCurrentMonthDays(selectedMonth);
   return computeAllVolumes().map(x => {
     const r = x.row;
     const nextMonthBaselineVolume = getNextMonthBaselineVolume(r.name);
-    const monthlyCurrent = r.dailyVolume * daysInSimMonth;
+    const monthlyCurrent = r.dailyVolume * daysInCurrentMonth;
     // Final_Monthly_Volume = Monthly_Volume_Current * (Avg_Daily_Volume_Simulated / Avg_Daily_Volume_Current)
     // i.e. the monthly simulated total is held in EXACT proportion to the monthly current total — the ratio of
     // simulated-to-current daily volume is mirrored 1:1 onto the monthly figures, so the % shift you see on the
@@ -1030,6 +1142,7 @@ function saveScenario(){
     revenueCur: grossRevenueCur,
     revDeltaPct: grossRevenueCur ? ((grossRevenueSim-grossRevenueCur)/grossRevenueCur*100) : 0,
   });
+  persistScenariosToStorage(); // write the full library straight to localStorage so this survives refresh/logout
   nameInput.value = '';
   const confirm = document.getElementById('saveConfirm');
   confirm.style.display = 'inline';
@@ -1044,6 +1157,7 @@ function loadScenario(idx){
 }
 function deleteScenario(idx){
   savedScenarios.splice(idx,1);
+  persistScenariosToStorage(); // keep localStorage in sync so the deletion sticks across refresh/logout too
   renderLibrary();
 }
 
