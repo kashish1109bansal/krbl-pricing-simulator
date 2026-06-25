@@ -608,13 +608,18 @@ function handleLogout(){
 // Updated from Combined_Elasticity_1.xlsx ('log_PTC_IG' row, per-SKU regression sheet) per explicit user
 // instruction — exact price-elasticity coefficients per SKU, with OSA (+0.03) and Position (-0.04) coefficients
 // held uniform/static across all 6 SKUs as directed (no longer -0.01 for position — updated to -0.04).
+// OSA coefficient and Position coefficient are LOCKED to exactly 0 across all 6 operational SKUs per
+// explicit business directive — Simulated OSA and Simulated Average Position no longer drive ANY volume
+// decay/lift. All mathematical volume delta now flows strictly through the file-bound Price Elasticity
+// term (per-SKU `elasticity` below) and the 6x6 VTM cross-elasticity loop. Do not reintroduce non-zero
+// osaCoeff/positionCoeff values without an explicit instruction to do so.
 const SKU_COEFFICIENTS = {
-  'IG Everyday 5':       { elasticity: -0.5386, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10117961 (New) — log_PTC_IG
-  'IG Feast Rozzana 1':  { elasticity: -0.4464, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10000195 — log_PTC_IG
-  'IG Feast Rozzana 5':  { elasticity: -0.4169, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10006061 — log_PTC_IG
-  'IG Mini Mogra 10':    { elasticity: -0.5430, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10006305 — log_PTC_IG
-  'IG Mogra 5':          { elasticity: -0.0065, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10000196 — log_PTC_IG
-  'IG Super 5':          { elasticity: -0.5141, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10002013 — log_PTC_IG
+  'IG Everyday 5':       { elasticity: -0.5386, osaCoeff: 0, positionCoeff: 0 }, // SKU 10117961 (New) — log_PTC_IG
+  'IG Feast Rozzana 1':  { elasticity: -0.4464, osaCoeff: 0, positionCoeff: 0 }, // SKU 10000195 — log_PTC_IG
+  'IG Feast Rozzana 5':  { elasticity: -0.4169, osaCoeff: 0, positionCoeff: 0 }, // SKU 10006061 — log_PTC_IG
+  'IG Mini Mogra 10':    { elasticity: -0.5430, osaCoeff: 0, positionCoeff: 0 }, // SKU 10006305 — log_PTC_IG
+  'IG Mogra 5':          { elasticity: -0.0065, osaCoeff: 0, positionCoeff: 0 }, // SKU 10000196 — log_PTC_IG
+  'IG Super 5':          { elasticity: -0.5141, osaCoeff: 0, positionCoeff: 0 }, // SKU 10002013 — log_PTC_IG
 };
 
 const baseData = {
@@ -666,9 +671,47 @@ let priceRows = [];
 // localStorage so the Scenario Library always reflects what was actually saved, not just this page-load's
 // in-memory session.
 const SCENARIO_STORAGE_KEY = 'krbl_pricing_simulator_saved_scenarios_v1';
+// Robust persistence model: every saved scenario is an INDEPENDENT object keyed by a unique `id`
+// (timestamp + random suffix), never by its array index. This means:
+//   - save = append a new independent record with its own unique id (never overwrites siblings)
+//   - delete = remove the one record whose id matches (never positional/index-based, so it can't
+//     accidentally remove the wrong row if the in-memory list and the stored list are momentarily
+//     out of order relative to each other)
+//   - persist = read whatever is CURRENTLY in localStorage first and MERGE the in-memory array into
+//     it by id (union, not blind overwrite), so a stale read in one tab/session, a login/logout
+//     teardown, or an interrupted write can never silently wipe out scenarios that another save
+//     already committed to the real database key. The core database key itself is NEVER cleared by
+//     login/logout — only readScenarioDatabase()/writeScenarioDatabase() ever touch it, and both are
+//     additive/merge-safe by construction.
+function readScenarioDatabase(){
+  try{
+    const raw = localStorage.getItem(SCENARIO_STORAGE_KEY);
+    if(!raw) return [];
+    const parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed)) return [];
+    // Backfill a unique id for any legacy record saved before the id-based model existed, so old
+    // scenarios from earlier sessions remain loadable/deletable instead of being silently dropped.
+    return parsed.map(s => (s && !s.id) ? { ...s, id: makeScenarioId() } : s);
+  }catch(e){
+    // Corrupted/partial JSON should never nuke the database key — just treat this read as empty
+    // and let the merge-on-write logic below reconcile things on the next persist.
+    console.warn('Could not read saved scenarios from localStorage (treating as empty for this read only):', e);
+    return [];
+  }
+}
 function persistScenariosToStorage(){
   try{
-    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(savedScenarios));
+    // Merge-by-id: union of whatever is already on disk + whatever is currently in memory. This way
+    // a concurrent tab, a previous session, or a delayed write can never be clobbered by this write.
+    const onDisk = readScenarioDatabase();
+    const merged = new Map();
+    onDisk.forEach(s => { if(s && s.id) merged.set(s.id, s); });
+    savedScenarios.forEach(s => { if(s && s.id) merged.set(s.id, s); });
+    const mergedArr = Array.from(merged.values());
+    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(mergedArr));
+    // Keep the in-memory copy in sync with the full merged database so nothing the user already
+    // saved (in this tab or another) ever disappears from the visible library.
+    savedScenarios = mergedArr;
   }catch(e){
     // localStorage can throw in rare cases (quota exceeded, privacy mode) — fail silently rather than
     // breaking the simulation flow; the in-memory copy still works for the rest of this session.
@@ -676,13 +719,17 @@ function persistScenariosToStorage(){
   }
 }
 function loadScenariosFromStorage(){
-  try{
-    const raw = localStorage.getItem(SCENARIO_STORAGE_KEY);
-    savedScenarios = raw ? JSON.parse(raw) : [];
-  }catch(e){
-    console.warn('Could not read saved scenarios from localStorage:', e);
-    savedScenarios = [];
-  }
+  // Hydration strictly PULLS the complete stored array — it never clears or truncates older rows.
+  // If in-memory already holds unsaved-but-pushed records (shouldn't normally happen since save()
+  // persists immediately), merge rather than discard so nothing is lost on re-hydration either.
+  const onDisk = readScenarioDatabase();
+  const merged = new Map();
+  onDisk.forEach(s => { if(s && s.id) merged.set(s.id, s); });
+  (savedScenarios || []).forEach(s => { if(s && s.id) merged.set(s.id, s); });
+  savedScenarios = Array.from(merged.values());
+}
+function makeScenarioId(){
+  return `${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
 }
 let savedScenarios = []; // rehydrated immediately below from localStorage — never starts truly empty if a database already exists
 loadScenariosFromStorage();
@@ -1131,6 +1178,7 @@ function saveScenario(){
   const grossRevenueSim = computed.reduce((s,x)=>s+x.revenueSimulated,0);
   const grossRevenueCur = computed.reduce((s,x)=>s+x.revenueCurrent,0);
   savedScenarios.push({
+    id: makeScenarioId(), // unique independent identifier — this record is appended, never merged into/overwriting siblings
     name,
     month: selectedMonth,
     timestamp: new Date().toLocaleString('en-IN', { dateStyle:'medium', timeStyle:'short' }),
@@ -1149,15 +1197,26 @@ function saveScenario(){
   setTimeout(()=>{ confirm.style.display='none'; }, 2500);
 }
 
-function loadScenario(idx){
-  const s = savedScenarios[idx];
+function loadScenario(id){
+  const s = savedScenarios.find(x => x.id === id);
+  if(!s) return;
   selectedMonth = s.month;
   priceRows = s.priceRowsSnapshot.map(r => ({...r}));
   goToStep('simulator');
 }
-function deleteScenario(idx){
-  savedScenarios.splice(idx,1);
-  persistScenariosToStorage(); // keep localStorage in sync so the deletion sticks across refresh/logout too
+function deleteScenario(id){
+  // id-based removal (never positional/index-based) so this can never delete the wrong row even if
+  // the in-memory array and the on-disk database briefly disagree on ordering.
+  savedScenarios = savedScenarios.filter(s => s.id !== id);
+  try{
+    // Mirror the deletion straight onto whatever is on disk too, rather than relying purely on the
+    // merge-on-write in persistScenariosToStorage() (which is additive-by-design and would otherwise
+    // resurrect a deleted record if it's still sitting in localStorage from another tab/session).
+    const onDisk = readScenarioDatabase().filter(s => s.id !== id);
+    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(onDisk));
+  }catch(e){
+    console.warn('Could not finalize scenario deletion in localStorage:', e);
+  }
   renderLibrary();
 }
 
@@ -1189,8 +1248,8 @@ function renderLibrary(){
         <div><div class="v ${s.revDeltaPct>=0?'pos':'neg'}">${s.revDeltaPct>=0?'+':''}${s.revDeltaPct.toFixed(2)}%</div><div class="l">Revenue &Delta;</div></div>
       </div>
       <div class="scenario-actions">
-        <button class="btn btn-outline" onclick="loadScenario(${i})">Load</button>
-        <button class="btn btn-danger" onclick="deleteScenario(${i})">Delete</button>
+        <button class="btn btn-outline" onclick="loadScenario('${s.id}')">Load</button>
+        <button class="btn btn-danger" onclick="deleteScenario('${s.id}')">Delete</button>
       </div>
     </div>`).join('');
 }
