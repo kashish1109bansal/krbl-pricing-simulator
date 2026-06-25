@@ -575,19 +575,20 @@
           </div>
           <div class="kpi-hero-row" id="kpiHeroRow">
             <div class="kpi-tile kpi-tile-current">
-              <div class="kpi-tile-label">&#127942; PORTFOLIO REVENUE: CURRENT VS SIMULATED</div>
+              <div class="kpi-tile-label">&#127942; MONTHLY PORTFOLIO REVENUE</div>
               <div class="kpi-tile-value" id="kpiCurrentValue">&#8377;0</div>
               <div class="kpi-tile-sub" id="kpiCurrentSub">vs &#8377;0 current baseline</div>
               <span class="kpi-badge" id="kpiRevVarianceBadge">+0.00%</span>
             </div>
             <div class="kpi-tile kpi-tile-simulated">
-              <div class="kpi-tile-label">&#10024; ABSOLUTE REVENUE CASH LIFT</div>
+              <div class="kpi-tile-label">&#10024; MONTHLY REVENUE CASH LIFT</div>
               <div class="kpi-tile-value" id="kpiSimulatedValue">&#8377;0</div>
               <div class="kpi-tile-sub" id="kpiDeltaContext">Simulated &#8377;0 &#8722; Current &#8377;0</div>
             </div>
             <div class="kpi-tile kpi-tile-delta" id="kpiVolumeCard">
               <div class="kpi-tile-label">&#9889; MONTHLY PORTFOLIO VOLUME MOVEMENT</div>
-              <div class="kpi-tile-value" id="kpiDeltaValue">0 units</div>
+              <div class="kpi-tile-value" id="kpiDeltaValue">+0 units</div>
+              <div class="kpi-tile-sub" id="kpiVolumeSub">Simulated 0 units &#8722; Current 0 units</div>
               <span class="kpi-badge" id="kpiVolVarianceBadge">+0.00%</span>
             </div>
           </div>
@@ -634,10 +635,8 @@
              state of its own beyond the rendered HTML below. -->
         <div class="glass-card ai-suite-card">
           <div class="ai-suite-head">
-            <h3 class="ai-suite-title">&#10024; KRBL Portfolio Intelligence &amp; Margin Optimization Suite</h3>
-            <span class="ai-suite-pulse"><span class="dot"></span> Live Model Read-Out</span>
+            <h3 class="ai-suite-title">&#10024; KRBL Portfolio Intelligence</h3>
           </div>
-          <p class="ai-insights-sub">Macro commercial intelligence synthesized from this run's price elasticity response, VTM cross-elasticity capture, and portfolio revenue variance &mdash; regenerated on every simulation pass.</p>
           <div id="aiInsightsBody" class="ai-insights-body"></div>
         </div>
 
@@ -647,16 +646,16 @@
              canvases are kept in sync with the global SKU Filter selection — see renderTop5SkuChart() /
              toggleSkuVisibility(), which calls .destroy() on both chart instances before every re-render. -->
         <div class="glass-card" style="padding:16px 20px 10px; margin-top:16px;">
-          <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Monthly Revenue &amp; Volume Lift Drivers</div>
+          <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Monthly Revenue &amp; Volume Lift</div>
           <div class="charts-grid" style="display:flex; gap:16px; flex-wrap:wrap;">
             <div style="flex:1 1 320px; min-width:280px;">
-              <div style="font-size:12px; font-weight:700; color:#4A0E17; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY REVENUE LIFT DRIVERS</div>
+              <div style="font-size:12px; font-weight:700; color:#4A0E17; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY REVENUE LIFT</div>
               <div style="position:relative; height:280px;">
                 <canvas id="revenueLiftChart" style="max-height: 280px; width: 100%;"></canvas>
               </div>
             </div>
             <div style="flex:1 1 320px; min-width:280px;">
-              <div style="font-size:12px; font-weight:700; color:#9C7B2E; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY VOLUME LIFT DRIVERS (UNITS)</div>
+              <div style="font-size:12px; font-weight:700; color:#9C7B2E; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY VOLUME LIFT (UNITS)</div>
               <div style="position:relative; height:280px;">
                 <canvas id="volumeLiftChart" style="max-height: 280px; width: 100%;"></canvas>
               </div>
@@ -1182,6 +1181,7 @@ function renderKpiTiles(computed){
   const elDelta = document.getElementById('kpiDeltaValue');
   const elVolBadge = document.getElementById('kpiVolVarianceBadge');
   const elVolumeCard = document.getElementById('kpiVolumeCard');
+  const elVolumeSub = document.getElementById('kpiVolumeSub');
   if(!elCur || !elSim || !elDelta || !elRevBadge || !elVolBadge) return;
 
   const totalCurrentRev = computed.reduce((s,c)=>s+c.revenueCurrent,0);
@@ -1203,10 +1203,15 @@ function renderKpiTiles(computed){
   elSim.textContent = (revDelta>=0?'+':'-') + '₹' + Math.round(Math.abs(revDelta)).toLocaleString('en-IN');
   if(elDeltaCtx) elDeltaCtx.textContent = 'Simulated ₹' + Math.round(totalSimulatedRev).toLocaleString('en-IN') + ' − Current ₹' + Math.round(totalCurrentRev).toLocaleString('en-IN');
 
-  // Card 3 — primary text is the simulated active monthly volume, badge tracks Volume Δ%. Whenever the
-  // portfolio volume movement is negative, the card's left accent border and primary numeric text switch
-  // from Green to Crimson/Coral Warning Red (#D9383A) to visually match the negative badge state.
-  elDelta.textContent = Math.round(totalSimulatedVol).toLocaleString('en-IN') + ' units';
+  // Card 3 — primary hero number is the NET monthly volume movement (Simulated − Baseline), mirroring the
+  // absolute cash-lift pattern used by Card 2 (e.g. shows "+0 units" rather than the full cumulative
+  // baseline volume when nothing has changed). The cumulative Simulated/Current totals are demoted to the
+  // smaller secondary sub-text underneath. Badge still tracks Volume Δ%. Whenever the portfolio volume
+  // movement is negative, the card's left accent border and primary numeric text switch from Green to
+  // Crimson/Coral Warning Red (#D9383A) to visually match the negative badge state.
+  const volDelta = totalSimulatedVol - totalCurrentVol;
+  elDelta.textContent = (volDelta>=0?'+':'-') + Math.round(Math.abs(volDelta)).toLocaleString('en-IN') + ' units';
+  if(elVolumeSub) elVolumeSub.textContent = 'Simulated ' + Math.round(totalSimulatedVol).toLocaleString('en-IN') + ' units − Current ' + Math.round(totalCurrentVol).toLocaleString('en-IN') + ' units';
   elVolBadge.textContent = (volDeltaPct>=0?'+':'') + volDeltaPct.toFixed(2) + '%';
   elVolBadge.className = 'kpi-badge ' + (volDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
   if(elVolumeCard){
