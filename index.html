@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KRBL India Gate | Pricing Simulator</title>
+<title>KRBL Limited | Pricing Simulator</title>
 <style>
   :root{
     --maroon:#7A0624;
@@ -59,7 +59,9 @@
     background:linear-gradient(90deg,var(--gold),var(--maroon),var(--gold));
   }
   .login-brand{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:22px; }
-  .login-mark{ width:58px; height:58px; border-radius:16px; background:linear-gradient(135deg,var(--maroon),var(--maroon-dark)); display:flex; align-items:center; justify-content:center; color:var(--gold); font-weight:800; font-size:22px; box-shadow: var(--shadow-md); }
+  .login-mark{ width:auto; height:58px; border-radius:14px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow: var(--shadow-md); padding:6px 10px; overflow:hidden; }
+  .login-mark .logo-img{ height:100%; width:auto; max-width:160px; object-fit:contain; display:block; border-radius:8px; }
+  .login-mark .logo-text{ color:#fff; font-weight:800; font-size:15px; letter-spacing:0.02em; }
   .login-brand h2{ margin:0; font-size:17px; color:var(--maroon-dark); font-weight:800; text-align:center; }
   .login-brand p{ margin:0; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; font-weight:700; text-align:center; }
   .login-field{ margin-bottom:16px; }
@@ -83,7 +85,9 @@
     z-index:50;
   }
   .sidebar-brand{ display:flex; align-items:center; gap:12px; padding:6px 8px 22px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:18px; }
-  .sidebar-brand .mark{ width:42px; height:42px; border-radius:11px; background:rgba(212,175,55,0.18); display:flex; align-items:center; justify-content:center; color:var(--gold); font-weight:800; font-size:16px; flex-shrink:0; }
+  .sidebar-brand .mark{ width:auto; height:42px; border-radius:9px; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:3px 6px; overflow:hidden; }
+  .sidebar-brand .mark .logo-img{ height:100%; width:auto; max-width:110px; object-fit:contain; display:block; border-radius:5px; }
+  .sidebar-brand .mark .logo-text{ color:#fff; font-weight:800; font-size:11px; letter-spacing:0.01em; }
   .sidebar-brand .txt h1{ margin:0; font-size:14.5px; color:#fff; font-weight:800; line-height:1.25; }
   .sidebar-brand .txt p{ margin:2px 0 0; font-size:9.5px; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:0.07em; font-weight:600; }
 
@@ -110,7 +114,9 @@
   /* Header */
   .app-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
   .brand{ display:flex; align-items:center; gap:14px; }
-  .brand-mark{ width:46px; height:46px; border-radius:12px; background:linear-gradient(135deg,var(--maroon),var(--maroon-dark)); display:flex; align-items:center; justify-content:center; color:var(--gold); font-weight:800; font-size:18px; box-shadow: var(--shadow-md); letter-spacing:0.5px; }
+  .brand-mark{ width:auto; height:46px; border-radius:10px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow: var(--shadow-md); padding:4px 8px; overflow:hidden; }
+  .brand-mark .logo-img{ height:100%; width:auto; max-width:130px; object-fit:contain; display:block; border-radius:6px; }
+  .brand-mark .logo-text{ color:#fff; font-weight:800; font-size:12px; letter-spacing:0.01em; }
   .brand-text h1{ margin:0; font-size:19px; font-weight:800; color:var(--maroon-dark); letter-spacing:0.2px; }
   .brand-text p{ margin:1px 0 0; font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; font-weight:600; }
   .header-tag{ font-size:11px; color:var(--gold); background:var(--maroon-dark); padding:6px 14px; border-radius:999px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; box-shadow: var(--shadow-sm); }
@@ -160,15 +166,6 @@
   select.month-select{ font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; min-width:170px; cursor:pointer; }
   .toolbar-actions{ display:flex; gap:10px; }
 
-  .sim-controls h3{ margin:0 0 4px; font-size:12.5px; color:var(--maroon-dark); text-transform:uppercase; letter-spacing:0.07em; font-weight:800; }
-  .sim-controls > p{ margin:0 0 16px; font-size:12.5px; color:var(--muted); }
-  .sim-grid{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:22px; }
-  .sim-field label{ display:block; font-size:12px; font-weight:700; color:var(--ink); margin-bottom:8px; }
-  .sim-field label .sub{ display:block; font-size:10.5px; font-weight:500; color:var(--muted); margin-top:2px; text-transform:none; letter-spacing:0; }
-  .range-row{ display:flex; align-items:center; gap:12px; }
-  input[type=range]{ flex:1; height:6px; border-radius:999px; background: linear-gradient(90deg,var(--maroon-tint-2),var(--gold-soft)); outline:none; -webkit-appearance:none; }
-  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--maroon-dark); border:3px solid var(--gold); cursor:pointer; box-shadow: var(--shadow-sm); }
-  .range-val{ min-width:58px; text-align:right; font-weight:800; font-size:13px; color:var(--maroon-dark); }
 
   /* Table — ZERO-SCROLL COMPACT LAYOUT: minified vertical paddings + condensed text so the full grid
      (6 SKU rows, 21 columns) fits a standard 1080p viewport with no horizontal or vertical scroll. */
@@ -185,14 +182,24 @@
   .readonly-cell{ color:var(--muted); }
   .sku-cell{ font-weight:800; color:var(--maroon-dark); font-size:11px; }
 
-  /* Advanced Selection Filters — Baseline Period toggle & SKU multi-select */
-  .period-toggle{ display:flex; border:1.5px solid var(--border); border-radius:10px; overflow:hidden; }
-  .period-toggle .toggle-btn{ font-family:inherit; font-size:12px; font-weight:700; padding:9px 16px; border:none; background:#fff; color:var(--maroon-dark); cursor:pointer; transition: all .15s ease; }
-  .period-toggle .toggle-btn:not(:last-child){ border-right:1.5px solid var(--border); }
-  .period-toggle .toggle-btn.active{ background:linear-gradient(135deg,var(--gold),#c79f2e); color:var(--maroon-dark); }
-  .sku-filter-bar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; max-width:520px; }
-  .sku-chk{ display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; color:var(--ink); background:#fff; border:1.5px solid var(--border); border-radius:999px; padding:6px 11px; cursor:pointer; user-select:none; }
+  /* Advanced Selection Filters — Baseline Month dropdown (native <select>) & SKU Filter dropdown menu */
+  select.month-select{ display:inline-block !important; }
+  .sku-dropdown{ position:relative; }
+  .sku-dropdown-btn{ font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; min-width:170px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .sku-dropdown-btn:hover{ border-color:var(--gold); }
+  .sku-dropdown-btn .caret{ color:var(--muted); font-size:10px; transition: transform .15s ease; }
+  .sku-dropdown.open .sku-dropdown-btn .caret{ transform: rotate(180deg); }
+  .sku-dropdown-panel{ display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:40; min-width:260px; max-width:340px; background:#fff; border:1.5px solid var(--border); border-radius:12px; box-shadow: var(--shadow-md); padding:10px; flex-direction:column; gap:4px; max-height:280px; overflow-y:auto; }
+  .sku-dropdown.open .sku-dropdown-panel{ display:flex; }
+  .sku-chk{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--ink); border-radius:8px; padding:8px 9px; cursor:pointer; user-select:none; transition: background .12s ease; }
+  .sku-chk:hover{ background: var(--gold-soft); }
   .sku-chk input{ accent-color:var(--maroon); cursor:pointer; }
+
+  /* "View Comparison For:" dropdown — sits directly above the Baseline vs Simulated Comparison charts;
+     defaults to "Overall Portfolio" (aggregated totals) with each of the 6 active SKUs also selectable. */
+  .comparison-view-field{ margin:14px 0 18px; max-width:280px; }
+  select.comparison-view-select{ display:block !important; width:100%; font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; cursor:pointer; }
+  select.comparison-view-select:hover{ border-color:var(--gold); }
 
   /* Period banner — Baseline vs Simulation period labels (Step 2 & Step 3) */
   .period-banner{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
@@ -273,23 +280,22 @@
 <div class="login-screen" id="loginScreen">
   <div class="login-card">
     <div class="login-brand">
-      <div class="login-mark">IG</div>
-      <h2>KRBL India Gate</h2>
+      <div class="login-mark"><img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img"></div>
+      <h2>KRBL Limited</h2>
       <p>Pricing Simulator &middot; Secure Access</p>
     </div>
     <div class="login-error" id="loginError">Invalid username or password. Please try again.</div>
     <form id="loginForm" onsubmit="return handleLogin(event)">
       <div class="login-field">
         <label>Username</label>
-        <input type="text" id="loginUser" autocomplete="username" placeholder="admin" required>
+        <input type="text" id="loginUser" autocomplete="username" placeholder="ayush.goel" required>
       </div>
       <div class="login-field">
         <label>Password</label>
         <input type="password" id="loginPass" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;" required>
       </div>
-      <button type="submit" class="login-btn">Unlock Workspace &#10148;</button>
+      <button type="submit" class="login-btn">Login</button>
     </form>
-    <div class="login-hint">Internal &middot; Pricing &amp; Revenue Team Access Only</div>
   </div>
 </div>
 
@@ -299,9 +305,9 @@
   <!-- PERMANENT LEFT SIDEBAR -->
   <div class="sidebar">
     <div class="sidebar-brand">
-      <div class="mark">IG</div>
+      <div class="mark"><img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img"></div>
       <div class="txt">
-        <h1>KRBL India Gate</h1>
+        <h1>KRBL Limited</h1>
         <p>Pricing Simulator</p>
       </div>
     </div>
@@ -311,7 +317,6 @@
       <button class="side-link" id="navOutput" onclick="goToStep('output')" disabled><span class="num">3</span> Output Dashboard</button>
     </div>
     <div class="sidebar-footer">
-      <div class="tag">Internal &middot; Pricing &amp; Revenue Team</div>
       <button class="logout-btn" onclick="handleLogout()">&#8634; Log Out</button>
     </div>
   </div>
@@ -321,13 +326,12 @@
 
       <div class="app-header">
         <div class="brand">
-          <div class="brand-mark">IG</div>
+          <div class="brand-mark"><img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img"></div>
           <div class="brand-text">
-            <h1>KRBL India Gate &mdash; Pricing Simulator</h1>
+            <h1>KRBL Limited</h1>
             <p>Blinkit Quick-Commerce &middot; Enterprise Revenue Intelligence</p>
           </div>
         </div>
-        <div class="header-tag">Internal &middot; Pricing &amp; Revenue Team</div>
       </div>
 
       <!-- STEP 1: SCENARIO LIBRARY -->
@@ -343,58 +347,24 @@
         <div class="glass-card">
           <div class="period-banner">
             <div class="period-chip baseline"><span class="dot"></span><span class="lbl">Baseline Period:</span> <b id="periodBaselineLabel2">May 2026</b> <span class="lbl">(Historical Actuals)</span></div>
-            <div class="period-chip simulation"><span class="dot"></span><span class="lbl">Simulation Period:</span> <b>Next 30 Days</b> <span class="lbl">(Projections)</span></div>
           </div>
           <div class="toolbar">
             <div class="toolbar-left">
               <div class="field">
                 <label>Baseline Month</label>
-                <select class="month-select" id="monthSelect" onchange="onMonthChange(this.value)" style="display:none;"></select>
-                <div class="period-toggle">
-                  <button type="button" class="toggle-btn" data-month="April 2026" onclick="onMonthChange('April 2026')">April 2026</button>
-                  <button type="button" class="toggle-btn" data-month="May 2026" onclick="onMonthChange('May 2026')">May 2026</button>
-                </div>
+                <select class="month-select" onchange="onMonthChange(this.value)"></select>
               </div>
               <div class="field">
                 <label>SKU Filter</label>
-                <div class="sku-filter-bar"></div>
+                <div class="sku-dropdown">
+                  <button type="button" class="sku-dropdown-btn" onclick="toggleSkuDropdown(this)"><span class="sku-dropdown-label">All SKUs</span> <span class="caret">&#9662;</span></button>
+                  <div class="sku-dropdown-panel sku-filter-bar"></div>
+                </div>
               </div>
             </div>
             <div class="toolbar-actions">
               <button class="btn btn-outline" onclick="resetAll()">&#10227; Reset to Base</button>
             </div>
-          </div>
-
-          <div class="sim-controls">
-            <h3>Monthly Simulation Controls</h3>
-            <p>Global levers &mdash; each one applies the same value to every row in one shot. Editing an individual row's input in the grid below overrides only that SKU.</p>
-            <div class="sim-grid">
-              <div class="sim-field">
-                <label>PTC Change (%) <span class="sub">applies to all rows; overrides individual PTC Change inputs in the grid</span></label>
-                <div class="range-row">
-                  <input type="range" id="globalPtcChange" min="-50" max="50" step="0.5" value="0" oninput="syncRange('globalPtcChange','globalPtcChangeVal','%','change')">
-                  <span class="range-val" id="globalPtcChangeVal">0%</span>
-                </div>
-              </div>
-              <div class="sim-field">
-                <label>Simulated OSA (%) <span class="sub">applies to all rows; overrides individual Simulated OSA inputs in the grid</span></label>
-                <div class="range-row">
-                  <input type="range" id="globalOsa" min="0" max="100" step="1" value="80" oninput="syncRange('globalOsa','globalOsaVal','%','simOsa')">
-                  <span class="range-val" id="globalOsaVal">80%</span>
-                </div>
-              </div>
-              <div class="sim-field">
-                <label>Simulated Avg Position <span class="sub">applies to all rows; overrides individual Simulated Avg Position inputs in the grid</span></label>
-                <div class="range-row">
-                  <input type="range" id="globalPosition" min="0" max="10" step="0.1" value="4" oninput="syncRange('globalPosition','globalPositionVal','','simPosition')">
-                  <span class="range-val" id="globalPositionVal">4</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="run-row">
-            <button class="btn btn-gold btn-lg" onclick="runSimulation()">Run Simulation &amp; View Outputs &#10148;</button>
           </div>
 
           <div class="scroll-x">
@@ -431,7 +401,6 @@
         <div class="glass-card">
           <div class="period-banner">
             <div class="period-chip baseline"><span class="dot"></span><span class="lbl">Baseline Period:</span> <b id="periodBaselineLabel3">May 2026</b> <span class="lbl">(Historical Actuals)</span></div>
-            <div class="period-chip simulation"><span class="dot"></span><span class="lbl">Simulation Period:</span> <b>Next 30 Days</b> <span class="lbl">(Projections)</span></div>
           </div>
           <div class="toolbar">
             <h3 class="section-title" style="margin:0;">Baseline Inputs &amp; Simulation Outputs</h3>
@@ -444,14 +413,14 @@
             <div class="toolbar-left">
               <div class="field">
                 <label>Baseline Month</label>
-                <div class="period-toggle">
-                  <button type="button" class="toggle-btn" data-month="April 2026" onclick="onMonthChange('April 2026'); renderOutputTable();">April 2026</button>
-                  <button type="button" class="toggle-btn" data-month="May 2026" onclick="onMonthChange('May 2026'); renderOutputTable();">May 2026</button>
-                </div>
+                <select class="month-select" onchange="onMonthChange(this.value); renderOutputTable();"></select>
               </div>
               <div class="field">
                 <label>SKU Filter</label>
-                <div class="sku-filter-bar"></div>
+                <div class="sku-dropdown">
+                  <button type="button" class="sku-dropdown-btn" onclick="toggleSkuDropdown(this)"><span class="sku-dropdown-label">All SKUs</span> <span class="caret">&#9662;</span></button>
+                  <div class="sku-dropdown-panel sku-filter-bar"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -460,7 +429,7 @@
               <thead>
                 <tr>
                   <th colspan="9" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
-                  <th colspan="12" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
+                  <th colspan="13" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
                 </tr>
                 <tr>
                   <th>SKU</th>
@@ -475,6 +444,7 @@
                   <th>Scenario</th>
                   <th class="num">Avg_Daily_Volume (Current)</th>
                   <th class="num">Avg_Daily_Volume (Simulated)</th>
+                  <th class="num">Average Daily Volume (Next Month Baseline)</th>
                   <th class="num">Volume lost &Delta;</th>
                   <th class="num">VTM Gain</th>
                   <th class="num">Final Avg_Daily_Volume (Simulated)</th>
@@ -497,6 +467,10 @@
           <div class="compare-legend">
             <span class="legend-item"><span class="legend-swatch base"></span> Baseline</span>
             <span class="legend-item"><span class="legend-swatch sim"></span> Simulated</span>
+          </div>
+          <div class="field comparison-view-field">
+            <label>View Comparison For:</label>
+            <select class="comparison-view-select" onchange="onComparisonViewChange(this.value)"></select>
           </div>
           <div class="charts-grid compare-grid">
             <div class="chart-panel compare-panel">
@@ -527,14 +501,15 @@
 
 <script>
 // ---------- MOCK AUTHENTICATION (LOGIN GATE) ----------
-// Client-side only mock auth — admin/admin unlocks the workspace. Not a real security boundary;
-// this exists purely to present a professional login gate in front of the simulator on first load.
+// Client-side only mock auth — the hardcoded enterprise credential (ayush.goel / 12345678) unlocks the
+// workspace. Not a real security boundary; this exists purely to present a professional login gate in
+// front of the simulator on first load.
 function handleLogin(evt){
   evt.preventDefault();
   const user = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPass').value;
   const errorBox = document.getElementById('loginError');
-  if(user === 'admin' && pass === 'admin'){
+  if(user === 'ayush.goel' && pass === '12345678'){
     errorBox.style.display = 'none';
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('appShell').classList.add('visible');
@@ -564,13 +539,16 @@ function handleLogout(){
 // not merely hidden. For SKUs 10117961 and 10006061 the "_New" sheet's negative coefficient is used.
 // The global Position Coefficient has been fixed to a single static value (-0.01) for every surviving SKU
 // per the approved portfolio update; OSA coefficient remains the existing flat business-rule constant (0.03).
+// Updated from Combined_Elasticity_1.xlsx ('log_PTC_IG' row, per-SKU regression sheet) per explicit user
+// instruction — exact price-elasticity coefficients per SKU, with OSA (+0.03) and Position (-0.04) coefficients
+// held uniform/static across all 6 SKUs as directed (no longer -0.01 for position — updated to -0.04).
 const SKU_COEFFICIENTS = {
-  'IG Everyday 5':       { elasticity: -0.538622, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10117961 (New)
-  'IG Feast Rozzana 1':  { elasticity: -0.446434, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10000195
-  'IG Feast Rozzana 5':  { elasticity: -0.114435, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10006061 (New)
-  'IG Mini Mogra 10':    { elasticity: -0.543019, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10006305
-  'IG Mogra 5':          { elasticity: -0.006453, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10000196
-  'IG Super 5':          { elasticity: -0.514138, osaCoeff: 0.03, positionCoeff: -0.01 }, // SKU 10002013
+  'IG Everyday 5':       { elasticity: -0.5386, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10117961 (New) — log_PTC_IG
+  'IG Feast Rozzana 1':  { elasticity: -0.4464, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10000195 — log_PTC_IG
+  'IG Feast Rozzana 5':  { elasticity: -0.4169, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10006061 — log_PTC_IG
+  'IG Mini Mogra 10':    { elasticity: -0.5430, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10006305 — log_PTC_IG
+  'IG Mogra 5':          { elasticity: -0.0065, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10000196 — log_PTC_IG
+  'IG Super 5':          { elasticity: -0.5141, osaCoeff: 0.03, positionCoeff: -0.04 }, // SKU 10002013 — log_PTC_IG
 };
 
 const baseData = {
@@ -618,6 +596,12 @@ let savedScenarios = []; // in-memory scenario library for this session
 // grids AND the charts (display-only filter; the calculation engine still runs on the FULL 6-SKU set so
 // VTM cross-elasticity transfers to/from hidden SKUs remain mathematically correct).
 let visibleSkus = new Set(Object.keys(SKU_COEFFICIENTS));
+// "View Comparison For:" state — 'ALL' renders the aggregated Overall Portfolio totals on the Baseline vs
+// Simulated Comparison charts; any other value is an exact SKU name and filters the charts down to just
+// that one SKU's bars. Independent of the SKU Filter (visibleSkus) above, which only controls the data grid.
+let comparisonViewSku = 'ALL';
+let lastVisibleComputed = []; // cache of the most recently rendered grid's computed rows, so the comparison
+// dropdown can re-render the charts instantly on change without recomputing the whole engine.
 
 function initPriceRows(month){
   priceRows = baseData[month].map(s => ({ ...s, change:0, simOsa:s.osa, simPosition:s.position }));
@@ -650,9 +634,11 @@ function runSimulation(){
 }
 
 // ---------- MONTH DROPDOWN ----------
+// Baseline Month is now a clean native <select> (one per panel — Pricing Simulator & Output Dashboard),
+// matched by the shared .month-select class instead of a single unique id, since both panels need their
+// own dropdown instance kept in sync with the same selectedMonth state.
 function populateMonthDropdown(){
-  const sel = document.getElementById('monthSelect');
-  if(sel){
+  document.querySelectorAll('.month-select').forEach(sel => {
     sel.innerHTML = '';
     Object.keys(baseData).forEach(m => {
       const opt = document.createElement('option');
@@ -661,36 +647,34 @@ function populateMonthDropdown(){
       sel.appendChild(opt);
     });
     sel.value = selectedMonth; // belt-and-suspenders: force the dropdown's displayed value to match state
-  }
-  refreshPeriodToggleUI();
+  });
 }
 function onMonthChange(month){
   selectedMonth = month;
   initPriceRows(month);
-  document.getElementById('globalPtcChange').value = 0;
-  document.getElementById('globalPtcChangeVal').textContent = '0%';
+  document.querySelectorAll('.month-select').forEach(sel => { sel.value = month; });
+  // Instantly flips the Baseline Period chip text — e.g. "Baseline Period: April 2026 (Historical Actuals)"
+  // the moment the dropdown selection changes, with zero extra clicks required.
+  updatePeriodLabels();
   renderInputsTable();
 }
 
 // ---------- ADVANCED SELECTION FILTERS ----------
-// 1) Baseline Period Filter — toggle button-pair (April 2026 / May 2026) that instantly swaps the
-//    baseline metrics everywhere via the existing onMonthChange()/selectedMonth state.
-function refreshPeriodToggleUI(){
-  document.querySelectorAll('.period-toggle .toggle-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.month === selectedMonth);
-  });
-}
-// 2) SKU Multi-select Filter — checkbox row that hides/shows specific SKUs dynamically in both the
-//    data grids AND the charts. This is a DISPLAY-ONLY filter: the calc engine (computeAll/computeAllVolumes)
-//    always runs across the FULL 6-SKU set so VTM cross-elasticity to/from a hidden SKU stays correct;
-//    only the rendered rows/bars are filtered down to `visibleSkus`.
+// SKU Multi-select Filter — now presented as a compact dropdown-menu trigger button (instead of an
+// inline checkbox row) that reveals the same checkboxes in a floating panel. This is a DISPLAY-ONLY
+// filter: the calc engine (computeAll/computeAllVolumes) always runs across the FULL 6-SKU set so VTM
+// cross-elasticity to/from a hidden SKU stays correct; only the rendered rows/bars are filtered down to
+// `visibleSkus`.
 function renderSkuFilterBars(){
-  const html = Object.keys(SKU_COEFFICIENTS).map(name => {
+  const allNames = Object.keys(SKU_COEFFICIENTS);
+  const html = allNames.map(name => {
     const checked = visibleSkus.has(name) ? 'checked' : '';
     const safeId = 'skuchk_' + name.replace(/[^a-zA-Z0-9]+/g,'_');
     return `<label class="sku-chk" for="${safeId}"><input type="checkbox" id="${safeId}" ${checked} onchange="toggleSkuVisibility('${name.replace(/'/g,"\\'")}', this.checked)"> ${name}</label>`;
   }).join('');
   document.querySelectorAll('.sku-filter-bar').forEach(el => { el.innerHTML = html; });
+  const labelText = visibleSkus.size === allNames.length ? 'All SKUs' : `${visibleSkus.size} of ${allNames.length} SKUs`;
+  document.querySelectorAll('.sku-dropdown-label').forEach(el => { el.textContent = labelText; });
 }
 function toggleSkuVisibility(name, checked){
   if(checked) visibleSkus.add(name); else visibleSkus.delete(name);
@@ -700,6 +684,19 @@ function toggleSkuVisibility(name, checked){
   renderInputsTable();
   if(document.getElementById('panel-output').classList.contains('active')) renderOutputTable();
 }
+// Opens/closes the SKU Filter dropdown panel — only one panel open at a time, and clicking anywhere
+// outside the dropdown (handled by the document-level listener below) closes it automatically.
+function toggleSkuDropdown(btn){
+  const dropdown = btn.closest('.sku-dropdown');
+  const wasOpen = dropdown.classList.contains('open');
+  document.querySelectorAll('.sku-dropdown.open').forEach(d => d.classList.remove('open'));
+  if(!wasOpen) dropdown.classList.add('open');
+}
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.sku-dropdown')){
+    document.querySelectorAll('.sku-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});
 
 // ---------- CALCULATION ENGINE ----------
 // Steps 1–5: simulated PTC, isolated simulated volume, volume lost, VTM gain, final simulated volume — for ALL SKUs at once.
@@ -754,10 +751,37 @@ function getSimulationMonthDays(baselineMonthLabel){
   // Day 0 of (simMonthIndex+1) is the last day of simMonthIndex -> gives exact day count for that month.
   return new Date(simYear, simMonthIndex + 1, 0).getDate();
 }
+// "Average Daily Volume (Next Month Baseline)" — the organic, un-simulated daily run-rate for the month
+// the simulation is actually projecting INTO (one calendar month after the selected baseline). If that
+// next month already exists as real historical-actuals data in baseData (e.g. baseline=April 2026 ->
+// next month=May 2026, which we have), this returns those real actuals directly. If the selected baseline
+// is the LAST month present in baseData (e.g. May 2026, with no June 2026 actuals on file yet), there is no
+// historical figure to show — so it is extrapolated forward using that SKU's own most recent observed
+// month-over-month growth ratio (previous month -> selected month), applied one more month forward. This
+// keeps the benchmarking column populated and meaningful regardless of which baseline month is selected,
+// without ever fabricating a number disconnected from the SKU's own real trend.
+function getNextMonthBaselineVolume(skuName){
+  const months = Object.keys(baseData);
+  const idx = months.indexOf(selectedMonth);
+  if(idx >= 0 && idx < months.length - 1){
+    const nextMonthRow = baseData[months[idx+1]].find(r => r.name === skuName);
+    if(nextMonthRow) return nextMonthRow.dailyVolume;
+  }
+  const curRow = baseData[selectedMonth].find(r => r.name === skuName);
+  if(idx > 0){
+    const prevRow = baseData[months[idx-1]].find(r => r.name === skuName);
+    if(prevRow && curRow && prevRow.dailyVolume){
+      const growthRatio = curRow.dailyVolume / prevRow.dailyVolume;
+      return curRow.dailyVolume * growthRatio;
+    }
+  }
+  return curRow ? curRow.dailyVolume : 0; // fallback: no trend signal available, hold flat
+}
 function computeAll(){
   const daysInSimMonth = getSimulationMonthDays(selectedMonth);
   return computeAllVolumes().map(x => {
     const r = x.row;
+    const nextMonthBaselineVolume = getNextMonthBaselineVolume(r.name);
     const monthlyCurrent = r.dailyVolume * daysInSimMonth;
     // Final_Monthly_Volume = Monthly_Volume_Current * (Avg_Daily_Volume_Simulated / Avg_Daily_Volume_Current)
     // i.e. the monthly simulated total is held in EXACT proportion to the monthly current total — the ratio of
@@ -771,7 +795,7 @@ function computeAll(){
     const revenueSimulated = monthlySimulated * x.simPtc;
     const revenueDelta = revenueSimulated - revenueCurrent;
     const revDeltaPct = revenueCurrent ? (revenueDelta/revenueCurrent)*100 : 0;
-    return { row:r, simPtc:x.simPtc, simVolume:x.simVolume, volumeLostDelta:x.volumeLostDelta, vtmGain:x.vtmGain, finalSimVolume:x.finalSimVolume, monthlyCurrent, monthlySimulated, volDeltaPct, revenueCurrent, revenueSimulated, revenueDelta, revDeltaPct };
+    return { row:r, simPtc:x.simPtc, simVolume:x.simVolume, nextMonthBaselineVolume, volumeLostDelta:x.volumeLostDelta, vtmGain:x.vtmGain, finalSimVolume:x.finalSimVolume, monthlyCurrent, monthlySimulated, volDeltaPct, revenueCurrent, revenueSimulated, revenueDelta, revDeltaPct };
   });
 }
 // Dynamic per-row Scenario classifier: compares each SKU's simulated inputs against
@@ -800,8 +824,8 @@ function renderInputsTable(){
       <td class="sku-cell">${r.name}</td>
       <td>${selectedMonth}</td>
       <td class="num readonly-cell">${r.ptc.toFixed(2)}</td>
-      <td class="num"><input type="number" step="0.1" value="${r.change}" data-idx="${i}" oninput="onPctChange(this)"></td>
-      <td class="num readonly-cell">${simPtc.toFixed(2)}</td>
+      <td class="num"><input type="number" step="0.1" inputmode="decimal" value="${r.change}" data-idx="${i}" oninput="onPctChange(this)"></td>
+      <td class="num readonly-cell sim-ptc-cell">${simPtc.toFixed(2)}</td>
       <td class="num readonly-cell">${r.osa.toFixed(2)}</td>
       <td class="num"><input type="number" step="0.5" min="0" max="100" value="${r.simOsa}" data-idx="${i}" oninput="onOsaChange(this)"></td>
       <td class="num readonly-cell">${r.position.toFixed(2)}</td>
@@ -810,36 +834,42 @@ function renderInputsTable(){
   }).join('');
 }
 
-function onPctChange(el){ const i=+el.dataset.idx; priceRows[i].change = parseFloat(el.value)||0; renderInputsTable(); }
-function onOsaChange(el){ const i=+el.dataset.idx; priceRows[i].simOsa = parseFloat(el.value); if(isNaN(priceRows[i].simOsa)) priceRows[i].simOsa = priceRows[i].osa; renderInputsTable(); }
-function onPositionChange(el){ const i=+el.dataset.idx; priceRows[i].simPosition = parseFloat(el.value); if(isNaN(priceRows[i].simPosition)) priceRows[i].simPosition = priceRows[i].position; renderInputsTable(); }
-
-function resetAll(){
-  initPriceRows(selectedMonth);
-  document.getElementById('globalPtcChange').value = 0;
-  document.getElementById('globalPtcChangeVal').textContent = '0%';
-  document.getElementById('globalOsa').value = 80;
-  document.getElementById('globalOsaVal').textContent = '80%';
-  document.getElementById('globalPosition').value = 4;
-  document.getElementById('globalPositionVal').textContent = '4';
-  renderInputsTable();
+// PERFORMANCE FIX: these three handlers used to call renderInputsTable() on every single keystroke, which
+// rebuilt the entire grid's innerHTML each time. That full rebuild reset every input's DOM value attribute —
+// including the field the user was still actively typing into — which is exactly why a freshly-typed "-"
+// character (an intermediate, momentarily-NaN value while typing "-5") was getting wiped out and why long
+// values felt laggy/frozen on slower devices. The fix: just mutate the underlying priceRows state on every
+// keystroke (cheap, instant, never touches the DOM), and only patch the one small derived read-only cell
+// that actually depends on the typed value (Simulated PTC, next to PTC Change %) directly via textContent —
+// never re-rendering the table itself mid-type. The OSA / Position fields don't drive any other visible
+// derived cell in this table, so their handlers don't need to touch the DOM at all while typing.
+function onPctChange(el){
+  const i = +el.dataset.idx;
+  const val = parseFloat(el.value);
+  // Negative sign ("-") types as an intermediate NaN before the digits follow — store 0 momentarily without
+  // ever rewriting el.value, so the keystrokes the user is mid-typing are never clobbered.
+  priceRows[i].change = isNaN(val) ? 0 : val;
+  const simPtc = priceRows[i].ptc * (1 + priceRows[i].change/100);
+  const cell = el.closest('tr').querySelector('.sim-ptc-cell');
+  if(cell) cell.textContent = simPtc.toFixed(2);
+}
+function onOsaChange(el){
+  const i = +el.dataset.idx;
+  const val = parseFloat(el.value);
+  priceRows[i].simOsa = isNaN(val) ? priceRows[i].osa : val;
+}
+function onPositionChange(el){
+  const i = +el.dataset.idx;
+  const val = parseFloat(el.value);
+  priceRows[i].simPosition = isNaN(val) ? priceRows[i].position : val;
 }
 
-// syncRange now does the priceRows mutation itself, synchronously, BEFORE renderInputsTable() runs.
-// Previously the inline oninput="syncRange(...)" attribute (set during HTML parsing, so it registers as
-// this element's FIRST 'input' listener) called renderInputsTable() immediately, while a SEPARATE
-// addEventListener('input', ...) registered later in the script (and therefore firing SECOND) was the one
-// actually writing the new value into priceRows. That ordering meant every render used the previous tick's
-// stale priceRows, so the yellow grid inputs always lagged one step behind the slider. Folding the
-// priceRows update into syncRange itself — and removing the old addEventListener blocks entirely —
-// guarantees the grid is rebuilt from the just-updated value on every single 'input' event.
-function syncRange(inputId, labelId, suffix, rowField){
-  const el = document.getElementById(inputId);
-  const v = parseFloat(el.value) || 0;
-  document.getElementById(labelId).textContent = v + suffix;
-  if(rowField){
-    priceRows = priceRows.map(r => ({ ...r, [rowField]: v }));
-  }
+// Global lever sliders (PTC Change / Simulated OSA / Simulated Avg Position) have been permanently
+// removed — all simulation inputs are now driven exclusively from the individual SKU rows in the data
+// grid below (onPctChange/onOsaChange/onPositionChange), so resetAll() only needs to restore priceRows
+// to the baseline snapshot for the currently selected month and re-render the grid.
+function resetAll(){
+  initPriceRows(selectedMonth);
   renderInputsTable();
 }
 
@@ -865,6 +895,7 @@ function renderOutputTable(){
       <td><span class="scenario-tag scenario-${scenarioLabel(c).replace(/[^a-zA-Z]+/g,'')}">${scenarioLabel(c)}</span></td>
       <td class="num">${Math.round(c.row.dailyVolume)}</td>
       <td class="num">${Math.round(c.simVolume)}</td>
+      <td class="num readonly-cell">${Math.round(c.nextMonthBaselineVolume)}</td>
       <td class="num">${Math.round(c.volumeLostDelta)}</td>
       <td class="num">${Math.round(c.vtmGain)}</td>
       <td class="num">${Math.round(c.finalSimVolume)}</td>
@@ -876,7 +907,45 @@ function renderOutputTable(){
       <td class="num ${revCls}">${c.revDeltaPct.toFixed(2)}%</td>
     </tr>`;
   }).join('');
+  lastVisibleComputed = visibleComputed;
+  populateComparisonDropdown();
   renderComparisonCharts(visibleComputed);
+}
+
+// ---------- COMPARISON CHART VIEW TOGGLE (Overall Portfolio vs Individual SKU) ----------
+function populateComparisonDropdown(){
+  document.querySelectorAll('.comparison-view-select').forEach(sel => {
+    const prevVal = comparisonViewSku;
+    sel.innerHTML = '';
+    const allOpt = document.createElement('option');
+    allOpt.value = 'ALL'; allOpt.textContent = 'Overall Portfolio';
+    sel.appendChild(allOpt);
+    Object.keys(SKU_COEFFICIENTS).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+    sel.value = prevVal;
+  });
+}
+function onComparisonViewChange(val){
+  comparisonViewSku = val;
+  renderComparisonCharts(lastVisibleComputed);
+}
+// Builds the row set actually fed into the chart renderers below: either a single synthetic "Overall
+// Portfolio" row (summed across every SKU currently visible in the grid) or the one matching individual
+// SKU row, depending on comparisonViewSku.
+function buildComparisonRows(computed){
+  if(comparisonViewSku === 'ALL'){
+    const monthlyCurrent = computed.reduce((s,c) => s + c.monthlyCurrent, 0);
+    const monthlySimulated = computed.reduce((s,c) => s + c.monthlySimulated, 0);
+    const revenueCurrent = computed.reduce((s,c) => s + c.revenueCurrent, 0);
+    const revenueSimulated = computed.reduce((s,c) => s + c.revenueSimulated, 0);
+    const volDeltaPct = monthlyCurrent ? ((monthlySimulated - monthlyCurrent)/monthlyCurrent)*100 : 0;
+    const revDeltaPct = revenueCurrent ? ((revenueSimulated - revenueCurrent)/revenueCurrent)*100 : 0;
+    return [{ row:{ name:'Overall Portfolio' }, monthlyCurrent, monthlySimulated, volDeltaPct, revenueCurrent, revenueSimulated, revDeltaPct }];
+  }
+  return computed.filter(c => c.row.name === comparisonViewSku);
 }
 
 // ---------- ADVANCED SIMULATION COMPARISON CHARTS ----------
@@ -887,10 +956,11 @@ function renderOutputTable(){
 // Delta % callout per SKU. Every number rendered here is read directly off the same `computed` array
 // (c.monthlyCurrent / c.monthlySimulated / c.revenueCurrent / c.revenueSimulated / c.volDeltaPct / c.revDeltaPct)
 // that feeds the Output Dashboard grid, so these values always tie out exactly to the grid.
-function renderComparisonCharts(computed){
+function renderComparisonCharts(computedFull){
   const unitsEl = document.getElementById('compareUnitsChart');
   const revEl = document.getElementById('compareRevenueChart');
   if(!unitsEl || !revEl) return;
+  const computed = buildComparisonRows(computedFull); // either 1 aggregated "Overall Portfolio" row or 1 filtered SKU row
 
   const maxUnits = Math.max(...computed.flatMap(c => [c.monthlyCurrent, c.monthlySimulated]), 1);
   unitsEl.innerHTML = computed.map(c => {
@@ -924,9 +994,9 @@ function renderComparisonCharts(computed){
 // ---------- DOWNLOAD CSV ----------
 function downloadExcel(){
   const computed = computeAll();
-  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Current Avg Position','Simulated Avg Position','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Monthly_Volume (Current)','Final Monthly_Volume (Simulated)','Volume Delta %','Revenue (Current)','Revenue (Simulated)','Revenue Delta (Rs)','Revenue Delta %'];
+  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Current Avg Position','Simulated Avg Position','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Average Daily Volume (Next Month Baseline)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Monthly_Volume (Current)','Final Monthly_Volume (Simulated)','Volume Delta %','Revenue (Current)','Revenue (Simulated)','Revenue Delta (Rs)','Revenue Delta %'];
   const csvEscape = v => { const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const rows = computed.map(c => [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.position.toFixed(2), c.row.simPosition, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2)]);
+  const rows = computed.map(c => [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.position.toFixed(2), c.row.simPosition, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.nextMonthBaselineVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2)]);
   const csvLines = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))];
   const csvContent = csvLines.join('\r\n');
   const blob = new Blob(['﻿'+csvContent], { type:'text/csv;charset=utf-8;' });
