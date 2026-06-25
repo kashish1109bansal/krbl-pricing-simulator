@@ -80,8 +80,27 @@
     width: var(--sidebar-w); flex-shrink:0; position:fixed; top:0; left:0; bottom:0;
     background:linear-gradient(180deg,var(--maroon-dark),var(--maroon) 60%,#4a0014);
     display:flex; flex-direction:column; padding:24px 16px; box-shadow: 6px 0 24px rgba(99,0,25,0.18);
-    z-index:50;
+    z-index:50; transition: all 0.3s ease-in-out;
   }
+  /* Collapsible sidebar toggle — sidebar slides fully off-canvas and the main content
+     wrapper expands to fill the freed-up width. Chart instances are force-resized via
+     resizeAllDashboardCharts() after the 0.3s transition completes.
+     IMPORTANT: the toggle button is a FIXED, INDEPENDENT sibling of .sidebar (not nested inside
+     it) so that it remains permanently visible and clickable in both the expanded and collapsed
+     states — it must never inherit the sidebar's own opacity/transform/overflow collapse styles,
+     otherwise there would be no way to bring the sidebar back once hidden. */
+  .sidebar-toggle-btn{
+    position:fixed; top:26px; left: calc(var(--sidebar-w) - 15px); width:30px; height:30px; border-radius:50%;
+    background:var(--gold); color:var(--maroon-dark); border:1.5px solid rgba(255,255,255,0.4);
+    font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.25); z-index:70; transition: left 0.3s ease-in-out, transform 0.15s ease;
+    line-height:1;
+  }
+  .sidebar-toggle-btn:hover{ background:#c79f2e; transform: scale(1.08); }
+  .app-shell.sidebar-collapsed .sidebar{ transform: translateX(-100%); opacity:0; overflow:hidden; }
+  .app-shell.sidebar-collapsed .sidebar-toggle-btn{ left:14px; }
+  .app-shell.sidebar-collapsed .main-content{ margin-left:0; width:100%; max-width:100%; }
+  .main-content{ transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out; }
   .sidebar-brand{ display:flex; align-items:center; gap:12px; padding:6px 8px 22px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:18px; }
   .sidebar-brand .mark{ width:auto; height:42px; border-radius:9px; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:3px 6px; overflow:hidden; }
   .sidebar-brand .mark .logo-img{ height:100%; width:auto; max-width:110px; object-fit:contain; display:block; border-radius:5px; }
@@ -451,7 +470,11 @@
 <!-- ================= APP SHELL ================= -->
 <div class="app-shell" id="appShell">
 
-  <!-- PERMANENT LEFT SIDEBAR -->
+  <!-- Permanent floating toggle — lives OUTSIDE .sidebar so it always stays visible/clickable,
+       regardless of whether the sidebar itself is expanded or fully collapsed off-canvas. -->
+  <button id="sidebarToggle" class="sidebar-toggle-btn" type="button" title="Toggle sidebar" aria-label="Toggle sidebar">&#9776;</button>
+
+  <!-- COLLAPSIBLE LEFT SIDEBAR -->
   <div class="sidebar">
     <div class="sidebar-brand">
       <div class="mark"><img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img"></div>
@@ -881,6 +904,27 @@ function initPriceRows(month){
   priceRows = baseData[month].map(s => ({ ...s, change:0, simOsa:s.osa, simBudget:s.budget }));
 }
 initPriceRows(selectedMonth);
+
+// ---------- COLLAPSIBLE SIDEBAR TOGGLE ----------
+// Toggles `.sidebar-collapsed` on the app-shell wrapper (which drives both the sidebar's
+// off-canvas slide-out and the main-content wrapper's full-width expansion via CSS).
+// After the 0.3s CSS transition settles, all 4 locked Chart.js instances (the two Top-5 SKU
+// lift charts + the two Baseline-vs-Simulated comparison charts) are force-resized so their
+// canvases recalculate and stretch cleanly across the newly available viewport width.
+function resizeAllDashboardCharts(){
+  [revenueLiftChartInstance, volumeLiftChartInstance, compareUnitsChartInstance, compareRevenueChartInstance]
+    .forEach(inst => { if(inst && typeof inst.resize === 'function'){ inst.resize(); } });
+  window.dispatchEvent(new Event('resize'));
+}
+(function initSidebarToggle(){
+  const toggleBtn = document.getElementById('sidebarToggle');
+  const shellEl = document.getElementById('appShell');
+  if(!toggleBtn || !shellEl) return;
+  toggleBtn.addEventListener('click', function(){
+    shellEl.classList.toggle('sidebar-collapsed');
+    setTimeout(resizeAllDashboardCharts, 300);
+  });
+})();
 
 // ---------- NAVIGATION (permanent left sidebar) ----------
 function goToStep(step){
