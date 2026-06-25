@@ -400,7 +400,7 @@
   .compare-legend{ display:flex; gap:18px; margin:0 0 16px; }
   .legend-item{ display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:700; color:var(--ink); }
   .legend-swatch{ width:14px; height:14px; border-radius:4px; display:inline-block; box-shadow:0 1px 3px rgba(0,0,0,0.25); }
-  .legend-swatch.base{ background:#2b2b33; }
+  .legend-swatch.base{ background:#4A0E17; }
   .legend-swatch.sim{ background:linear-gradient(135deg,#e6c659,var(--gold)); }
   .compare-grid{ gap:28px; }
   .compare-panel{ background:#fff; border:1px solid var(--border); border-radius:14px; padding:18px 20px 14px; box-shadow:0 6px 18px rgba(122,6,36,0.07); }
@@ -663,7 +663,10 @@
           </div>
         </div>
 
-        <!-- ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, with floating Delta% callouts -->
+        <!-- ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, now rendered as real Chart.js bar
+             instances (visual-only, read-only over `computed`), with floating Delta% callouts retained
+             per card. Driven by the same "View Comparison For" dropdown (Overall Portfolio vs individual
+             SKU) — see onComparisonViewChange() / renderComparisonCharts() below. -->
         <div class="glass-card compare-card">
           <h3 class="section-title" style="margin-bottom:4px;">Baseline vs Simulated Comparison</h3>
           <div class="compare-legend">
@@ -676,12 +679,22 @@
           </div>
           <div class="charts-grid compare-grid">
             <div class="chart-panel compare-panel">
-              <h4>Baseline vs Simulated Units</h4>
-              <div id="compareUnitsChart"></div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <h4 style="margin:0 0 0;">Monthly Portfolio Baseline vs Simulated Units</h4>
+                <span class="kpi-badge" id="compareUnitsDeltaBadge">+0.00%</span>
+              </div>
+              <div style="position:relative; height:240px; margin-top:12px;">
+                <canvas id="compareUnitsChart"></canvas>
+              </div>
             </div>
             <div class="chart-panel compare-panel">
-              <h4>Baseline vs Simulated Revenue</h4>
-              <div id="compareRevenueChart"></div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <h4 style="margin:0 0 0;">Monthly Portfolio Baseline vs Simulated Revenue</h4>
+                <span class="kpi-badge" id="compareRevenueDeltaBadge">+0.00%</span>
+              </div>
+              <div style="position:relative; height:240px; margin-top:12px;">
+                <canvas id="compareRevenueChart"></canvas>
+              </div>
             </div>
           </div>
         </div>
@@ -1526,45 +1539,117 @@ function buildComparisonRows(computed){
 
 // ---------- ADVANCED SIMULATION COMPARISON CHARTS ----------
 // The "Monthly Volume by SKU" and "Revenue Mix (Simulated)" progress-bar sections have been fully removed
-// from the Output Dashboard per the latest layout directive — the grid now flows directly into this
-// Baseline vs Simulated comparison section, which is the sole chart surface on Step 3.
-// Side-by-side "Baseline vs Simulated Units" and "Baseline vs Simulated Revenue" bars, with a floating
-// Delta % callout per SKU. Every number rendered here is read directly off the same `computed` array
-// (c.monthlyCurrent / c.monthlySimulated / c.revenueCurrent / c.revenueSimulated / c.volDeltaPct / c.revDeltaPct)
-// that feeds the Output Dashboard grid, so these values always tie out exactly to the grid.
+// from the Output Dashboard per an earlier layout directive — the grid now flows directly into this
+// Baseline vs Simulated comparison section, which is the sole chart surface on Step 3. Both panels are
+// real Chart.js bar instances (Baseline = Deep Wine Maroon #4A0E17, Simulated = Muted Gold #C5A059), with a
+// floating Delta % badge retained per card. Every number rendered here is read directly off the same
+// `computed` array (c.monthlyCurrent / c.monthlySimulated / c.revenueCurrent / c.revenueSimulated /
+// c.volDeltaPct / c.revDeltaPct) that feeds the Output Dashboard grid, so these values always tie out
+// exactly to the grid. The "View Comparison For" dropdown drives buildComparisonRows() upstream, which
+// always hands this function exactly one row — either the aggregated "Overall Portfolio" totals or the
+// one selected individual SKU — so both charts always render a clean two-bar Baseline vs Simulated view.
+let compareUnitsChartInstance = null;
+let compareRevenueChartInstance = null;
+let compareChartRetryCount = 0;
 function renderComparisonCharts(computedFull){
-  const unitsEl = document.getElementById('compareUnitsChart');
-  const revEl = document.getElementById('compareRevenueChart');
-  if(!unitsEl || !revEl) return;
+  const unitsCanvas = document.getElementById('compareUnitsChart');
+  const revCanvas = document.getElementById('compareRevenueChart');
+  if(!unitsCanvas || !revCanvas) return;
+
+  // Same CDN-load retry pattern used by the Top 5 SKU charts — Chart.js may not have finished loading from
+  // the CDN yet on the very first render.
+  if(typeof Chart === 'undefined'){
+    if(compareChartRetryCount < 40){
+      compareChartRetryCount++;
+      setTimeout(() => renderComparisonCharts(computedFull), 250);
+    } else {
+      console.warn('Comparison charts: Chart.js failed to load from CDN.');
+    }
+    return;
+  }
+  compareChartRetryCount = 0;
+
+  // Destroy both chart instances cleanly before every re-render — this is the sync pipeline the "View
+  // Comparison For" dropdown drives (onComparisonViewChange() -> renderComparisonCharts()), guaranteeing
+  // both canvases always stay perfectly in sync with the active selection without throwing Chart.js
+  // "Canvas is already in use" overlap exceptions.
+  if(compareUnitsChartInstance){ compareUnitsChartInstance.destroy(); compareUnitsChartInstance = null; }
+  if(compareRevenueChartInstance){ compareRevenueChartInstance.destroy(); compareRevenueChartInstance = null; }
+
   const computed = buildComparisonRows(computedFull); // either 1 aggregated "Overall Portfolio" row or 1 filtered SKU row
+  const row = computed[0];
+  if(!row) return;
 
-  const maxUnits = Math.max(...computed.flatMap(c => [c.monthlyCurrent, c.monthlySimulated]), 1);
-  unitsEl.innerHTML = computed.map(c => {
-    const curPct = Math.max(0, Math.min(100, (c.monthlyCurrent / maxUnits) * 100));
-    const simPct = Math.max(0, Math.min(100, (c.monthlySimulated / maxUnits) * 100));
-    const cls = c.volDeltaPct >= 0 ? 'pos' : 'neg';
-    return `<div class="compare-row">
-      <div class="compare-label"><span title="${c.row.name}">${c.row.name}</span><span class="compare-delta ${cls}">${c.volDeltaPct>=0?'+':''}${c.volDeltaPct.toFixed(2)}%</span></div>
-      <div class="compare-bars">
-        <div class="compare-bar-track"><div class="compare-bar-fill base" style="width:${curPct}%;"></div><span class="compare-bar-tag">Baseline ${Math.round(c.monthlyCurrent).toLocaleString('en-IN')}</span></div>
-        <div class="compare-bar-track"><div class="compare-bar-fill sim" style="width:${simPct}%;"></div><span class="compare-bar-tag">Simulated ${Math.round(c.monthlySimulated).toLocaleString('en-IN')}</span></div>
-      </div>
-    </div>`;
-  }).join('');
+  const unitsBadge = document.getElementById('compareUnitsDeltaBadge');
+  if(unitsBadge){
+    unitsBadge.textContent = (row.volDeltaPct>=0?'+':'') + row.volDeltaPct.toFixed(2) + '%';
+    unitsBadge.className = 'kpi-badge ' + (row.volDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
+  }
+  const revBadge = document.getElementById('compareRevenueDeltaBadge');
+  if(revBadge){
+    revBadge.textContent = (row.revDeltaPct>=0?'+':'') + row.revDeltaPct.toFixed(2) + '%';
+    revBadge.className = 'kpi-badge ' + (row.revDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
+  }
 
-  const maxRev = Math.max(...computed.flatMap(c => [c.revenueCurrent, c.revenueSimulated]), 1);
-  revEl.innerHTML = computed.map(c => {
-    const curPct = Math.max(0, Math.min(100, (c.revenueCurrent / maxRev) * 100));
-    const simPct = Math.max(0, Math.min(100, (c.revenueSimulated / maxRev) * 100));
-    const cls = c.revDeltaPct >= 0 ? 'pos' : 'neg';
-    return `<div class="compare-row">
-      <div class="compare-label"><span title="${c.row.name}">${c.row.name}</span><span class="compare-delta ${cls}">${c.revDeltaPct>=0?'+':''}${c.revDeltaPct.toFixed(2)}%</span></div>
-      <div class="compare-bars">
-        <div class="compare-bar-track"><div class="compare-bar-fill base" style="width:${curPct}%;"></div><span class="compare-bar-tag">&#8377;${Math.round(c.revenueCurrent).toLocaleString('en-IN')}</span></div>
-        <div class="compare-bar-track"><div class="compare-bar-fill sim" style="width:${simPct}%;"></div><span class="compare-bar-tag">&#8377;${Math.round(c.revenueSimulated).toLocaleString('en-IN')}</span></div>
-      </div>
-    </div>`;
-  }).join('');
+  const sharedTextStyle = { color:'#555555', font:{ size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' } };
+  const sharedTooltip = {
+    backgroundColor: '#1E1E1E',
+    titleColor: '#fff',
+    bodyColor: '#fff',
+    padding: 8,
+    titleFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
+    bodyFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' }
+  };
+
+  compareUnitsChartInstance = new Chart(unitsCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Baseline', 'Simulated'],
+      datasets: [{
+        data: [Math.round(row.monthlyCurrent), Math.round(row.monthlySimulated)],
+        backgroundColor: ['#4A0E17', '#C5A059'],
+        borderRadius: 4,
+        maxBarThickness: 90
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...sharedTooltip, callbacks: { label: (ctx) => `${ctx.label}: ${Math.round(ctx.parsed.y).toLocaleString('en-IN')} units` } }
+      },
+      scales: {
+        x: { ticks: sharedTextStyle, grid: { display:false } },
+        y: { ticks: { ...sharedTextStyle, callback: (v) => Number(v).toLocaleString('en-IN') }, grid: { color:'rgba(74,14,23,0.06)', borderDash:[5,5] } }
+      }
+    }
+  });
+
+  compareRevenueChartInstance = new Chart(revCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Baseline', 'Simulated'],
+      datasets: [{
+        data: [Math.round(row.revenueCurrent), Math.round(row.revenueSimulated)],
+        backgroundColor: ['#4A0E17', '#C5A059'],
+        borderRadius: 4,
+        maxBarThickness: 90
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...sharedTooltip, callbacks: { label: (ctx) => `${ctx.label}: ₹${Math.round(ctx.parsed.y).toLocaleString('en-IN')}` } }
+      },
+      scales: {
+        x: { ticks: sharedTextStyle, grid: { display:false } },
+        y: { ticks: { ...sharedTextStyle, callback: (v) => '₹' + Number(v).toLocaleString('en-IN') }, grid: { color:'rgba(74,14,23,0.06)', borderDash:[5,5] } }
+      }
+    }
+  });
 }
 
 // ---------- DOWNLOAD CSV ----------
