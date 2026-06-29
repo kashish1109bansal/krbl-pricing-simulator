@@ -1193,10 +1193,39 @@ function resetAll(){
   renderInputsTable();
 }
 
+// ---------- NULL-STATE DISPLAY OVERRIDE (rendering-layer only — never touches computeAll()/the locked
+// calc engine itself). Snaps any residual floating-point dust (e.g. 0.01 / -0.02) on the VTM Gain /
+// Volume lost Δ / Volume Δ% metrics to a strict, clean 0 whenever either (a) the metric has already
+// resolved to a true near-zero value, or (b) this SKU's own PTC Change (%) and Budget Change (%) levers
+// are both untouched AND there is no genuine incoming cross-elasticity gain from other SKUs moving — so a
+// real cannibalization/VTM gain from another SKU's change is still shown correctly, only pure noise is
+// suppressed. ----------
+const VTM_NULL_EPSILON = 1e-9;
+function applyVtmNullStateOverride(c){
+  const ownLeversUntouched = Math.abs(c.row.change) < VTM_NULL_EPSILON && Math.abs(c.row.budgetChange) < VTM_NULL_EPSILON;
+  let { volumeLostDelta, vtmGain, finalSimVolume, simVolume, monthlySimulated, volDeltaPct } = c;
+
+  // Snap genuine floating-point dust to exact 0 regardless of cause.
+  if(Math.abs(vtmGain) < VTM_NULL_EPSILON) vtmGain = 0;
+  if(Math.abs(volumeLostDelta) < VTM_NULL_EPSILON) volumeLostDelta = 0;
+  if(Math.abs(volDeltaPct) < VTM_NULL_EPSILON) volDeltaPct = 0;
+
+  // Own levers untouched + no real incoming VTM gain ⇒ force every downstream volume-change metric to a
+  // strict, clean zero so "0 units" / "0.00%" always renders exactly, never "0.01%" noise.
+  if(ownLeversUntouched && vtmGain === 0){
+    volumeLostDelta = 0;
+    finalSimVolume = c.row.dailyVolume;
+    simVolume = c.row.dailyVolume;
+    monthlySimulated = c.monthlyCurrent;
+    volDeltaPct = 0;
+  }
+  return { ...c, volumeLostDelta, vtmGain, finalSimVolume, simVolume, monthlySimulated, volDeltaPct };
+}
+
 // ---------- STEP 3: OUTPUT TABLE ----------
 function renderOutputTable(){
   renderSkuFilterBars();
-  const computed = computeAll(); // full 6-SKU engine output — VTM cross-elasticity always uses ALL SKUs
+  const computed = computeAll().map(applyVtmNullStateOverride); // full 6-SKU engine output — VTM cross-elasticity always uses ALL SKUs; null-state override is display-only
   const visibleComputed = computed.filter(c => visibleSkus.has(c.row.name)); // display-only SKU filter
   const tbody = document.getElementById('outputTableBody');
   tbody.innerHTML = visibleComputed.map(c => {
@@ -1708,7 +1737,7 @@ function renderComparisonCharts(computedFull){
 
 // ---------- DOWNLOAD CSV ----------
 function downloadExcel(){
-  const computed = computeAll();
+  const computed = computeAll().map(applyVtmNullStateOverride);
   const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Marketing Budget (Rs)','Budget Change (%)','Simulated Budget (Rs)','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %'];
   const csvEscape = v => { const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
   const rows = computed.map(c => [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.budget.toFixed(2), c.row.budgetChange, c.row.simBudget.toFixed(2), Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2)]);
@@ -1728,7 +1757,7 @@ function saveScenario(){
   // tags saved into the library card always reflect the state that was actually saved, even if
   // priceRows or selectedMonth are mutated elsewhere before this entry is rendered later.
   const priceRowsSnapshot = priceRows.map(r => ({...r}));
-  const computed = computeAll();
+  const computed = computeAll().map(applyVtmNullStateOverride);
   const unitsSim = computed.reduce((s,x)=>s+x.monthlySimulated,0);
   const unitsCur = computed.reduce((s,x)=>s+x.monthlyCurrent,0);
   const grossRevenueSim = computed.reduce((s,x)=>s+x.revenueSimulated,0);
