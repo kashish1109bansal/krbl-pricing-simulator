@@ -543,7 +543,7 @@
             <table>
               <thead>
                 <tr>
-                  <th colspan="9" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
+                  <th colspan="10" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
                 </tr>
                 <tr>
                   <th>SKU</th>
@@ -554,6 +554,7 @@
                   <th class="num">Current OSA (%)</th>
                   <th class="num">Simulated OSA (%)</th>
                   <th class="num">Marketing Budget (&#8377;)</th>
+                  <th class="num">Budget Change (%)</th>
                   <th class="num">Simulated Budget (&#8377;)</th>
                 </tr>
               </thead>
@@ -619,7 +620,7 @@
             <table>
               <thead>
                 <tr>
-                  <th colspan="9" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
+                  <th colspan="10" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
                   <th colspan="12" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
                 </tr>
                 <tr>
@@ -631,6 +632,7 @@
                   <th class="num">Current OSA (%)</th>
                   <th class="num">Simulated OSA (%)</th>
                   <th class="num">Marketing Budget (&#8377;)</th>
+                  <th class="num">Budget Change (%)</th>
                   <th class="num">Simulated Budget (&#8377;)</th>
                   <th>Scenario</th>
                   <th class="num">Avg_Daily_Volume (Current)</th>
@@ -901,7 +903,7 @@ let lastVisibleComputed = []; // cache of the most recently rendered grid's comp
 // dropdown can re-render the charts instantly on change without recomputing the whole engine.
 
 function initPriceRows(month){
-  priceRows = baseData[month].map(s => ({ ...s, change:0, simOsa:s.osa, simBudget:s.budget }));
+  priceRows = baseData[month].map(s => ({ ...s, change:0, simOsa:s.osa, budgetChange:0, simBudget:s.budget }));
 }
 initPriceRows(selectedMonth);
 
@@ -1138,7 +1140,8 @@ function renderInputsTable(){
       <td class="num readonly-cell">${r.osa.toFixed(2)}</td>
       <td class="num"><input type="number" step="0.5" min="0" max="100" value="${r.simOsa}" data-idx="${i}" oninput="onOsaChange(this)"></td>
       <td class="num readonly-cell">&#8377;${r.budget.toFixed(2)}</td>
-      <td class="num"><input type="number" step="1" min="0" class="budget-input" value="${r.simBudget}" data-idx="${i}" oninput="onBudgetChange(this)"></td>
+      <td class="num"><input type="number" step="0.1" inputmode="decimal" class="budget-input" value="${r.budgetChange}" data-idx="${i}" oninput="onBudgetChange(this)"></td>
+      <td class="num readonly-cell sim-budget-cell">&#8377;${r.simBudget.toFixed(2)}</td>
     </tr>`;
   }).join('');
 }
@@ -1171,8 +1174,14 @@ function onOsaChange(el){
 }
 function onBudgetChange(el){
   const i = +el.dataset.idx;
-  const val = parseFloat(el.value);
-  priceRows[i].simBudget = isNaN(val) ? priceRows[i].budget : val;
+  // Mirrors onPctChange: snapshot the raw string and special-case a lone "-" so the numeric
+  // enforcement below never clobbers an in-progress negative entry (e.g. typing toward "-10").
+  const rawValue = String(el.value).trim();
+  const val = (rawValue === '-') ? 0 : (parseFloat(rawValue) || 0);
+  priceRows[i].budgetChange = val;
+  priceRows[i].simBudget = priceRows[i].budget * (1 + priceRows[i].budgetChange / 100);
+  const cell = el.closest('tr').querySelector('.sim-budget-cell');
+  if(cell) cell.textContent = '₹' + priceRows[i].simBudget.toFixed(2);
 }
 
 // Global lever sliders (PTC Change / Simulated OSA / Simulated Marketing Budget) have been permanently
@@ -1202,7 +1211,8 @@ function renderOutputTable(){
       <td class="num readonly-cell">${c.row.osa.toFixed(2)}</td>
       <td class="num readonly-cell">${c.row.simOsa}</td>
       <td class="num readonly-cell">&#8377;${c.row.budget.toFixed(2)}</td>
-      <td class="num readonly-cell">&#8377;${c.row.simBudget}</td>
+      <td class="num readonly-cell">${c.row.budgetChange}</td>
+      <td class="num readonly-cell">&#8377;${c.row.simBudget.toFixed(2)}</td>
       <td><span class="scenario-tag scenario-${scenarioLabel(c).replace(/[^a-zA-Z]+/g,'')}">${scenarioLabel(c)}</span></td>
       <td class="num">${Math.round(c.row.dailyVolume)}</td>
       <td class="num">${Math.round(c.simVolume)}</td>
@@ -1699,9 +1709,9 @@ function renderComparisonCharts(computedFull){
 // ---------- DOWNLOAD CSV ----------
 function downloadExcel(){
   const computed = computeAll();
-  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Marketing Budget (Rs)','Simulated Budget (Rs)','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %'];
+  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Marketing Budget (Rs)','Budget Change (%)','Simulated Budget (Rs)','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %'];
   const csvEscape = v => { const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const rows = computed.map(c => [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.budget.toFixed(2), c.row.simBudget, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2)]);
+  const rows = computed.map(c => [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.budget.toFixed(2), c.row.budgetChange, c.row.simBudget.toFixed(2), Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2)]);
   const csvLines = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))];
   const csvContent = csvLines.join('\r\n');
   const blob = new Blob(['﻿'+csvContent], { type:'text/csv;charset=utf-8;' });
