@@ -771,8 +771,9 @@
           </div>
 
           <!-- BASELINE vs SIMULATED FINANCIALS — stacked bar comparing Cost + Profit breakdown
-               Baseline bar: cost = 0.70 × (Baseline PTC / 1.12) × Baseline Units
-               Simulated bar: cost = 0.70 × (Simulated PTC / 1.12) × Simulated Units (dynamic)
+               Strictly synchronized to computeProfitMetrics() (same engine as the KPI card + table grid):
+               Unit Cost = 0.70 × (Baseline PTC / 1.12), fixed and reused for BOTH bars — only Volume
+               (Baseline Units vs Simulated Units) differs, so Profit correctly diverges from Revenue.
                Both bars stack to equal their respective total Revenue. -->
           <div class="glass-card" style="padding:16px 20px 14px;">
             <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128200; BASELINE vs SIMULATED FINANCIALS</div>
@@ -1470,22 +1471,21 @@ function renderEdaPanel(){
 }
 
 // ---------- BASELINE vs SIMULATED FINANCIALS STACKED BAR CHART (visual-only, pure presentation layer) ----------
-// Renders two side-by-side vertically stacked bars for direct P&L comparison:
-//   Bar A "Baseline"  — uses monthlyCurrent volumes and Baseline PTC to price cost segments
-//   Bar B "Simulated" — uses monthlySimulated volumes and Simulated PTC to price cost segments
-//
-// BASELINE segment math (anchored to historical actuals):
-//   Baseline Unit Cost  = 0.70 × (Baseline PTC / 1.12)
-//   Total Baseline Cost = Σ (monthlyCurrent × Baseline Unit Cost)
-//   Baseline Profit     = Total Baseline Revenue − Total Baseline Cost
-//
-// SIMULATED segment math (dynamic, reflects user lever inputs):
-//   Simulated Unit Cost  = 0.70 × (Simulated PTC / 1.12)   ← c.simPtc from computeAll
-//   Total Simulated Cost = Σ (monthlySimulated × Simulated Unit Cost)
+// Renders two side-by-side vertically stacked bars for direct P&L comparison. STRICTLY synchronized to the
+// same computeProfitMetrics() engine that drives the Total Profit KPI card and the Table Grid Profit
+// columns — no independent cost math lives in this chart, and no hardcoded revenue percentage split is
+// ever applied. Cost per SKU uses a Baseline-PTC-anchored Unit Cost (a fixed structural COGS/unit) for
+// BOTH periods; only Volume — which responds to elasticity — differs between Baseline and Simulated. This
+// is what lets Profit % Lift correctly diverge from Revenue % Lift instead of mirroring it.
+//   Baseline Unit Cost   = 0.70 × (Baseline PTC / 1.12)                    [fixed structural cost]
+//   Total Baseline Cost  = Σ (monthlyCurrent   × Baseline Unit Cost)
+//   Baseline Profit      = Total Baseline Revenue  − Total Baseline Cost
+//   Total Simulated Cost = Σ (monthlySimulated × Baseline Unit Cost)       [same fixed unit cost, volume-driven]
 //   Simulated Profit     = Total Simulated Revenue − Total Simulated Cost
 //
 // Each stacked bar totals to its respective Revenue (Cost + Profit = Revenue by construction).
-// Tooltips show absolute ₹ value + percentage share of the respective bar's total Revenue.
+// Tooltips show absolute ₹ value + percentage share of the respective bar's total Revenue, plus (on the
+// Simulated bar) the % variance vs Baseline for each segment.
 // Pure presentation layer — never writes to priceRows or the calculation engine.
 let profCurveChartInstance = null;
 let profCurveRetryCount = 0;
@@ -1503,23 +1503,24 @@ function renderProfitabilityCurveChart(){
   // Pull current simulation state from the locked calc engine (VTM null-state override applied).
   const computed = computeAll().map(applyVtmNullStateOverride);
 
-  let totalBaselineRevenue = 0, totalBaselineCost = 0;
-  let totalSimRevenue      = 0, totalSimCost      = 0;
+  // STRICT DATA SYNCHRONIZATION: aggregate directly off computeProfitMetrics() — the SAME shared profit
+  // engine that drives the Total Profit KPI card and the Simulation Table Grid Profit columns. No local
+  // percentage-based revenue partitioning happens here (no fixed 62.5%/37.5% split of any kind) — Cost is
+  // derived algebraically as Revenue − Profit, where Profit itself comes from Sum(Units × Baseline-anchored
+  // Unit Cost) per SKU. This guarantees the chart can never drift out of sync with the KPI card again.
+  let totalBaselineRevenue = 0, totalBaselineProfit = 0;
+  let totalSimRevenue      = 0, totalSimProfit      = 0;
 
   computed.forEach(c => {
-    const r = c.row;
-    // BASELINE — unit cost anchored to Baseline PTC; volume = monthlyCurrent
-    const baseUnitCost    = 0.70 * (r.ptc / 1.12);
+    const pm = computeProfitMetrics(c); // single source of truth — identical to the KPI card / table grid
     totalBaselineRevenue += c.revenueCurrent;
-    totalBaselineCost    += c.monthlyCurrent * baseUnitCost;
-    // SIMULATED — unit cost derived from Simulated PTC (dynamic per user lever input); volume = monthlySimulated
-    const simUnitCost     = 0.70 * (c.simPtc / 1.12);
     totalSimRevenue      += c.revenueSimulated;
-    totalSimCost         += c.monthlySimulated * simUnitCost;
+    totalBaselineProfit  += pm.baselineProfit;
+    totalSimProfit       += pm.simulatedProfit;
   });
 
-  const totalBaselineProfit = totalBaselineRevenue - totalBaselineCost;
-  const totalSimProfit      = totalSimRevenue      - totalSimCost;
+  const totalBaselineCost = totalBaselineRevenue - totalBaselineProfit;
+  const totalSimCost      = totalSimRevenue      - totalSimProfit;
 
   // Pre-compute % shares of Revenue for tooltip display
   const pctByCost   = [
