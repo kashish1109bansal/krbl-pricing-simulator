@@ -159,6 +159,10 @@
      primary numeric text from Green to Crimson/Coral Warning Red whenever volume movement is negative. */
   .kpi-tile-delta.kpi-tile-delta-negative{ border-left:4px solid #D9383A; }
   .kpi-tile-delta.kpi-tile-delta-negative .kpi-tile-value{ color: #D9383A; }
+  .kpi-tile-profit{ border-left:4px solid #2E6E8E; }
+  .kpi-tile-profit .kpi-tile-value{ color: #2E6E8E; }
+  .kpi-tile-profit.kpi-tile-profit-negative{ border-left:4px solid #D9383A; }
+  .kpi-tile-profit.kpi-tile-profit-negative .kpi-tile-value{ color: #D9383A; }
   .kpi-badge{ display:inline-block; margin-top:8px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:800; letter-spacing:0.02em; }
   .kpi-badge.kpi-up{ background: rgba(14,122,78,0.12); color: var(--green); }
   .kpi-badge.kpi-down{ background: rgba(199,90,69,0.12); color: var(--red); }
@@ -644,13 +648,19 @@
                 <div class="kpi-tile-sub" id="kpiVolumeSub">Simulated 0 units &#8722; Current 0 units</div>
                 <span class="kpi-badge" id="kpiVolVarianceBadge">+0.00%</span>
               </div>
+              <div class="kpi-tile kpi-tile-profit" id="kpiProfitCard">
+                <div class="kpi-tile-label">&#128176; TOTAL PROFIT (&#8377;)</div>
+                <div class="kpi-tile-value" id="kpiProfitSimValue">&#8377;0</div>
+                <div class="kpi-tile-sub" id="kpiProfitBaselineSub">vs &#8377;0 baseline profit</div>
+                <span class="kpi-badge" id="kpiProfitVarianceBadge">+0.00%</span>
+              </div>
             </div>
             <div class="scroll-x">
               <table>
                 <thead>
                   <tr>
                     <th colspan="10" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
-                    <th colspan="12" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
+                    <th colspan="15" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
                   </tr>
                   <tr>
                     <th>SKU</th>
@@ -675,6 +685,9 @@
                     <th class="num">Baseline Monthly Revenue (&#8377;)</th>
                     <th class="num">Simulated Monthly Revenue (&#8377;)</th>
                     <th class="num">Revenue &#916; %</th>
+                    <th class="num">Baseline Profit (&#8377;)</th>
+                    <th class="num">Simulated Profit (&#8377;)</th>
+                    <th class="num">Profit &#916; %</th>
                   </tr>
                 </thead>
                 <tbody id="outputTableBody"></tbody>
@@ -1278,6 +1291,27 @@ function applyVtmNullStateOverride(c){
 }
 
 // ---------- STEP 3: OUTPUT TABLE ----------
+// ---------- PROFIT METRICS HELPER (display-only, derived purely from locked engine outputs) ----------
+// Baseline Profit  = Baseline Revenue  − [0.70 × (Baseline PTC  / 1.12) × Baseline Monthly Units]
+// Simulated Profit = Simulated Revenue − [0.70 × (Simulated PTC / 1.12) × Simulated Monthly Units]
+// Profit % Change  = ((Simulated Profit − Baseline Profit) / Baseline Profit) × 100, guarded against a
+// zero/near-zero Baseline Profit (returns 0 if Simulated Profit is also ~0, otherwise null → shown as "N/A").
+// Never writes to priceRows or the calc engine — reads only already-computed fields off `c`.
+function computeProfitMetrics(c){
+  const r = c.row;
+  const baselineUnitCost  = 0.70 * (r.ptc / 1.12);
+  const baselineProfit    = c.revenueCurrent   - (c.monthlyCurrent   * baselineUnitCost);
+  const simulatedUnitCost = 0.70 * (c.simPtc / 1.12);
+  const simulatedProfit   = c.revenueSimulated - (c.monthlySimulated * simulatedUnitCost);
+  let profitChangePct;
+  if(Math.abs(baselineProfit) < 1e-9){
+    profitChangePct = Math.abs(simulatedProfit) < 1e-9 ? 0 : null;
+  } else {
+    profitChangePct = ((simulatedProfit - baselineProfit) / baselineProfit) * 100;
+  }
+  return { baselineProfit, simulatedProfit, profitChangePct };
+}
+
 function renderOutputTable(){
   renderSkuFilterBars();
   const computed = computeAll().map(applyVtmNullStateOverride); // full 6-SKU engine output — VTM cross-elasticity always uses ALL SKUs; null-state override is display-only
@@ -1286,6 +1320,9 @@ function renderOutputTable(){
   tbody.innerHTML = visibleComputed.map(c => {
     const volCls = c.volDeltaPct >= 0 ? 'pos' : 'neg';
     const revCls = c.revDeltaPct >= 0 ? 'pos' : 'neg';
+    const pm = computeProfitMetrics(c);
+    const profitCls = pm.profitChangePct === null ? '' : (pm.profitChangePct >= 0 ? 'pos' : 'neg');
+    const profitChangeLabel = pm.profitChangePct === null ? 'N/A' : (pm.profitChangePct>=0?'+':'') + pm.profitChangePct.toFixed(2) + '%';
     return `<tr>
       <td class="sku-cell">${c.row.name}</td>
       <td>${selectedMonth}</td>
@@ -1309,6 +1346,9 @@ function renderOutputTable(){
       <td class="num">&#8377;${Math.round(c.revenueCurrent).toLocaleString('en-IN')}</td>
       <td class="num">&#8377;${Math.round(c.revenueSimulated).toLocaleString('en-IN')}</td>
       <td class="num ${revCls}">${c.revDeltaPct.toFixed(2)}%</td>
+      <td class="num">&#8377;${(pm.baselineProfit<0?'-':'')}${Math.abs(Math.round(pm.baselineProfit)).toLocaleString('en-IN')}</td>
+      <td class="num">&#8377;${(pm.simulatedProfit<0?'-':'')}${Math.abs(Math.round(pm.simulatedProfit)).toLocaleString('en-IN')}</td>
+      <td class="num ${profitCls}">${profitChangeLabel}</td>
     </tr>`;
   }).join('');
   lastVisibleComputed = visibleComputed;
@@ -1367,6 +1407,38 @@ function renderKpiTiles(computed){
   elVolBadge.className = 'kpi-badge ' + (volDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
   if(elVolumeCard){
     elVolumeCard.classList.toggle('kpi-tile-delta-negative', volDeltaPct < 0);
+  }
+
+  // Card 4 — Total Profit (₹): Baseline vs Simulated, summed across the same `computed` set used above.
+  // Profit per SKU = Revenue − [0.70 × (PTC / 1.12) × Units], via the shared computeProfitMetrics() helper
+  // (identical math to the Financials Stacked Bar Chart in the EDA tab, applied at the portfolio level here).
+  const elProfitCard = document.getElementById('kpiProfitCard');
+  const elProfitSim = document.getElementById('kpiProfitSimValue');
+  const elProfitBaseSub = document.getElementById('kpiProfitBaselineSub');
+  const elProfitBadge = document.getElementById('kpiProfitVarianceBadge');
+  if(elProfitCard && elProfitSim && elProfitBaseSub && elProfitBadge){
+    let totalBaselineProfit = 0, totalSimulatedProfit = 0;
+    computed.forEach(c => {
+      const pm = computeProfitMetrics(c);
+      totalBaselineProfit  += pm.baselineProfit;
+      totalSimulatedProfit += pm.simulatedProfit;
+    });
+    let profitVariancePct;
+    if(Math.abs(totalBaselineProfit) < 1e-9){
+      profitVariancePct = Math.abs(totalSimulatedProfit) < 1e-9 ? 0 : null;
+    } else {
+      profitVariancePct = ((totalSimulatedProfit - totalBaselineProfit) / totalBaselineProfit) * 100;
+    }
+    elProfitSim.textContent = (totalSimulatedProfit<0?'-':'') + '₹' + Math.abs(Math.round(totalSimulatedProfit)).toLocaleString('en-IN');
+    elProfitBaseSub.textContent = 'vs ' + (totalBaselineProfit<0?'-':'') + '₹' + Math.abs(Math.round(totalBaselineProfit)).toLocaleString('en-IN') + ' baseline profit';
+    if(profitVariancePct === null){
+      elProfitBadge.textContent = 'N/A';
+      elProfitBadge.className = 'kpi-badge';
+    } else {
+      elProfitBadge.textContent = (profitVariancePct>=0?'+':'') + profitVariancePct.toFixed(2) + '%';
+      elProfitBadge.className = 'kpi-badge ' + (profitVariancePct>=0 ? 'kpi-up' : 'kpi-down');
+    }
+    elProfitCard.classList.toggle('kpi-tile-profit-negative', profitVariancePct !== null && profitVariancePct < 0);
   }
 }
 
@@ -1995,9 +2067,12 @@ function renderComparisonCharts(computedFull){
 // ---------- DOWNLOAD CSV ----------
 function downloadExcel(){
   const computed = computeAll().map(applyVtmNullStateOverride);
-  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Marketing Budget (Rs)','Budget Change (%)','Simulated Budget (Rs)','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %'];
+  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Marketing Budget (Rs)','Budget Change (%)','Simulated Budget (Rs)','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %','Baseline Profit (Rs)','Simulated Profit (Rs)','Profit Delta %'];
   const csvEscape = v => { const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const rows = computed.map(c => [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.budget.toFixed(2), c.row.budgetChange, c.row.simBudget.toFixed(2), Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2)]);
+  const rows = computed.map(c => {
+    const pm = computeProfitMetrics(c);
+    return [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.budget.toFixed(2), c.row.budgetChange, c.row.simBudget.toFixed(2), Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2), Math.round(pm.baselineProfit), Math.round(pm.simulatedProfit), pm.profitChangePct === null ? 'N/A' : pm.profitChangePct.toFixed(2)];
+  });
   const csvLines = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))];
   const csvContent = csvLines.join('\r\n');
   const blob = new Blob(['﻿'+csvContent], { type:'text/csv;charset=utf-8;' });
