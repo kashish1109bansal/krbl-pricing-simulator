@@ -757,13 +757,18 @@
             </div>
           </div>
 
-          <!-- SIMULATED FINANCIALS BREAKDOWN — 3-bar absolute rupee chart at current simulation state -->
+          <!-- BASELINE vs SIMULATED FINANCIALS — stacked bar comparing Cost + Profit breakdown
+               Baseline bar: cost = 0.70 × (Baseline PTC / 1.12) × Baseline Units
+               Simulated bar: cost = 0.70 × (Simulated PTC / 1.12) × Simulated Units (dynamic)
+               Both bars stack to equal their respective total Revenue. -->
           <div class="glass-card" style="padding:16px 20px 14px;">
-            <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128200; SIMULATED FINANCIALS BREAKDOWN</div>
+            <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128200; BASELINE vs SIMULATED FINANCIALS</div>
             <div style="font-size:11px; color:var(--muted); margin-bottom:12px; line-height:1.55;">
-              Absolute &#8377; portfolio totals at the <strong>current simulation state</strong>. Cost&nbsp;=&nbsp;0.70&nbsp;&times;&nbsp;(Baseline&nbsp;PTC&nbsp;/&nbsp;1.12)&nbsp;&times;&nbsp;Simulated&nbsp;Units. Profit&nbsp;=&nbsp;Revenue&nbsp;&minus;&nbsp;Cost.
+              Stacked &#8377; comparison: <strong>Cost</strong> + <strong>Profit</strong> segments stack to equal Total Revenue for each scenario.
+              Tooltips display absolute &#8377; value, percentage share of Revenue, and &mdash; on the Simulated bar &mdash; percentage variance vs Baseline.
+              Simulated Cost&nbsp;=&nbsp;0.70&nbsp;&times;&nbsp;(Sim&nbsp;PTC&nbsp;/&nbsp;1.12)&nbsp;&times;&nbsp;Sim&nbsp;Units.
             </div>
-            <div style="position:relative; height:340px;">
+            <div style="position:relative; height:360px;">
               <canvas id="profitabilityCurveChart"></canvas>
             </div>
           </div>
@@ -1379,15 +1384,24 @@ function renderEdaPanel(){
   renderProfitabilityCurveChart();
 }
 
-// ---------- SIMULATED FINANCIALS BREAKDOWN BAR CHART (visual-only, pure presentation layer) ----------
-// Reads CURRENT simulation state (no price sweep). Computes three portfolio-level absolute ₹ totals
-// from the already-computed, VTM-adjusted results:
-//   Total Simulated Revenue  = Σ (monthlySimulated × simPtc)          from computeAll()
-//   Total Simulated Cost     = Σ (monthlySimulated × fixedUnitCost)
-//                              where fixedUnitCost = 0.70 × (Baseline PTC / 1.12) — anchored to baseline
-//   Total Simulated Profit   = Total Simulated Revenue − Total Simulated Cost
-// Renders as a clean 3-bar Chart.js bar chart. Pure presentation layer — never writes to
-// priceRows or the calculation engine.
+// ---------- BASELINE vs SIMULATED FINANCIALS STACKED BAR CHART (visual-only, pure presentation layer) ----------
+// Renders two side-by-side vertically stacked bars for direct P&L comparison:
+//   Bar A "Baseline"  — uses monthlyCurrent volumes and Baseline PTC to price cost segments
+//   Bar B "Simulated" — uses monthlySimulated volumes and Simulated PTC to price cost segments
+//
+// BASELINE segment math (anchored to historical actuals):
+//   Baseline Unit Cost  = 0.70 × (Baseline PTC / 1.12)
+//   Total Baseline Cost = Σ (monthlyCurrent × Baseline Unit Cost)
+//   Baseline Profit     = Total Baseline Revenue − Total Baseline Cost
+//
+// SIMULATED segment math (dynamic, reflects user lever inputs):
+//   Simulated Unit Cost  = 0.70 × (Simulated PTC / 1.12)   ← c.simPtc from computeAll
+//   Total Simulated Cost = Σ (monthlySimulated × Simulated Unit Cost)
+//   Simulated Profit     = Total Simulated Revenue − Total Simulated Cost
+//
+// Each stacked bar totals to its respective Revenue (Cost + Profit = Revenue by construction).
+// Tooltips show absolute ₹ value + percentage share of the respective bar's total Revenue.
+// Pure presentation layer — never writes to priceRows or the calculation engine.
 let profCurveChartInstance = null;
 let profCurveRetryCount = 0;
 function renderProfitabilityCurveChart(){
@@ -1395,95 +1409,159 @@ function renderProfitabilityCurveChart(){
   if(!canvas) return;
   if(typeof Chart === 'undefined'){
     if(profCurveRetryCount < 40){ profCurveRetryCount++; setTimeout(renderProfitabilityCurveChart, 250); }
-    else { console.warn('Financials Bar Chart: Chart.js failed to load.'); }
+    else { console.warn('Financials Stacked Bar: Chart.js failed to load.'); }
     return;
   }
   profCurveRetryCount = 0;
   if(profCurveChartInstance){ profCurveChartInstance.destroy(); profCurveChartInstance = null; }
 
-  // Derive portfolio totals from current simulation state via the locked calc engine.
-  // applyVtmNullStateOverride snaps floating-point zero noise to strict 0 for display consistency.
+  // Pull current simulation state from the locked calc engine (VTM null-state override applied).
   const computed = computeAll().map(applyVtmNullStateOverride);
 
-  let totalSimRevenue = 0;
-  let totalSimCost    = 0;
+  let totalBaselineRevenue = 0, totalBaselineCost = 0;
+  let totalSimRevenue      = 0, totalSimCost      = 0;
 
   computed.forEach(c => {
-    const r             = c.row;
-    // Fixed unit cost anchored to BASELINE PTC — never recalculated from simPtc.
-    //   Baseline PTR    = r.ptc / 1.12
-    //   Fixed Unit Cost = 0.70 × Baseline PTR
-    const fixedUnitCost = 0.70 * (r.ptc / 1.12);
-    totalSimRevenue    += c.revenueSimulated;           // monthlySimulated × simPtc (from computeAll)
-    totalSimCost       += c.monthlySimulated * fixedUnitCost;
+    const r = c.row;
+    // BASELINE — unit cost anchored to Baseline PTC; volume = monthlyCurrent
+    const baseUnitCost    = 0.70 * (r.ptc / 1.12);
+    totalBaselineRevenue += c.revenueCurrent;
+    totalBaselineCost    += c.monthlyCurrent * baseUnitCost;
+    // SIMULATED — unit cost derived from Simulated PTC (dynamic per user lever input); volume = monthlySimulated
+    const simUnitCost     = 0.70 * (c.simPtc / 1.12);
+    totalSimRevenue      += c.revenueSimulated;
+    totalSimCost         += c.monthlySimulated * simUnitCost;
   });
 
-  const totalSimProfit = totalSimRevenue - totalSimCost;
+  const totalBaselineProfit = totalBaselineRevenue - totalBaselineCost;
+  const totalSimProfit      = totalSimRevenue      - totalSimCost;
 
-  const barValues = [
-    Math.round(totalSimRevenue),
-    Math.round(totalSimCost),
-    Math.round(totalSimProfit)
+  // Pre-compute % shares of Revenue for tooltip display
+  const pctByCost   = [
+    totalBaselineRevenue > 0 ? (totalBaselineCost   / totalBaselineRevenue * 100).toFixed(1) : '0.0',
+    totalSimRevenue > 0      ? (totalSimCost        / totalSimRevenue      * 100).toFixed(1) : '0.0'
   ];
+  const pctByProfit = [
+    totalBaselineRevenue > 0 ? (totalBaselineProfit / totalBaselineRevenue * 100).toFixed(1) : '0.0',
+    totalSimRevenue > 0      ? (totalSimProfit      / totalSimRevenue      * 100).toFixed(1) : '0.0'
+  ];
+  // Revenue totals indexed by bar position (0=Baseline, 1=Simulated) — used in tooltip closure
+  const revByBar = [Math.round(totalBaselineRevenue), Math.round(totalSimRevenue)];
 
-  const barColors = [
-    { bg: 'rgba(74,14,23,0.82)',   border: '#4A0E17' },   // Deep Wine Maroon — Revenue
-    { bg: 'rgba(197,160,89,0.82)', border: '#C5A059' },   // Muted Gold — Cost
-    { bg: 'rgba(46,125,94,0.82)',  border: '#2E7D5E' }    // Forest Green — Profit
-  ];
+  // Pre-compute % VARIANCE of Simulated vs Baseline for Cost and Profit segments.
+  // Formula: ((Simulated − Baseline) / Baseline) × 100, guarded against a zero Baseline
+  // (which would otherwise produce Infinity/NaN). If both Baseline and Simulated are ~0,
+  // the change is reported as 0%; if only Baseline is ~0, the change is reported as null
+  // (rendered as "N/A" — a percentage off a zero base is not meaningful).
+  function pctChangeVsBaseline(simVal, baseVal){
+    if(Math.abs(baseVal) < 1e-9){
+      return Math.abs(simVal) < 1e-9 ? 0 : null;
+    }
+    return ((simVal - baseVal) / baseVal) * 100;
+  }
+  const costChangePct   = pctChangeVsBaseline(totalSimCost, totalBaselineCost);
+  const profitChangePct = pctChangeVsBaseline(totalSimProfit, totalBaselineProfit);
 
   const textStyle = { color:'#555555', font:{ size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' } };
-  const fmtInr = (v) => '₹' + Math.abs(Math.round(v)).toLocaleString('en-IN');
+  const fmtInr    = (v) => '₹' + Math.abs(Math.round(v)).toLocaleString('en-IN');
+  // Formats a % variance value for tooltip display: explicit "+" sign on gains, "N/A" when baseline was ~0.
+  const fmtChangePct = (pct) => {
+    if(pct === null) return 'N/A vs Baseline';
+    const sign = pct >= 0 ? '+' : '';
+    return `${sign}${pct.toFixed(1)}% vs Baseline`;
+  };
 
   profCurveChartInstance = new Chart(canvas.getContext('2d'), {
     type: 'bar',
     data: {
-      labels: ['Simulated Revenue (₹)', 'Simulated Total Cost (₹)', 'Simulated Profit (₹)'],
-      datasets: [{
-        label: 'Portfolio Financials',
-        data: barValues,
-        backgroundColor: barColors.map(c => c.bg),
-        borderColor:     barColors.map(c => c.border),
-        borderWidth: 2,
-        borderRadius: 6,
-        borderSkipped: false,
-        barPercentage: 0.55,
-        categoryPercentage: 0.65
-      }]
+      labels: ['Baseline', 'Simulated'],
+      datasets: [
+        {
+          // BOTTOM SEGMENT — Cost (Muted Gold)
+          label: 'Cost (₹)',
+          data: [Math.round(totalBaselineCost), Math.round(totalSimCost)],
+          backgroundColor: 'rgba(197,160,89,0.88)',
+          borderColor: '#C5A059',
+          borderWidth: 1.5,
+          borderSkipped: false,
+          borderRadius: 0,
+          stack: 'financials',
+          order: 1
+        },
+        {
+          // TOP SEGMENT — Profit (Forest Green)
+          label: 'Profit (₹)',
+          data: [Math.round(totalBaselineProfit), Math.round(totalSimProfit)],
+          backgroundColor: 'rgba(46,125,94,0.88)',
+          borderColor: '#2E7D5E',
+          borderWidth: 1.5,
+          borderSkipped: false,
+          borderRadius: { topLeft:6, topRight:6, bottomLeft:0, bottomRight:0 },
+          stack: 'financials',
+          order: 2
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: {
+            ...textStyle, boxWidth:14, padding:16,
+            generateLabels: () => [
+              { text:'Cost (₹)',   fillStyle:'rgba(197,160,89,0.88)', strokeStyle:'#C5A059', lineWidth:1.5, hidden:false },
+              { text:'Profit (₹)', fillStyle:'rgba(46,125,94,0.88)',  strokeStyle:'#2E7D5E', lineWidth:1.5, hidden:false }
+            ]
+          }
+        },
         tooltip: {
           backgroundColor: '#1E1E1E',
           titleColor: '#C5A059',
           bodyColor: '#fff',
-          padding: 12,
-          titleFont: { family: 'Inter, "Helvetica Neue", sans-serif', size:11, weight:'700' },
-          bodyFont:  { family: 'Inter, "Helvetica Neue", sans-serif', size:12, weight:'600' },
+          padding: 13,
+          titleFont: { family:'Inter, "Helvetica Neue", sans-serif', size:11, weight:'700' },
+          bodyFont:  { family:'Inter, "Helvetica Neue", sans-serif', size:12, weight:'600' },
           callbacks: {
-            title: (items) => items[0].label.replace(' (₹)', ''),
+            title: (items) => items[0].label + ' Financials',
+            afterTitle: (items) => {
+              const i = items[0].dataIndex;
+              return '  Total Revenue: ' + fmtInr(revByBar[i]);
+            },
             label: (ctx) => {
-              const val = ctx.parsed.y;
-              const prefix = (ctx.dataIndex === 2 && val < 0) ? '  Loss: ' : '  Value: ';
-              return prefix + fmtInr(val);
+              const i       = ctx.dataIndex;
+              const val     = ctx.parsed.y;
+              const isCost  = ctx.datasetIndex === 0;
+              const pct     = isCost ? pctByCost[i] : pctByProfit[i];
+              const suffix  = val < 0 ? '  [LOSS]' : '';
+              const segName = isCost ? 'Cost   ' : 'Profit ';
+              const lines   = [`  ${segName}: ${fmtInr(val)}  (${pct}% of Revenue)${suffix}`];
+              // Simulated bar (index 1) gets an extra line showing % variance vs its Baseline counterpart.
+              if(i === 1){
+                const changePct = isCost ? costChangePct : profitChangePct;
+                lines.push(`  ${segName.trim()}: ${fmtChangePct(changePct)}`);
+              }
+              return lines;
             }
           }
         }
       },
       scales: {
         x: {
-          ticks: { ...textStyle, maxRotation: 0 },
-          grid: { display: false }
+          stacked: true,
+          ticks: { ...textStyle, maxRotation:0 },
+          grid: { display:false }
         },
         y: {
+          stacked: true,
           title: {
             display: true,
             text: 'Absolute Value (₹)',
             color: '#4A0E17',
-            font: { size: 11, weight: '700', family: 'Inter, "Helvetica Neue", sans-serif' }
+            font: { size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' }
           },
           ticks: { ...textStyle, callback: (v) => '₹' + Number(Math.abs(v)).toLocaleString('en-IN') },
           grid: { color:'rgba(74,14,23,0.05)', borderDash:[4,4] },
