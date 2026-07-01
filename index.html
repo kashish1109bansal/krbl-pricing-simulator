@@ -1292,17 +1292,30 @@ function applyVtmNullStateOverride(c){
 
 // ---------- STEP 3: OUTPUT TABLE ----------
 // ---------- PROFIT METRICS HELPER (display-only, derived purely from locked engine outputs) ----------
-// Baseline Profit  = Baseline Revenue  − [0.70 × (Baseline PTC  / 1.12) × Baseline Monthly Units]
-// Simulated Profit = Simulated Revenue − [0.70 × (Simulated PTC / 1.12) × Simulated Monthly Units]
-// Profit % Change  = ((Simulated Profit − Baseline Profit) / Baseline Profit) × 100, guarded against a
-// zero/near-zero Baseline Profit (returns 0 if Simulated Profit is also ~0, otherwise null → shown as "N/A").
-// Never writes to priceRows or the calc engine — reads only already-computed fields off `c`.
+// HOTFIX: Unit Cost (COGS per unit) is a structural/physical property of the SKU — it does NOT float
+// just because a hypothetical Simulated PTC is being tested. It is anchored to BASELINE PTC and reused
+// for BOTH the Baseline and Simulated cost lines below; only VOLUME (which responds to elasticity) is
+// allowed to differ between the two states.
+//   Baseline Unit Cost   = 0.70 × (Baseline PTC / 1.12)                          [fixed structural cost]
+//   Baseline Total Cost  = Baseline Monthly Volume  × Baseline Unit Cost
+//   Baseline Profit (₹)  = Baseline Monthly Revenue − Baseline Total Cost
+//   Simulated Total Cost = Simulated Monthly Volume × Baseline Unit Cost         [same fixed unit cost]
+//   Simulated Profit (₹) = Simulated Monthly Revenue − Simulated Total Cost
+//   Profit % Change      = ((Simulated Profit − Baseline Profit) / Baseline Profit) × 100
+// Why this matters: Revenue = Volume × PTC in both states. If Unit Cost were instead recomputed off the
+// SIMULATED PTC (0.70 × SimPTC/1.12), Total Cost would always equal exactly 0.625 × Revenue in every
+// state, forcing Profit to always equal exactly 0.375 × Revenue — which makes Profit % Lift mathematically
+// IDENTICAL to Revenue % Lift on every simulation, regardless of elasticity. Anchoring Unit Cost to Baseline
+// PTC removes that false identity: Cost now moves only with Volume, so Profit % Lift correctly diverges
+// from Revenue % Lift based on the SKU's true volume elasticity and margin structure.
+// Guarded against a zero/near-zero Baseline Profit (returns 0 if Simulated Profit is also ~0, otherwise
+// null → shown as "N/A"). Never writes to priceRows or the calc engine — reads only already-computed
+// fields off `c`.
 function computeProfitMetrics(c){
   const r = c.row;
-  const baselineUnitCost  = 0.70 * (r.ptc / 1.12);
-  const baselineProfit    = c.revenueCurrent   - (c.monthlyCurrent   * baselineUnitCost);
-  const simulatedUnitCost = 0.70 * (c.simPtc / 1.12);
-  const simulatedProfit   = c.revenueSimulated - (c.monthlySimulated * simulatedUnitCost);
+  const baselineUnitCost = 0.70 * (r.ptc / 1.12); // fixed structural COGS/unit — anchored to Baseline PTC only
+  const baselineProfit   = c.revenueCurrent   - (c.monthlyCurrent   * baselineUnitCost);
+  const simulatedProfit  = c.revenueSimulated - (c.monthlySimulated * baselineUnitCost); // same unit cost, volume-driven only
   let profitChangePct;
   if(Math.abs(baselineProfit) < 1e-9){
     profitChangePct = Math.abs(simulatedProfit) < 1e-9 ? 0 : null;
