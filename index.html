@@ -439,6 +439,23 @@
   .compare-bar-track .compare-bar-tag{ color:#1f1f26; }
   .compare-bar-track:has(.compare-bar-fill.base) .compare-bar-tag{ color:#fff; text-shadow:none; }
   .compare-bar-tag{ position:absolute; top:0; left:12px; height:100%; display:flex; align-items:center; font-size:11.5px; font-weight:800; white-space:nowrap; letter-spacing:0.01em; }
+
+  /* ================= OUTPUT DASHBOARD SUB-TABS ================= */
+  .output-sub-tabs{
+    display:flex; gap:0; border-bottom:2px solid var(--border);
+    margin-top:14px; overflow:visible !important; flex-wrap:nowrap;
+  }
+  .output-sub-tab{
+    background:none; border:none; border-bottom:2.5px solid transparent;
+    margin-bottom:-2px; padding:11px 24px; font-family:inherit;
+    font-size:13px; font-weight:700; color:var(--muted); cursor:pointer;
+    transition:color .18s ease, border-color .18s ease;
+    letter-spacing:0.02em; white-space:nowrap;
+  }
+  .output-sub-tab:hover{ color:var(--maroon); }
+  .output-sub-tab.active{ color:var(--maroon); border-bottom-color:var(--maroon); }
+  .output-sub-panel{ display:none !important; overflow:visible !important; }
+  .output-sub-panel.active{ display:block !important; overflow:visible !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -569,14 +586,16 @@
         </div>
       </div>
 
-      <!-- STEP 3: OUTPUT DASHBOARD -->
+      <!-- STEP 3: OUTPUT DASHBOARD (2-tab: Simulation Table | EDA) -->
       <div class="panel" id="panel-output">
-        <div class="glass-card">
+
+        <!-- Shared header card: period banner, toolbar, month+SKU filters, sub-tab nav -->
+        <div class="glass-card" style="padding-bottom:0; overflow:visible !important;">
           <div class="period-banner">
             <div class="period-chip baseline"><span class="dot"></span><span class="lbl">Baseline Period:</span> <b id="periodBaselineLabel3">May 2026</b> <span class="lbl">(Historical Actuals)</span></div>
           </div>
           <div class="toolbar">
-            <h3 class="section-title" style="margin:0;">Baseline Inputs &amp; Simulation Outputs</h3>
+            <h3 class="section-title" style="margin:0;">Output Dashboard</h3>
             <div class="toolbar-actions">
               <button class="btn btn-outline" onclick="downloadExcel()">&#11015; Download Excel</button>
               <button class="btn btn-ghost" onclick="goToStep('simulator')">&#8592; Back to Simulator</button>
@@ -597,142 +616,160 @@
               </div>
             </div>
           </div>
-          <div class="kpi-hero-row" id="kpiHeroRow">
-            <div class="kpi-tile kpi-tile-current">
-              <div class="kpi-tile-label">&#127942; MONTHLY PORTFOLIO REVENUE</div>
-              <div class="kpi-tile-value" id="kpiCurrentValue">&#8377;0</div>
-              <div class="kpi-tile-sub" id="kpiCurrentSub">vs &#8377;0 current baseline</div>
-              <span class="kpi-badge" id="kpiRevVarianceBadge">+0.00%</span>
-            </div>
-            <div class="kpi-tile kpi-tile-simulated">
-              <div class="kpi-tile-label">&#10024; MONTHLY REVENUE LIFT</div>
-              <div class="kpi-tile-value" id="kpiSimulatedValue">&#8377;0</div>
-              <div class="kpi-tile-sub" id="kpiDeltaContext">Simulated &#8377;0 &#8722; Current &#8377;0</div>
-            </div>
-            <div class="kpi-tile kpi-tile-delta" id="kpiVolumeCard">
-              <div class="kpi-tile-label">&#9889; MONTHLY PORTFOLIO VOLUME MOVEMENT</div>
-              <div class="kpi-tile-value" id="kpiDeltaValue">+0 units</div>
-              <div class="kpi-tile-sub" id="kpiVolumeSub">Simulated 0 units &#8722; Current 0 units</div>
-              <span class="kpi-badge" id="kpiVolVarianceBadge">+0.00%</span>
-            </div>
-          </div>
-          <div class="scroll-x">
-            <table>
-              <thead>
-                <tr>
-                  <th colspan="10" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
-                  <th colspan="12" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
-                </tr>
-                <tr>
-                  <th>SKU</th>
-                  <th>Period</th>
-                  <th class="num">Current PTC (&#8377;)</th>
-                  <th class="num">PTC Change (%)</th>
-                  <th class="num">Simulated PTC (&#8377;)</th>
-                  <th class="num">Current OSA (%)</th>
-                  <th class="num">Simulated OSA (%)</th>
-                  <th class="num">Marketing Budget (&#8377;)</th>
-                  <th class="num">Budget Change (%)</th>
-                  <th class="num">Simulated Budget (&#8377;)</th>
-                  <th>Scenario</th>
-                  <th class="num">Avg_Daily_Volume (Current)</th>
-                  <th class="num">Avg_Daily_Volume (Simulated)</th>
-                  <th class="num">Volume lost &Delta;</th>
-                  <th class="num">VTM Gain</th>
-                  <th class="num">Final Avg_Daily_Volume (Simulated)</th>
-                  <th class="num">Baseline Monthly Volume</th>
-                  <th class="num">Simulated Monthly Volume</th>
-                  <th class="num">Volume &Delta;%</th>
-                  <th class="num">Baseline Monthly Revenue (&#8377;)</th>
-                  <th class="num">Simulated Monthly Revenue (&#8377;)</th>
-                  <th class="num">Revenue &Delta; %</th>
-                </tr>
-              </thead>
-              <tbody id="outputTableBody"></tbody>
-            </table>
+          <!-- Sub-tab navigation strip -->
+          <div class="output-sub-tabs">
+            <button class="output-sub-tab active" id="outTabTable" onclick="switchOutputTab('table')">&#128202; Simulation Table</button>
+            <button class="output-sub-tab" id="outTabEda" onclick="switchOutputTab('eda')">&#128200; EDA</button>
           </div>
         </div>
 
-        <!-- AI BUSINESS INSIGHTS & STRATEGY ENGINE — auto-generated executive bullets, regenerated every
-             time Run Simulation fires (and every time the Output Dashboard table re-renders), reading the
-             current run's Volume Δ% / Revenue Δ% / VTM Gain to explain elasticity and cross-cannibalization
-             performance in plain executive language. Purely derived from computeAll() output — no separate
-             state of its own beyond the rendered HTML below. -->
-        <div class="glass-card ai-suite-card">
-          <div class="ai-suite-head">
-            <h3 class="ai-suite-title">&#10024; KRBL Portfolio Intelligence</h3>
-          </div>
-          <div id="aiInsightsBody" class="ai-insights-body"></div>
-        </div>
-
-        <!-- TOP 5 SKUs — REVENUE & VOLUME LIFT DRIVERS — split into two independent side-by-side Chart.js
-             instances (visual-only, read-only over `computed`). Positioned directly below the AI Insights
-             suite above and strictly above the Baseline vs Simulated Comparison container below. Both
-             canvases are kept in sync with the global SKU Filter selection — see renderTop5SkuChart() /
-             toggleSkuVisibility(), which calls .destroy() on both chart instances before every re-render. -->
-        <div class="glass-card" style="padding:16px 20px 10px; margin-top:16px;">
-          <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Monthly Revenue &amp; Volume Lift</div>
-          <div class="charts-grid" style="display:flex; gap:16px; flex-wrap:wrap;">
-            <div style="flex:1 1 320px; min-width:280px;">
-              <div style="font-size:12px; font-weight:700; color:#4A0E17; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY REVENUE LIFT</div>
-              <div style="position:relative; height:280px;">
-                <canvas id="revenueLiftChart" style="max-height: 280px; width: 100%;"></canvas>
+        <!-- SUB-PANEL 1: SIMULATION TABLE — KPI hero tiles + full output data grid -->
+        <div id="output-sub-table" class="output-sub-panel active">
+          <div class="glass-card">
+            <div class="kpi-hero-row" id="kpiHeroRow">
+              <div class="kpi-tile kpi-tile-current">
+                <div class="kpi-tile-label">&#127942; MONTHLY PORTFOLIO REVENUE</div>
+                <div class="kpi-tile-value" id="kpiCurrentValue">&#8377;0</div>
+                <div class="kpi-tile-sub" id="kpiCurrentSub">vs &#8377;0 current baseline</div>
+                <span class="kpi-badge" id="kpiRevVarianceBadge">+0.00%</span>
+              </div>
+              <div class="kpi-tile kpi-tile-simulated">
+                <div class="kpi-tile-label">&#10024; MONTHLY REVENUE LIFT</div>
+                <div class="kpi-tile-value" id="kpiSimulatedValue">&#8377;0</div>
+                <div class="kpi-tile-sub" id="kpiDeltaContext">Simulated &#8377;0 &#8722; Current &#8377;0</div>
+              </div>
+              <div class="kpi-tile kpi-tile-delta" id="kpiVolumeCard">
+                <div class="kpi-tile-label">&#9889; MONTHLY PORTFOLIO VOLUME MOVEMENT</div>
+                <div class="kpi-tile-value" id="kpiDeltaValue">+0 units</div>
+                <div class="kpi-tile-sub" id="kpiVolumeSub">Simulated 0 units &#8722; Current 0 units</div>
+                <span class="kpi-badge" id="kpiVolVarianceBadge">+0.00%</span>
               </div>
             </div>
-            <div style="flex:1 1 320px; min-width:280px;">
-              <div style="font-size:12px; font-weight:700; color:#9C7B2E; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY VOLUME LIFT (UNITS)</div>
-              <div style="position:relative; height:280px;">
-                <canvas id="volumeLiftChart" style="max-height: 280px; width: 100%;"></canvas>
-              </div>
+            <div class="scroll-x">
+              <table>
+                <thead>
+                  <tr>
+                    <th colspan="10" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
+                    <th colspan="12" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
+                  </tr>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Period</th>
+                    <th class="num">Current PTC (&#8377;)</th>
+                    <th class="num">PTC Change (%)</th>
+                    <th class="num">Simulated PTC (&#8377;)</th>
+                    <th class="num">Current OSA (%)</th>
+                    <th class="num">Simulated OSA (%)</th>
+                    <th class="num">Marketing Budget (&#8377;)</th>
+                    <th class="num">Budget Change (%)</th>
+                    <th class="num">Simulated Budget (&#8377;)</th>
+                    <th>Scenario</th>
+                    <th class="num">Avg_Daily_Volume (Current)</th>
+                    <th class="num">Avg_Daily_Volume (Simulated)</th>
+                    <th class="num">Volume lost &#916;</th>
+                    <th class="num">VTM Gain</th>
+                    <th class="num">Final Avg_Daily_Volume (Simulated)</th>
+                    <th class="num">Baseline Monthly Volume</th>
+                    <th class="num">Simulated Monthly Volume</th>
+                    <th class="num">Volume &#916;%</th>
+                    <th class="num">Baseline Monthly Revenue (&#8377;)</th>
+                    <th class="num">Simulated Monthly Revenue (&#8377;)</th>
+                    <th class="num">Revenue &#916; %</th>
+                  </tr>
+                </thead>
+                <tbody id="outputTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- AI BUSINESS INSIGHTS & STRATEGY ENGINE -->
+          <div class="glass-card ai-suite-card">
+            <div class="ai-suite-head">
+              <h3 class="ai-suite-title">&#10024; KRBL Portfolio Intelligence</h3>
+            </div>
+            <div id="aiInsightsBody" class="ai-insights-body"></div>
+          </div>
+
+          <!-- SAVE SCENARIO -->
+          <div class="glass-card">
+            <h3 class="section-title">Save This Scenario</h3>
+            <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Name this scenario and push it to the Scenario Library so it can be revisited later.</p>
+            <div class="save-row">
+              <input type="text" id="scenarioNameInput" placeholder="e.g. May 2026 &mdash; 5% PTC cut + OSA recovery">
+              <button class="btn btn-primary" onclick="saveScenario()">&#128190; Save Scenario</button>
+              <span class="save-confirm" id="saveConfirm">&#10003; Saved to Scenario Library</span>
             </div>
           </div>
         </div>
 
-        <!-- ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, now rendered as real Chart.js bar
-             instances (visual-only, read-only over `computed`), with floating Delta% callouts retained
-             per card. Driven by the same "View Comparison For" dropdown (Overall Portfolio vs individual
-             SKU) — see onComparisonViewChange() / renderComparisonCharts() below. -->
-        <div class="glass-card compare-card">
-          <h3 class="section-title" style="margin-bottom:4px;">Baseline vs Simulated Comparison</h3>
-          <div class="compare-legend">
-            <span class="legend-item"><span class="legend-swatch base"></span> Baseline</span>
-            <span class="legend-item"><span class="legend-swatch sim"></span> Simulated</span>
-          </div>
-          <div class="field comparison-view-field">
-            <label>View Comparison For:</label>
-            <select class="comparison-view-select" onchange="onComparisonViewChange(this.value)"></select>
-          </div>
-          <div class="charts-grid compare-grid">
-            <div class="chart-panel compare-panel">
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                <h4 style="margin:0 0 0;">Monthly Portfolio Baseline vs Simulated Units</h4>
-                <span class="kpi-badge" id="compareUnitsDeltaBadge">+0.00%</span>
+        <!-- SUB-PANEL 2: EDA — all Chart.js visualisations -->
+        <div id="output-sub-eda" class="output-sub-panel">
+
+          <!-- TOP 5 SKUs — REVENUE & VOLUME LIFT DRIVERS -->
+          <div class="glass-card" style="padding:16px 20px 10px;">
+            <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Monthly Revenue &amp; Volume Lift</div>
+            <div class="charts-grid" style="display:flex; gap:16px; flex-wrap:wrap;">
+              <div style="flex:1 1 320px; min-width:280px;">
+                <div style="font-size:12px; font-weight:700; color:#4A0E17; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY REVENUE LIFT</div>
+                <div style="position:relative; height:280px;">
+                  <canvas id="revenueLiftChart" style="max-height: 280px; width: 100%;"></canvas>
+                </div>
               </div>
-              <div style="position:relative; height:240px; margin-top:12px;">
-                <canvas id="compareUnitsChart"></canvas>
-              </div>
-            </div>
-            <div class="chart-panel compare-panel">
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                <h4 style="margin:0 0 0;">Monthly Portfolio Baseline vs Simulated Revenue</h4>
-                <span class="kpi-badge" id="compareRevenueDeltaBadge">+0.00%</span>
-              </div>
-              <div style="position:relative; height:240px; margin-top:12px;">
-                <canvas id="compareRevenueChart"></canvas>
+              <div style="flex:1 1 320px; min-width:280px;">
+                <div style="font-size:12px; font-weight:700; color:#9C7B2E; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY VOLUME LIFT (UNITS)</div>
+                <div style="position:relative; height:280px;">
+                  <canvas id="volumeLiftChart" style="max-height: 280px; width: 100%;"></canvas>
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- BASELINE vs SIMULATED COMPARISON CHARTS -->
+          <div class="glass-card compare-card">
+            <h3 class="section-title" style="margin-bottom:4px;">Baseline vs Simulated Comparison</h3>
+            <div class="compare-legend">
+              <span class="legend-item"><span class="legend-swatch base"></span> Baseline</span>
+              <span class="legend-item"><span class="legend-swatch sim"></span> Simulated</span>
+            </div>
+            <div class="field comparison-view-field">
+              <label>View Comparison For:</label>
+              <select class="comparison-view-select" onchange="onComparisonViewChange(this.value)"></select>
+            </div>
+            <div class="charts-grid compare-grid">
+              <div class="chart-panel compare-panel">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                  <h4 style="margin:0 0 0;">Monthly Portfolio Baseline vs Simulated Units</h4>
+                  <span class="kpi-badge" id="compareUnitsDeltaBadge">+0.00%</span>
+                </div>
+                <div style="position:relative; height:240px; margin-top:12px;">
+                  <canvas id="compareUnitsChart"></canvas>
+                </div>
+              </div>
+              <div class="chart-panel compare-panel">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                  <h4 style="margin:0 0 0;">Monthly Portfolio Baseline vs Simulated Revenue</h4>
+                  <span class="kpi-badge" id="compareRevenueDeltaBadge">+0.00%</span>
+                </div>
+                <div style="position:relative; height:240px; margin-top:12px;">
+                  <canvas id="compareRevenueChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SIMULATED FINANCIALS BREAKDOWN — 3-bar absolute rupee chart at current simulation state -->
+          <div class="glass-card" style="padding:16px 20px 14px;">
+            <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128200; SIMULATED FINANCIALS BREAKDOWN</div>
+            <div style="font-size:11px; color:var(--muted); margin-bottom:12px; line-height:1.55;">
+              Absolute &#8377; portfolio totals at the <strong>current simulation state</strong>. Cost&nbsp;=&nbsp;0.70&nbsp;&times;&nbsp;(Baseline&nbsp;PTC&nbsp;/&nbsp;1.12)&nbsp;&times;&nbsp;Simulated&nbsp;Units. Profit&nbsp;=&nbsp;Revenue&nbsp;&minus;&nbsp;Cost.
+            </div>
+            <div style="position:relative; height:340px;">
+              <canvas id="profitabilityCurveChart"></canvas>
+            </div>
+          </div>
+
         </div>
 
-        <div class="glass-card">
-          <h3 class="section-title">Save This Scenario</h3>
-          <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Name this scenario and push it to the Scenario Library so it can be revisited later.</p>
-          <div class="save-row">
-            <input type="text" id="scenarioNameInput" placeholder="e.g. May 2026 &mdash; 5% PTC cut + OSA recovery">
-            <button class="btn btn-primary" onclick="saveScenario()">&#128190; Save Scenario</button>
-            <span class="save-confirm" id="saveConfirm">&#10003; Saved to Scenario Library</span>
-          </div>
-        </div>
       </div>
 
     </div>
@@ -914,7 +951,7 @@ initPriceRows(selectedMonth);
 // lift charts + the two Baseline-vs-Simulated comparison charts) are force-resized so their
 // canvases recalculate and stretch cleanly across the newly available viewport width.
 function resizeAllDashboardCharts(){
-  [revenueLiftChartInstance, volumeLiftChartInstance, compareUnitsChartInstance, compareRevenueChartInstance]
+  [revenueLiftChartInstance, volumeLiftChartInstance, compareUnitsChartInstance, compareRevenueChartInstance, profCurveChartInstance]
     .forEach(inst => { if(inst && typeof inst.resize === 'function'){ inst.resize(); } });
   window.dispatchEvent(new Event('resize'));
 }
@@ -936,7 +973,7 @@ function goToStep(step){
   });
   if(step==='library') renderLibrary();
   if(step==='simulator') renderInputsTable();
-  if(step==='output'){ renderOutputTable(); }
+  if(step==='output') renderOutputTable();
   updatePeriodLabels();
 }
 
@@ -951,6 +988,19 @@ function updatePeriodLabels(){
 function runSimulation(){
   document.getElementById('navOutput').disabled = false;
   goToStep('output');
+}
+// ---------- OUTPUT DASHBOARD SUB-TAB SWITCHER ----------
+// Toggles between the "Simulation Table" sub-panel and the "EDA" sub-panel that live inside
+// panel-output. Chart renders are deferred: calling switchOutputTab('eda') triggers renderEdaPanel()
+// so charts build only on first EDA visit (or refresh), never wasting CPU on the Table view.
+function switchOutputTab(tab){
+  ['table','eda'].forEach(t => {
+    const panel = document.getElementById('output-sub-'+t);
+    const btn   = document.getElementById('outTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(panel) panel.classList.toggle('active', t===tab);
+    if(btn)   btn.classList.toggle('active', t===tab);
+  });
+  if(tab==='eda') renderEdaPanel();
 }
 
 // ---------- MONTH DROPDOWN ----------
@@ -1257,11 +1307,11 @@ function renderOutputTable(){
     </tr>`;
   }).join('');
   lastVisibleComputed = visibleComputed;
-  populateComparisonDropdown();
-  renderComparisonCharts(visibleComputed);
   renderAiInsights(computed); // always reasons over the FULL 6-SKU set so cross-SKU VTM commentary stays correct
-  renderKpiTiles(computed); // purely additive, read-only Executive KPI Hero Tiles — does not touch calc engine
-  renderTop5SkuChart(visibleComputed); // purely additive, read-only Top 5 SKU chart — bound to the active SKU Filter selection, never the full unfiltered set
+  renderKpiTiles(computed);   // purely additive, read-only Executive KPI Hero Tiles — does not touch calc engine
+  // Chart visualisations live in the EDA tab — re-render them only if that panel is currently active
+  // (avoids redundant work when user is on the Output Dashboard), otherwise they refresh on EDA tab open.
+  const edaSubPanel = document.getElementById('output-sub-eda'); if(edaSubPanel && edaSubPanel.classList.contains('active')) renderEdaPanel();
 }
 
 // ---------- EXECUTIVE KPI HERO CARDS (visual-only, read-only over `computed`) ----------
@@ -1313,6 +1363,135 @@ function renderKpiTiles(computed){
   if(elVolumeCard){
     elVolumeCard.classList.toggle('kpi-tile-delta-negative', volDeltaPct < 0);
   }
+}
+
+// ---------- EDA PANEL RENDERER ----------
+// Single entry-point called by goToStep('eda'). Re-computes the full 6-SKU output (with the null-state
+// override applied), refreshes lastVisibleComputed, populates the comparison dropdown, then triggers all
+// three EDA chart renders. Mirrors the data pipeline used by renderOutputTable() but scoped to visuals only.
+function renderEdaPanel(){
+  const computed = computeAll().map(applyVtmNullStateOverride);
+  const visibleComputed = computed.filter(c => visibleSkus.has(c.row.name));
+  lastVisibleComputed = visibleComputed;
+  populateComparisonDropdown();
+  renderTop5SkuChart(visibleComputed);
+  renderComparisonCharts(visibleComputed);
+  renderProfitabilityCurveChart();
+}
+
+// ---------- SIMULATED FINANCIALS BREAKDOWN BAR CHART (visual-only, pure presentation layer) ----------
+// Reads CURRENT simulation state (no price sweep). Computes three portfolio-level absolute ₹ totals
+// from the already-computed, VTM-adjusted results:
+//   Total Simulated Revenue  = Σ (monthlySimulated × simPtc)          from computeAll()
+//   Total Simulated Cost     = Σ (monthlySimulated × fixedUnitCost)
+//                              where fixedUnitCost = 0.70 × (Baseline PTC / 1.12) — anchored to baseline
+//   Total Simulated Profit   = Total Simulated Revenue − Total Simulated Cost
+// Renders as a clean 3-bar Chart.js bar chart. Pure presentation layer — never writes to
+// priceRows or the calculation engine.
+let profCurveChartInstance = null;
+let profCurveRetryCount = 0;
+function renderProfitabilityCurveChart(){
+  const canvas = document.getElementById('profitabilityCurveChart');
+  if(!canvas) return;
+  if(typeof Chart === 'undefined'){
+    if(profCurveRetryCount < 40){ profCurveRetryCount++; setTimeout(renderProfitabilityCurveChart, 250); }
+    else { console.warn('Financials Bar Chart: Chart.js failed to load.'); }
+    return;
+  }
+  profCurveRetryCount = 0;
+  if(profCurveChartInstance){ profCurveChartInstance.destroy(); profCurveChartInstance = null; }
+
+  // Derive portfolio totals from current simulation state via the locked calc engine.
+  // applyVtmNullStateOverride snaps floating-point zero noise to strict 0 for display consistency.
+  const computed = computeAll().map(applyVtmNullStateOverride);
+
+  let totalSimRevenue = 0;
+  let totalSimCost    = 0;
+
+  computed.forEach(c => {
+    const r             = c.row;
+    // Fixed unit cost anchored to BASELINE PTC — never recalculated from simPtc.
+    //   Baseline PTR    = r.ptc / 1.12
+    //   Fixed Unit Cost = 0.70 × Baseline PTR
+    const fixedUnitCost = 0.70 * (r.ptc / 1.12);
+    totalSimRevenue    += c.revenueSimulated;           // monthlySimulated × simPtc (from computeAll)
+    totalSimCost       += c.monthlySimulated * fixedUnitCost;
+  });
+
+  const totalSimProfit = totalSimRevenue - totalSimCost;
+
+  const barValues = [
+    Math.round(totalSimRevenue),
+    Math.round(totalSimCost),
+    Math.round(totalSimProfit)
+  ];
+
+  const barColors = [
+    { bg: 'rgba(74,14,23,0.82)',   border: '#4A0E17' },   // Deep Wine Maroon — Revenue
+    { bg: 'rgba(197,160,89,0.82)', border: '#C5A059' },   // Muted Gold — Cost
+    { bg: 'rgba(46,125,94,0.82)',  border: '#2E7D5E' }    // Forest Green — Profit
+  ];
+
+  const textStyle = { color:'#555555', font:{ size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' } };
+  const fmtInr = (v) => '₹' + Math.abs(Math.round(v)).toLocaleString('en-IN');
+
+  profCurveChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Simulated Revenue (₹)', 'Simulated Total Cost (₹)', 'Simulated Profit (₹)'],
+      datasets: [{
+        label: 'Portfolio Financials',
+        data: barValues,
+        backgroundColor: barColors.map(c => c.bg),
+        borderColor:     barColors.map(c => c.border),
+        borderWidth: 2,
+        borderRadius: 6,
+        borderSkipped: false,
+        barPercentage: 0.55,
+        categoryPercentage: 0.65
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1E1E1E',
+          titleColor: '#C5A059',
+          bodyColor: '#fff',
+          padding: 12,
+          titleFont: { family: 'Inter, "Helvetica Neue", sans-serif', size:11, weight:'700' },
+          bodyFont:  { family: 'Inter, "Helvetica Neue", sans-serif', size:12, weight:'600' },
+          callbacks: {
+            title: (items) => items[0].label.replace(' (₹)', ''),
+            label: (ctx) => {
+              const val = ctx.parsed.y;
+              const prefix = (ctx.dataIndex === 2 && val < 0) ? '  Loss: ' : '  Value: ';
+              return prefix + fmtInr(val);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { ...textStyle, maxRotation: 0 },
+          grid: { display: false }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Absolute Value (₹)',
+            color: '#4A0E17',
+            font: { size: 11, weight: '700', family: 'Inter, "Helvetica Neue", sans-serif' }
+          },
+          ticks: { ...textStyle, callback: (v) => '₹' + Number(Math.abs(v)).toLocaleString('en-IN') },
+          grid: { color:'rgba(74,14,23,0.05)', borderDash:[4,4] },
+          beginAtZero: true
+        }
+      }
+    }
+  });
 }
 
 // ---------- TOP 5 SKUs REVENUE & VOLUME LIFT DRIVERS CHART (visual-only, read-only over `computed`) ----------
