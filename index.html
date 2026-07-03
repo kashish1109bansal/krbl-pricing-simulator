@@ -444,22 +444,10 @@
   .compare-bar-track:has(.compare-bar-fill.base) .compare-bar-tag{ color:#fff; text-shadow:none; }
   .compare-bar-tag{ position:absolute; top:0; left:12px; height:100%; display:flex; align-items:center; font-size:11.5px; font-weight:800; white-space:nowrap; letter-spacing:0.01em; }
 
-  /* ================= OUTPUT DASHBOARD SUB-TABS ================= */
-  .output-sub-tabs{
-    display:flex; gap:0; border-bottom:2px solid var(--border);
-    margin-top:14px; overflow:visible !important; flex-wrap:nowrap;
-  }
-  .output-sub-tab{
-    background:none; border:none; border-bottom:2.5px solid transparent;
-    margin-bottom:-2px; padding:11px 24px; font-family:inherit;
-    font-size:13px; font-weight:700; color:var(--muted); cursor:pointer;
-    transition:color .18s ease, border-color .18s ease;
-    letter-spacing:0.02em; white-space:nowrap;
-  }
-  .output-sub-tab:hover{ color:var(--maroon); }
-  .output-sub-tab.active{ color:var(--maroon); border-bottom-color:var(--maroon); }
-  .output-sub-panel{ display:none !important; overflow:visible !important; }
-  .output-sub-panel.active{ display:block !important; overflow:visible !important; }
+  /* ================= OUTPUT DASHBOARD SECTIONS (formerly sub-tabs) =================
+     Tabs were removed per stakeholder request — Simulation Table and EDA content now render
+     simultaneously, stacked vertically. These sections are always visible (no display:none). */
+  .output-sub-panel{ display:block; overflow:visible !important; margin-top:14px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -620,15 +608,11 @@
               </div>
             </div>
           </div>
-          <!-- Sub-tab navigation strip -->
-          <div class="output-sub-tabs">
-            <button class="output-sub-tab active" id="outTabTable" onclick="switchOutputTab('table')">&#128202; Simulation Table</button>
-            <button class="output-sub-tab" id="outTabEda" onclick="switchOutputTab('eda')">&#128200; EDA</button>
-          </div>
         </div>
 
-        <!-- SUB-PANEL 1: SIMULATION TABLE — KPI hero tiles + full output data grid -->
-        <div id="output-sub-table" class="output-sub-panel active">
+        <!-- SIMULATION TABLE SECTION — KPI hero tiles + full output data grid (formerly a tabbed sub-panel;
+             now displays unconditionally, stacked above the EDA section below). -->
+        <div id="output-sub-table" class="output-sub-panel">
           <div class="glass-card">
             <div class="kpi-hero-row" id="kpiHeroRow">
               <div class="kpi-tile kpi-tile-current">
@@ -703,19 +687,10 @@
             <div id="aiInsightsBody" class="ai-insights-body"></div>
           </div>
 
-          <!-- SAVE SCENARIO -->
-          <div class="glass-card">
-            <h3 class="section-title">Save This Scenario</h3>
-            <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Name this scenario and push it to the Scenario Library so it can be revisited later.</p>
-            <div class="save-row">
-              <input type="text" id="scenarioNameInput" placeholder="e.g. May 2026 &mdash; 5% PTC cut + OSA recovery">
-              <button class="btn btn-primary" onclick="saveScenario()">&#128190; Save Scenario</button>
-              <span class="save-confirm" id="saveConfirm">&#10003; Saved to Scenario Library</span>
-            </div>
-          </div>
         </div>
 
-        <!-- SUB-PANEL 2: EDA — all Chart.js visualisations -->
+        <!-- EDA SECTION — all Chart.js visualisations (formerly a tabbed sub-panel; now stacked
+             directly below the Simulation Table section above, always visible). -->
         <div id="output-sub-eda" class="output-sub-panel">
 
           <!-- TOP 5 SKUs — REVENUE & VOLUME LIFT DRIVERS -->
@@ -787,6 +762,18 @@
             </div>
           </div>
 
+        </div>
+
+        <!-- SAVE SCENARIO — moved to the very bottom of the Output Dashboard, after all charts,
+             graphs, and analysis sections above, per stakeholder layout request. -->
+        <div class="glass-card">
+          <h3 class="section-title">Save This Scenario</h3>
+          <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Name this scenario and push it to the Scenario Library so it can be revisited later.</p>
+          <div class="save-row">
+            <input type="text" id="scenarioNameInput" placeholder="e.g. May 2026 &mdash; 5% PTC cut + OSA recovery">
+            <button class="btn btn-primary" onclick="saveScenario()">&#128190; Save Scenario</button>
+            <span class="save-confirm" id="saveConfirm">&#10003; Saved to Scenario Library</span>
+          </div>
         </div>
 
       </div>
@@ -1008,20 +995,6 @@ function runSimulation(){
   document.getElementById('navOutput').disabled = false;
   goToStep('output');
 }
-// ---------- OUTPUT DASHBOARD SUB-TAB SWITCHER ----------
-// Toggles between the "Simulation Table" sub-panel and the "EDA" sub-panel that live inside
-// panel-output. Chart renders are deferred: calling switchOutputTab('eda') triggers renderEdaPanel()
-// so charts build only on first EDA visit (or refresh), never wasting CPU on the Table view.
-function switchOutputTab(tab){
-  ['table','eda'].forEach(t => {
-    const panel = document.getElementById('output-sub-'+t);
-    const btn   = document.getElementById('outTab'+t.charAt(0).toUpperCase()+t.slice(1));
-    if(panel) panel.classList.toggle('active', t===tab);
-    if(btn)   btn.classList.toggle('active', t===tab);
-  });
-  if(tab==='eda') renderEdaPanel();
-}
-
 // ---------- MONTH DROPDOWN ----------
 // Baseline Month is now a clean native <select> (one per panel — Pricing Simulator & Output Dashboard),
 // matched by the shared .month-select class instead of a single unique id, since both panels need their
@@ -1368,9 +1341,9 @@ function renderOutputTable(){
   lastVisibleComputed = visibleComputed;
   renderAiInsights(computed); // always reasons over the FULL 6-SKU set so cross-SKU VTM commentary stays correct
   renderKpiTiles(computed);   // purely additive, read-only Executive KPI Hero Tiles — does not touch calc engine
-  // Chart visualisations live in the EDA tab — re-render them only if that panel is currently active
-  // (avoids redundant work when user is on the Output Dashboard), otherwise they refresh on EDA tab open.
-  const edaSubPanel = document.getElementById('output-sub-eda'); if(edaSubPanel && edaSubPanel.classList.contains('active')) renderEdaPanel();
+  // EDA charts are no longer behind a separate tab — they're stacked directly below the table on
+  // this same page, so they must always re-render alongside it every time the output is refreshed.
+  renderEdaPanel();
 }
 
 // ---------- EXECUTIVE KPI HERO CARDS (visual-only, read-only over `computed`) ----------
