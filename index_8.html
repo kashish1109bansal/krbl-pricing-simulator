@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KRBL Limited | Pricing Simulator</title>
+<style>
+  :root{
+    /* ===== ENTERPRISE SAAS LUXURY PALETTE (visual-only re-theme — zero impact on calc engine) ===== */
+    --maroon:#4A0E17;
+    --maroon-dark:#380A11;
+    --maroon-light:#6e1722;
+    --maroon-tint: rgba(74,14,23,0.05);
+    --maroon-tint-2: rgba(74,14,23,0.10);
+    --gold:#C5A059;
+    --gold-soft: rgba(197,160,89,0.16);
+    --cream:#F9F8F6;
+    --ink:#2A1B1E;
+    --muted:#8d7f78;
+    --border: rgba(197,160,89,0.15);
+    --green:#0E7A4E;
+    --red:#C75A45;
+    --glass: rgba(255,255,255,0.70);
+    --glass-strong: rgba(255,255,255,0.88);
+    --shadow-sm: 0 4px 14px rgba(74,14,23,0.05);
+    --shadow-md: 0 10px 30px rgba(74,14,23,0.04);
+    --shadow-lg: 0 24px 60px rgba(74,14,23,0.12);
+    --sidebar-w: 264px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family: 'Inter','Segoe UI',Roboto,-apple-system,BlinkMacSystemFont,sans-serif;
+    color: var(--ink);
+    background: var(--cream);
+    min-height:100vh;
+  }
+
+  /* ================= LOGIN SCREEN ================= */
+  .login-screen{
+    position:fixed; inset:0; z-index:999;
+    display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(1100px 700px at 8% 0%, rgba(212,175,55,0.16), transparent 55%),
+      radial-gradient(1000px 800px at 100% 100%, rgba(122,6,36,0.20), transparent 55%),
+      linear-gradient(160deg, var(--maroon-dark) 0%, var(--maroon) 55%, #4a0014 100%);
+    transition: opacity .35s ease, visibility .35s ease;
+  }
+  .login-screen.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  .login-card{
+    width:380px; max-width:92vw; background: rgba(255,255,255,0.97); border-radius:20px;
+    padding:38px 34px 30px; box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+    border:1px solid rgba(212,175,55,0.35); position:relative; overflow:hidden;
+  }
+  .login-card::before{
+    content:''; position:absolute; top:0; left:0; right:0; height:5px;
+    background:linear-gradient(90deg,var(--gold),var(--maroon),var(--gold));
+  }
+  .login-brand{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:22px; }
+  .login-mark{ width:auto; height:58px; border-radius:14px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow: var(--shadow-md); padding:6px 10px; overflow:hidden; }
+  .login-mark .logo-img{ height:100%; width:auto; max-width:160px; object-fit:contain; display:block; border-radius:8px; }
+  .login-mark .logo-text{ color:#fff; font-weight:800; font-size:15px; letter-spacing:0.02em; }
+  .login-brand h2{ margin:0; font-size:17px; color:var(--maroon-dark); font-weight:800; text-align:center; }
+  .login-brand p{ margin:0; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; font-weight:700; text-align:center; }
+  .login-field{ margin-bottom:16px; }
+  .login-field label{ display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:7px; }
+  .login-field input{ width:100%; font-family:inherit; font-size:13.5px; padding:12px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; color:var(--ink); }
+  .login-field input:focus{ outline:none; border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-soft); }
+  .login-btn{ width:100%; margin-top:6px; padding:13px; border-radius:11px; border:none; cursor:pointer; font-family:inherit; font-weight:800; font-size:13.5px; letter-spacing:0.02em; background:linear-gradient(135deg,#e6c659,var(--gold)); color:var(--maroon-dark); box-shadow:0 8px 20px rgba(212,175,55,0.35); transition: filter .15s ease, transform .15s ease; }
+  .login-btn:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+  .login-error{ font-size:12px; color:#ffd9d9; background:rgba(179,38,30,0.25); border:1px solid rgba(255,255,255,0.25); border-radius:8px; padding:9px 12px; margin-bottom:14px; display:none; font-weight:600; }
+  .login-hint{ margin-top:16px; text-align:center; font-size:10.5px; color:var(--muted); }
+
+  /* ================= APP SHELL / SIDEBAR LAYOUT ================= */
+  .app-shell{ display:none; }
+  .app-shell.visible{ display:flex; min-height:100vh; animation: fadeIn .3s ease; }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+
+  .sidebar{
+    width: var(--sidebar-w); flex-shrink:0; position:fixed; top:0; left:0; bottom:0;
+    background:linear-gradient(180deg,var(--maroon-dark),var(--maroon) 60%,#4a0014);
+    display:flex; flex-direction:column; padding:24px 16px; box-shadow: 6px 0 24px rgba(99,0,25,0.18);
+    z-index:50; transition: all 0.3s ease-in-out;
+  }
+  /* Collapsible sidebar toggle — sidebar slides fully off-canvas and the main content
+     wrapper expands to fill the freed-up width. Chart instances are force-resized via
+     resizeAllDashboardCharts() after the 0.3s transition completes.
+     IMPORTANT: the toggle button is a FIXED, INDEPENDENT sibling of .sidebar (not nested inside
+     it) so that it remains permanently visible and clickable in both the expanded and collapsed
+     states — it must never inherit the sidebar's own opacity/transform/overflow collapse styles,
+     otherwise there would be no way to bring the sidebar back once hidden. */
+  .sidebar-toggle-btn{
+    position:fixed; top:26px; left: calc(var(--sidebar-w) - 15px); width:30px; height:30px; border-radius:50%;
+    background:var(--gold); color:var(--maroon-dark); border:1.5px solid rgba(255,255,255,0.4);
+    font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.25); z-index:70; transition: left 0.3s ease-in-out, transform 0.15s ease;
+    line-height:1;
+  }
+  .sidebar-toggle-btn:hover{ background:#c79f2e; transform: scale(1.08); }
+  .app-shell.sidebar-collapsed .sidebar{ transform: translateX(-100%); opacity:0; overflow:hidden; }
+  .app-shell.sidebar-collapsed .sidebar-toggle-btn{ left:14px; }
+  .app-shell.sidebar-collapsed .main-content{ margin-left:0; width:100%; max-width:100%; }
+  .main-content{ transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out; }
+  .sidebar-brand{ display:flex; align-items:center; gap:12px; padding:6px 8px 22px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:18px; }
+  .sidebar-brand .mark{ width:auto; height:42px; border-radius:9px; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:3px 6px; overflow:hidden; }
+  .sidebar-brand .mark .logo-img{ height:100%; width:auto; max-width:110px; object-fit:contain; display:block; border-radius:5px; }
+  .sidebar-brand .mark .logo-text{ color:#fff; font-weight:800; font-size:11px; letter-spacing:0.01em; }
+  .sidebar-brand .txt h1{ margin:0; font-size:14.5px; color:#fff; font-weight:800; line-height:1.25; }
+  .sidebar-brand .txt p{ margin:2px 0 0; font-size:9.5px; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:0.07em; font-weight:600; }
+
+  .side-nav{ display:flex; flex-direction:column; gap:6px; flex:1; }
+  .side-link{
+    display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:13px 14px;
+    border-radius:12px; border:none; background:transparent; color:rgba(255,255,255,0.72);
+    font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition: all .18s ease;
+  }
+  .side-link .num{ width:24px; height:24px; border-radius:50%; background:rgba(255,255,255,0.12); color:#fff; font-size:11.5px; display:flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0; }
+  .side-link:not(.active):hover{ background:rgba(255,255,255,0.08); color:#fff; }
+  .side-link.active{ background:linear-gradient(135deg,var(--gold),#c79f2e); color:var(--maroon-dark); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+  .side-link.active .num{ background:rgba(122,6,36,0.18); color:var(--maroon-dark); }
+  .side-link:disabled{ opacity:0.35; cursor:not-allowed; }
+
+  .sidebar-footer{ border-top:1px solid rgba(255,255,255,0.12); padding-top:16px; margin-top:10px; }
+  .sidebar-footer .tag{ font-size:10px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:0.05em; font-weight:600; margin-bottom:10px; padding:0 4px; }
+  .logout-btn{ width:100%; padding:11px 14px; border-radius:10px; border:1.5px solid rgba(255,255,255,0.2); background:transparent; color:rgba(255,255,255,0.8); font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; transition: all .15s ease; }
+  .logout-btn:hover{ background:rgba(255,255,255,0.1); color:#fff; }
+
+  .main-content{ flex:1; margin-left: var(--sidebar-w); min-width:0; }
+  .app{ max-width:1480px; margin:0 auto; padding: 26px 28px 60px; }
+
+  /* Header */
+  .app-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+  .brand{ display:flex; align-items:center; gap:14px; }
+  .brand-mark{ width:auto; height:46px; border-radius:10px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow: var(--shadow-md); padding:4px 8px; overflow:hidden; }
+  .brand-mark .logo-img{ height:100%; width:auto; max-width:130px; object-fit:contain; display:block; border-radius:6px; }
+  .brand-mark .logo-text{ color:#fff; font-weight:800; font-size:12px; letter-spacing:0.01em; }
+  .brand-text h1{ margin:0; font-size:19px; font-weight:800; color:var(--maroon-dark); letter-spacing:0.2px; }
+  .brand-text p{ margin:1px 0 0; font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; font-weight:600; }
+  .header-tag{ font-size:11px; color:var(--gold); background:var(--maroon-dark); padding:6px 14px; border-radius:999px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; box-shadow: var(--shadow-sm); }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; animation: fadeIn .25s ease; }
+
+  .glass-card{ background: var(--glass); backdrop-filter: blur(16px); border:1px solid var(--border); border-radius:14px; box-shadow: var(--shadow-md); padding:18px 22px; margin-bottom:16px; }
+
+  /* Executive KPI Hero Tiles */
+  .kpi-hero-row{ display:flex; gap:14px; margin:4px 0 18px; flex-wrap:wrap; }
+  .kpi-tile{ flex:1 1 220px; min-width:220px; background: var(--glass-strong); border:1px solid var(--border); border-radius:14px; box-shadow: 0 10px 30px rgba(74,14,23,0.04); padding:16px 18px; transition: transform .15s ease, box-shadow .15s ease; }
+  .kpi-tile-label{ font-size:10.5px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color: var(--muted); margin-bottom:8px; }
+  .kpi-tile-value{ font-size:22px; font-weight:800; color: var(--maroon); font-variant-numeric: tabular-nums; }
+  .kpi-tile-sub{ font-size:11px; color: var(--muted); margin-top:6px; }
+  .kpi-tile-trend{ font-size:13px; font-weight:800; color: var(--green); margin-top:6px; }
+  .kpi-tile-current{ border-left:4px solid var(--maroon); }
+  .kpi-tile-simulated{ border-left:4px solid var(--gold); }
+  .kpi-tile-simulated:hover{ box-shadow: 0 10px 28px rgba(197,160,89,0.30); transform: translateY(-2px); }
+  .kpi-tile-delta{ border-left:4px solid var(--green); }
+  .kpi-tile-delta .kpi-tile-value{ color: var(--green); }
+  /* Negative-state override — Portfolio Volume Movement card switches its left accent border and
+     primary numeric text from Green to Crimson/Coral Warning Red whenever volume movement is negative. */
+  .kpi-tile-delta.kpi-tile-delta-negative{ border-left:4px solid #D9383A; }
+  .kpi-tile-delta.kpi-tile-delta-negative .kpi-tile-value{ color: #D9383A; }
+  .kpi-tile-profit{ border-left:4px solid #2E6E8E; }
+  .kpi-tile-profit .kpi-tile-value{ color: #2E6E8E; }
+  .kpi-tile-profit.kpi-tile-profit-negative{ border-left:4px solid #D9383A; }
+  .kpi-tile-profit.kpi-tile-profit-negative .kpi-tile-value{ color: #D9383A; }
+  .kpi-badge{ display:inline-block; margin-top:8px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:800; letter-spacing:0.02em; }
+  .kpi-badge.kpi-up{ background: rgba(14,122,78,0.12); color: var(--green); }
+  .kpi-badge.kpi-down{ background: rgba(199,90,69,0.12); color: var(--red); }
+
+  /* Empty state */
+  .empty-state{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:70px 20px; text-align:center; }
+  .empty-icon{ width:74px; height:74px; border-radius:50%; background:var(--gold-soft); display:flex; align-items:center; justify-content:center; font-size:30px; margin-bottom:18px; color:var(--maroon-dark); }
+  .empty-state h3{ margin:0 0 6px; font-size:17px; color:var(--maroon-dark); }
+  .empty-state p{ margin:0; font-size:13.5px; color:var(--muted); max-width:420px; }
+
+  /* Scenario cards */
+  .scenario-card{ display:flex; align-items:center; justify-content:space-between; gap:18px; background: var(--glass-strong); border:1px solid var(--border); border-radius:14px; padding:16px 20px; margin-bottom:12px; box-shadow: var(--shadow-sm); transition: box-shadow .18s ease, transform .18s ease; flex-wrap:wrap; }
+  .scenario-card:hover{ box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .scenario-meta h4{ margin:0 0 4px; font-size:14.5px; color:var(--maroon-dark); font-weight:800; }
+  .scenario-meta .sub{ font-size:11.5px; color:var(--muted); }
+  .scenario-stats{ display:flex; gap:22px; flex-wrap:wrap; }
+  .scenario-stats div{ text-align:center; }
+  .scenario-stats .v{ font-size:14px; font-weight:800; color:var(--ink); }
+  .scenario-stats .l{ font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+  .scenario-actions{ display:flex; gap:8px; }
+
+  /* Buttons */
+  .btn{ font-family:inherit; font-size:12.5px; font-weight:700; padding:10px 18px; border-radius:9px; border:1.5px solid transparent; cursor:pointer; transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease, border-color .12s ease; letter-spacing:0.01em; }
+  .btn:active{ transform: scale(0.97); }
+  .btn-primary{ background:var(--maroon); color:#fff; border:1.5px solid var(--maroon); box-shadow: 0 2px 8px rgba(74,14,23,0.18); }
+  .btn-primary:hover{ background:var(--maroon-light); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(74,14,23,0.22); }
+  .btn-gold{ background:var(--cream); color:var(--maroon-dark); border:1.5px solid var(--gold); }
+  .btn-gold:hover{ background:var(--gold-soft); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(197,160,89,0.25); }
+  .btn-outline{ background:#fff; color:var(--maroon-dark); border:1.5px solid var(--border); }
+  .btn-outline:hover{ background: var(--maroon-tint); border-color: var(--gold); transform: translateY(-1px); }
+  .btn-ghost{ background:transparent; color:var(--muted); border:1.5px solid var(--border); }
+  .btn-ghost:hover{ background:rgba(0,0,0,0.03); transform: translateY(-1px); }
+  .btn-danger{ background:#fff; color:var(--red); border:1.5px solid rgba(199,90,69,0.35); }
+  .btn-danger:hover{ background:rgba(199,90,69,0.07); transform: translateY(-1px); }
+  .btn-lg{ padding:14px 26px; font-size:13.5px; border-radius:10px; }
+  .run-row{ display:flex; justify-content:flex-end; margin: 4px 0 18px; }
+
+  /* Toolbar / controls */
+  .toolbar{ display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:18px; flex-wrap:wrap; overflow:visible !important; }
+  .toolbar-left{ display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; overflow:visible !important; }
+  .field{ display:flex; flex-direction:column; gap:6px; overflow:visible !important; }
+  .field label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:700; }
+  select.month-select{ font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; min-width:170px; cursor:pointer; }
+  .toolbar-actions{ display:flex; gap:10px; }
+  /* Every structural wrapper the SKU Filter popup is nested inside (glass card, panel, app shell) must
+     never clip its own overflow, otherwise the absolutely-positioned popup gets sliced by an ancestor's
+     box instead of floating freely above the page content below it. */
+  .glass-card, .panel, .app, .app-shell, .main, .main-content{ overflow:visible !important; }
+
+
+  /* Table — ZERO-SCROLL COMPACT LAYOUT: minified vertical paddings + condensed text so the full grid
+     (6 SKU rows, 21 columns) fits a standard 1080p viewport with no horizontal or vertical scroll. */
+  .scroll-x{ overflow-x:auto; border-radius:14px; border:1px solid var(--border); box-shadow: var(--shadow-md); scrollbar-width:thin; scrollbar-color: var(--gold) var(--cream); }
+  .scroll-x::-webkit-scrollbar{ height:6px; }
+  .scroll-x::-webkit-scrollbar-track{ background: var(--cream); }
+  .scroll-x::-webkit-scrollbar-thumb{ background: var(--gold); border-radius:6px; }
+  table{ border-collapse:collapse; width:100%; min-width:0; table-layout:auto; background:#fff; }
+  /* Sticky table header gets an explicit LOW z-index so it can never visually out-rank the SKU Filter
+     popup (z-index 999999 below) when the popup overlaps the top of the table while open. */
+  thead th{ position:sticky; top:0; z-index:1; font-size:9.5px; text-transform:uppercase; letter-spacing:0.05em; padding:10px 8px; white-space:nowrap; border-bottom:2px solid var(--gold); line-height:1.25; background: var(--maroon); color:#fff; font-weight:700; }
+  tbody td{ padding:6px 7px; font-size:11px; border-bottom:1px solid #EFECE8; white-space:nowrap; color:var(--ink); line-height:1.2; transition: background-color .12s ease; }
+  tbody tr:hover{ background-color: #F4F1EA; }
+  td.num, th.num{ text-align:right; font-variant-numeric: tabular-nums; }
+  .pos{ color:var(--green); font-weight:700; }
+  .neg{ color:var(--red); font-weight:700; }
+  td input[type=number]{ width:62px; padding:4px 6px; border-radius:7px; border:1.5px solid var(--gold); background: var(--gold-soft); font-family:inherit; font-size:11px; font-weight:700; color:var(--maroon-dark); text-align:right; }
+  td input[type=number]:focus{ outline:none; border-color:var(--maroon); box-shadow:0 0 0 3px rgba(122,6,36,0.12); }
+  /* Simulated Budget figures (e.g. ₹29,796.67) overflow the generic 62px numeric input width and clip —
+     give this column a dedicated, wider class so large rupee values always render in full. */
+  td input.budget-input[type=number]{ min-width:140px !important; width:100% !important; padding:6px 8px !important; box-sizing:border-box !important; text-align:right; }
+  .readonly-cell{ color:var(--muted); }
+  .sku-cell{ font-weight:800; color:var(--maroon-dark); font-size:11px; }
+
+  /* Advanced Selection Filters — Baseline Month dropdown (native <select>) & SKU Filter dropdown menu */
+  select.month-select{ display:inline-block !important; }
+  .sku-dropdown{ position:relative; }
+  /* When a SKU Filter dropdown is open, lift its ENTIRE stacking context (not just the panel) above every
+     other card on the page — including the AI Business Insights card and the data grid below it — so the
+     open panel is never drawn underneath a later sibling in the DOM/paint order. */
+  .sku-dropdown.open{ position:relative; z-index:9999999 !important; }
+  .sku-dropdown-btn{ font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; min-width:170px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .sku-dropdown-btn:hover{ border-color:var(--gold); }
+  .sku-dropdown-btn .caret{ color:var(--muted); font-size:10px; transition: transform .15s ease; }
+  .sku-dropdown.open .sku-dropdown-btn .caret{ transform: rotate(180deg); }
+  /* Base (closed) state — kept lightweight; ALL of the sizing/scroll/stacking/positioning rules that matter
+     while OPEN live in the DROPUP FIX block below so there is exactly one source of truth and nothing here
+     can silently override it. */
+  .sku-dropdown-panel{ display:none; position:absolute; left:0; min-width:260px; max-width:340px; background:#fff; border:1.5px solid var(--border); border-radius:12px; box-shadow: var(--shadow-md); padding:10px; flex-direction:column; gap:4px; box-sizing:border-box; }
+  .sku-chk{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--ink); border-radius:8px; padding:8px 9px; cursor:pointer; user-select:none; transition: background .12s ease; flex-shrink:0; }
+  .sku-chk:hover{ background: var(--gold-soft); }
+  .sku-chk input{ accent-color:var(--maroon); cursor:pointer; }
+
+  /* DROPDOWN SCROLL FIX (v3 — DROPUP MECHANISM) — every downward-opening version of this popup kept getting
+     clipped by the data grid / comparison charts rendered below it, no matter how high the z-index went,
+     because the popup's own bottom edge was running past the visible viewport area those lower sections
+     occupy. The permanent fix: the popup no longer opens DOWNWARD from the SKU Filter button at all — it
+     opens UPWARD (a "dropup"), anchored to the BOTTOM of the trigger button via `bottom:100%` instead of
+     `top:100%`. This means the popup's box is built going up into the open whitespace above the toolbar,
+     which is never occupied by the grid/charts below, so there is nothing left for those lower sections to
+     clip it against. A hard 200px max-height + a forced (non-"auto") scrollbar guarantees all 6 SKU rows are
+     reachable inside that fixed envelope regardless of viewport size. */
+  select.month-select,
+  select.comparison-view-select{
+    max-height: 320px !important;
+    overflow-y: auto !important;
+    z-index: 9999999 !important;
+  }
+  .sku-dropdown.open .sku-dropdown-panel{
+    position: absolute !important;
+    bottom: 100% !important; /* anchors the popup's bottom edge to the trigger button's top -> renders upward */
+    top: auto !important;
+    left: 0 !important;
+    width: 280px !important;
+    max-height: 200px !important; /* tight bound that guarantees a real scrollbar for all 6 SKU rows */
+    overflow-y: scroll !important; /* forced (not auto) so the scrollbar track is always visibly present */
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 9999999 !important; /* supersedes every chart/table/card stacking layer on the page */
+    background: #ffffff !important;
+    border: 1px solid #ccc !important;
+    box-shadow: 0px -8px 16px rgba(0,0,0,0.15) !important; /* shadow points downward since the panel sits above its trigger now */
+    margin-bottom: 6px; /* small gap between the popup's bottom edge and the trigger button beneath it */
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  /* Custom scrollbar track so the popup's scroll affordance is visible/smooth in WebKit/Chromium browsers
+     when the 6 checkbox rows exceed the 200px cap. */
+  .sku-dropdown.open .sku-dropdown-panel::-webkit-scrollbar{ width:7px; }
+  .sku-dropdown.open .sku-dropdown-panel::-webkit-scrollbar-track{ background:transparent; }
+  .sku-dropdown.open .sku-dropdown-panel::-webkit-scrollbar-thumb{ background:rgba(122,6,36,0.25); border-radius:999px; }
+  .sku-dropdown.open .sku-dropdown-panel::-webkit-scrollbar-thumb:hover{ background:rgba(122,6,36,0.45); }
+  /* Closed state stays explicitly hidden — scoped to :not(.open) so it never fights the rule above. */
+  .sku-dropdown:not(.open) .sku-dropdown-panel{
+    display: none !important;
+  }
+  select.month-select option,
+  select.comparison-view-select option{
+    max-height: 320px !important;
+  }
+
+  /* "View Comparison For:" dropdown — sits directly above the Baseline vs Simulated Comparison charts;
+     defaults to "Overall Portfolio" (aggregated totals) with each of the 6 active SKUs also selectable. */
+  .comparison-view-field{ margin:14px 0 18px; max-width:280px; }
+  select.comparison-view-select{ display:block !important; width:100%; font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; cursor:pointer; }
+  select.comparison-view-select:hover{ border-color:var(--gold); }
+
+  /* Period banner — Baseline vs Simulation period labels (Step 2 & Step 3) */
+  .period-banner{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+  .period-chip{ display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:12px; font-size:12px; font-weight:700; flex:1; min-width:240px; }
+  .period-chip .dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .period-chip.baseline{ background:var(--gold-soft); color:var(--maroon-dark); border:1.5px solid rgba(212,175,55,0.4); }
+  .period-chip.baseline .dot{ background:var(--gold); }
+  .period-chip.simulation{ background:var(--maroon-tint-2); color:var(--maroon-dark); border:1.5px solid rgba(122,6,36,0.18); }
+  .period-chip.simulation .dot{ background:var(--maroon); }
+  .period-chip b{ font-weight:800; }
+  .period-chip span.lbl{ font-weight:500; opacity:0.85; }
+
+  /* Period metadata text inside saved scenario cards (single pipe-separated line) */
+  .scenario-periods{ font-size:10.5px; color:var(--muted); margin:8px 0 12px; }
+  .scenario-periods b{ color:var(--maroon-dark); font-weight:800; }
+
+  /* Dynamic per-row Scenario tags (Step 3 output table) */
+  .scenario-tag{ display:inline-block; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:800; letter-spacing:0.02em; text-transform:uppercase; white-space:nowrap; }
+  .scenario-NoChange{ background:rgba(122,6,36,0.07); color:var(--muted); }
+  .scenario-PTCChange{ background:rgba(122,6,36,0.12); color:var(--maroon-dark); }
+  .scenario-OSAChange{ background:rgba(212,175,55,0.18); color:#8a6d10; }
+  .scenario-BudgetChange{ background:rgba(30,130,76,0.12); color:var(--green); }
+  .scenario-PTCOthers{ background:var(--maroon); color:#fff; }
+
+  .section-title{ font-size:13px; font-weight:800; color:var(--maroon-dark); text-transform:uppercase; letter-spacing:0.06em; margin:0 0 14px; }
+
+  .save-row{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-top:6px; }
+  .save-row input[type=text]{ font-family:inherit; padding:11px 14px; border-radius:10px; border:1.5px solid var(--border); font-size:13px; min-width:260px; }
+  .save-row input[type=text]:focus{ outline:none; border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-soft); }
+  .save-confirm{ font-size:12px; color:var(--green); font-weight:700; margin-left:6px; display:none; }
+
+  .col-group-base{ background:var(--gold); color:var(--maroon-dark); text-align:center; }
+  .col-group-out{ background:var(--maroon); color:#fff; text-align:center; }
+
+  /* ================= DYNAMIC CHARTS (Step 3) ================= */
+  .charts-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:22px; }
+  @media (max-width: 980px){ .charts-grid{ grid-template-columns: 1fr; } }
+  .chart-panel h4{ margin:0 0 14px; font-size:12px; font-weight:800; color:var(--maroon-dark); text-transform:uppercase; letter-spacing:0.06em; }
+  .bar-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .bar-row .bar-label{ width:150px; flex-shrink:0; font-size:11.5px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar-track{ flex:1; height:14px; border-radius:999px; background:rgba(122,6,36,0.07); overflow:hidden; position:relative; }
+  .bar-fill{ height:100%; border-radius:999px; background:linear-gradient(90deg,var(--maroon),var(--gold)); transition: width .35s ease; }
+  .bar-fill.alt{ background:linear-gradient(90deg,var(--gold),var(--maroon-dark)); }
+  .bar-row .bar-value{ width:148px; flex-shrink:0; text-align:right; font-size:11px; font-weight:800; color:var(--maroon-dark); font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .bar-row .bar-value .bar-pct{ font-weight:700; color:var(--muted); font-size:10px; }
+
+  /* ================= KRBL REVENUE STRATEGY & INTELLIGENCE SUITE (Step 3) ================= */
+  /* Ultra-clean glassmorphic executive card: soft cream backdrop, dual gold/crimson accent hairline on the
+     left edge, micro-shadow elevation. Distinct from the standard .glass-card so this reads as a premium
+     "decision suite" surface rather than just another data panel. */
+  .ai-suite-card{
+    position:relative;
+    background: linear-gradient(135deg, #fffdf7 0%, #fff9ec 55%, #fff5e0 100%);
+    border:1px solid rgba(212,175,55,0.35);
+    border-left:5px solid transparent;
+    border-image: linear-gradient(180deg, var(--gold), var(--maroon)) 1;
+    box-shadow: 0 4px 22px rgba(122,6,36,0.08), 0 1px 3px rgba(0,0,0,0.04);
+    overflow:hidden;
+  }
+  .ai-suite-card::before{
+    content:''; position:absolute; top:0; right:0; width:220px; height:220px; pointer-events:none;
+    background: radial-gradient(circle at 100% 0%, rgba(212,175,55,0.16), transparent 70%);
+  }
+  .ai-suite-head{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:4px; flex-wrap:wrap; }
+  .ai-suite-title{ font-size:14.5px; font-weight:800; color:var(--maroon-dark); letter-spacing:0.01em; margin:0; display:flex; align-items:center; gap:8px; }
+  .ai-suite-pulse{ display:inline-flex; align-items:center; gap:6px; font-size:9.5px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#1a7f4e; background:rgba(30,130,76,0.1); border:1px solid rgba(30,130,76,0.25); border-radius:999px; padding:4px 10px; }
+  .ai-suite-pulse .dot{ width:6px; height:6px; border-radius:50%; background:#1a7f4e; animation: aiPulseDot 1.6s ease-in-out infinite; }
+  .ai-insights-sub{ margin:6px 0 18px; font-size:12px; color:var(--muted); position:relative; z-index:1; }
+  .ai-insights-body{ display:flex; flex-direction:column; gap:11px; position:relative; z-index:1; }
+
+  /* Staggered fade-in-up entrance — re-triggered on every Run Simulation, simulating a fresh ML pass. */
+  @keyframes aiFadeInUp{
+    from{ opacity:0; transform:translateY(10px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  @keyframes aiPulseDot{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.35; transform:scale(0.75); }
+  }
+  .ai-insight-row{
+    display:flex; gap:13px; align-items:flex-start; padding:14px 16px; border-radius:13px;
+    background:rgba(255,255,255,0.82); border:1px solid rgba(122,6,36,0.08);
+    box-shadow:0 2px 8px rgba(122,6,36,0.05);
+    opacity:0; animation: aiFadeInUp 0.55s cubic-bezier(.22,.61,.36,1) forwards;
+    backdrop-filter: blur(2px);
+  }
+  .ai-insight-row .ai-icon-chip{
+    flex-shrink:0; width:34px; height:34px; border-radius:10px; display:flex; align-items:center;
+    justify-content:center; font-size:15px; margin-top:1px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35);
+  }
+  .ai-insight-row .ai-badge-stack{ display:flex; flex-direction:column; gap:6px; flex:1; min-width:0; }
+  .ai-badge{ display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px; font-size:9.5px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; white-space:nowrap; width:fit-content; }
+  /* [⚡ STRATEGIC PORTFOLIO LIFT] — Dark Navy + Gold accent */
+  .ai-icon-chip.chip-lift{ background:#0f1f3d; color:var(--gold); }
+  .ai-badge.badge-lift{ background:#0f1f3d; color:#e8c75a; border:1px solid #2a3f66; }
+  /* [📈 ORGANIC VOLUME DRIVER] / [💰 REVENUE DRIVER] — Emerald Green + Gold accent */
+  .ai-icon-chip.chip-driver{ background:rgba(16,160,110,0.14); color:#0c7a55; }
+  .ai-badge.badge-driver{ background:rgba(16,160,110,0.14); color:#0c7a55; border:1px solid rgba(16,160,110,0.35); }
+  /* [⚠️ REVENUE AT RISK ALERT] — Velvet Crimson accent */
+  .ai-icon-chip.chip-atrisk{ background:#5c0a1e; color:#ffd9de; }
+  .ai-badge.badge-atrisk{ background:#5c0a1e; color:#ffd9de; border:1px solid #8a1530; }
+  /* [🔄 PORTFOLIO CANNIBALIZATION RISK] — Dark Navy accent */
+  .ai-icon-chip.chip-cannibal{ background:#1c2b4a; color:#9fc4ff; }
+  .ai-badge.badge-cannibal{ background:#1c2b4a; color:#9fc4ff; border:1px solid #2f4a7a; }
+  .ai-insight-text{ font-size:12.5px; line-height:1.6; color:var(--ink); }
+  .ai-insight-text b{ color:var(--maroon-dark); }
+  .ai-insights-empty{ font-size:12.5px; color:var(--muted); padding:6px 2px; position:relative; z-index:1; }
+
+  /* ===== ADVANCED SIMULATION COMPARISON CHARTS — Baseline vs Simulated, with floating Delta% callouts ===== */
+  /* ===== HIGH-CONTRAST ENTERPRISE REVAMP — Baseline vs Simulated comparison section ===== */
+  .compare-card{ padding:22px 26px 26px; }
+  .compare-legend{ display:flex; gap:18px; margin:0 0 16px; }
+  .legend-item{ display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:700; color:var(--ink); }
+  .legend-swatch{ width:14px; height:14px; border-radius:4px; display:inline-block; box-shadow:0 1px 3px rgba(0,0,0,0.25); }
+  .legend-swatch.base{ background:#4A0E17; }
+  .legend-swatch.sim{ background:linear-gradient(135deg,#e6c659,var(--gold)); }
+  .compare-grid{ gap:28px; }
+  .compare-panel{ background:#fff; border:1px solid var(--border); border-radius:14px; padding:18px 20px 14px; box-shadow:0 6px 18px rgba(122,6,36,0.07); }
+  .compare-panel h4{ margin:0 0 16px; }
+  .compare-row{ margin-bottom:20px; }
+  .compare-row:last-child{ margin-bottom:4px; }
+  .compare-label{ display:flex; justify-content:space-between; align-items:baseline; font-size:13px; font-weight:800; color:var(--maroon-dark); margin-bottom:9px; }
+  .compare-delta{ font-size:12.5px; font-weight:800; padding:3px 11px; border-radius:999px; background:#f1f1f3; color:#2b2b33; }
+  .compare-delta.pos{ color:#0c6b3a; background:#e2f6ea; }
+  .compare-delta.neg{ color:#b3261e; background:#fbe7e5; }
+  .compare-bars{ display:flex; flex-direction:column; gap:8px; }
+  .compare-bar-track{ position:relative; height:26px; border-radius:8px; background:#f0eeec; overflow:hidden; border:1px solid rgba(0,0,0,0.04); }
+  .compare-bar-fill{ height:100%; border-radius:8px 0 0 8px; transition: width .35s ease; min-width:2px; }
+  /* Baseline = crisp dark charcoal bar with white text overlay; Simulated = gold bar with dark-charcoal text overlay — chosen specifically so the data text is never washed out against the fill color. */
+  .compare-bar-fill.base{ background:linear-gradient(90deg,#3a3a44,#1f1f26); }
+  .compare-bar-fill.sim{ background:linear-gradient(90deg,#e6c659,var(--gold)); }
+  .compare-bar-track .compare-bar-tag{ color:#1f1f26; }
+  .compare-bar-track:has(.compare-bar-fill.base) .compare-bar-tag{ color:#fff; text-shadow:none; }
+  .compare-bar-tag{ position:absolute; top:0; left:12px; height:100%; display:flex; align-items:center; font-size:11.5px; font-weight:800; white-space:nowrap; letter-spacing:0.01em; }
+
+  /* ================= OUTPUT DASHBOARD SECTIONS (formerly sub-tabs) =================
+     Tabs were removed per stakeholder request — Simulation Table and EDA content now render
+     simultaneously, stacked vertically. These sections are always visible (no display:none). */
+  .output-sub-panel{ display:block; overflow:visible !important; margin-top:14px; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- ================= LOGIN SCREEN ================= -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-mark"><img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img"></div>
+      <h2>KRBL Limited</h2>
+      <p>Pricing Simulator &middot; Secure Access</p>
+    </div>
+    <div class="login-error" id="loginError">Invalid username or password. Please try again.</div>
+    <form id="loginForm" onsubmit="return handleLogin(event)">
+      <div class="login-field">
+        <label>Username</label>
+        <input type="text" id="loginUser" autocomplete="username" placeholder="ayush.goel" required>
+      </div>
+      <div class="login-field">
+        <label>Password</label>
+        <input type="password" id="loginPass" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;" required>
+      </div>
+      <button type="submit" class="login-btn">Login</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= APP SHELL ================= -->
+<div class="app-shell" id="appShell">
+
+  <!-- Permanent floating toggle — lives OUTSIDE .sidebar so it always stays visible/clickable,
+       regardless of whether the sidebar itself is expanded or fully collapsed off-canvas. -->
+  <button id="sidebarToggle" class="sidebar-toggle-btn" type="button" title="Toggle sidebar" aria-label="Toggle sidebar">&#9776;</button>
+
+  <!-- COLLAPSIBLE LEFT SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="mark"><img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img"></div>
+      <div class="txt">
+        <h1>KRBL Limited</h1>
+        <p>Pricing Simulator</p>
+      </div>
+    </div>
+    <div class="side-nav">
+      <button class="side-link active" id="navLibrary" onclick="goToStep('library')"><span class="num">1</span> Scenario Library</button>
+      <button class="side-link" id="navSimulator" onclick="goToStep('simulator')"><span class="num">2</span> Pricing Simulator</button>
+      <button class="side-link" id="navOutput" onclick="goToStep('output')" disabled><span class="num">3</span> Output Dashboard</button>
+    </div>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="handleLogout()">&#8634; Log Out</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="app">
+
+      <div class="app-header">
+        <div class="brand">
+          <div class="brand-mark"><img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img"></div>
+          <div class="brand-text">
+            <h1>KRBL Limited</h1>
+            <p>Enterprise Revenue Intelligence</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 1: SCENARIO LIBRARY -->
+      <div class="panel active" id="panel-library">
+        <div class="glass-card">
+          <h3 class="section-title" style="margin-bottom:18px;">Saved Scenarios</h3>
+          <div id="libraryContent"></div>
+        </div>
+      </div>
+
+      <!-- STEP 2: PRICING SIMULATOR (INPUTS ONLY) -->
+      <div class="panel" id="panel-simulator">
+        <div class="glass-card">
+          <div class="period-banner">
+            <div class="period-chip baseline"><span class="dot"></span><span class="lbl">Baseline Period:</span> <b id="periodBaselineLabel2">May 2026</b> <span class="lbl">(Historical Actuals)</span></div>
+          </div>
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="field">
+                <label>Baseline Month</label>
+                <select class="month-select" onchange="onMonthChange(this.value)"></select>
+              </div>
+              <div class="field">
+                <label>SKU Filter</label>
+                <div class="sku-dropdown">
+                  <button type="button" class="sku-dropdown-btn" onclick="toggleSkuDropdown(this)"><span class="sku-dropdown-label">All SKUs</span> <span class="caret">&#9662;</span></button>
+                  <div class="sku-dropdown-panel sku-filter-bar"></div>
+                </div>
+              </div>
+            </div>
+            <div class="toolbar-actions">
+              <button class="btn btn-outline" onclick="resetAll()">&#10227; Reset to Base</button>
+            </div>
+          </div>
+
+          <div class="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th colspan="10" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
+                </tr>
+                <tr>
+                  <th>SKU</th>
+                  <th>Period</th>
+                  <th class="num">Current PTC (&#8377;)</th>
+                  <th class="num">PTC Change (%)</th>
+                  <th class="num">Simulated PTC (&#8377;)</th>
+                  <th class="num">Current OSA (%)</th>
+                  <th class="num">Simulated OSA (%)</th>
+                  <th class="num">Marketing Budget (&#8377;)</th>
+                  <th class="num">Budget Change (%)</th>
+                  <th class="num">Simulated Budget (&#8377;)</th>
+                </tr>
+              </thead>
+              <tbody id="inputsTableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="run-row">
+            <button class="btn btn-gold btn-lg" onclick="runSimulation()">Run Simulation &amp; View Outputs &#10148;</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- STEP 3: OUTPUT DASHBOARD (2-tab: Simulation Table | EDA) -->
+      <div class="panel" id="panel-output">
+
+        <!-- Shared header card: period banner, toolbar, month+SKU filters, sub-tab nav -->
+        <div class="glass-card" style="padding-bottom:0; overflow:visible !important;">
+          <div class="period-banner">
+            <div class="period-chip baseline"><span class="dot"></span><span class="lbl">Baseline Period:</span> <b id="periodBaselineLabel3">May 2026</b> <span class="lbl">(Historical Actuals)</span></div>
+          </div>
+          <div class="toolbar">
+            <h3 class="section-title" style="margin:0;">Output Dashboard</h3>
+            <div class="toolbar-actions">
+              <button class="btn btn-outline" onclick="downloadExcel()">&#11015; Download Excel</button>
+              <button class="btn btn-ghost" onclick="goToStep('simulator')">&#8592; Back to Simulator</button>
+            </div>
+          </div>
+          <div class="toolbar" style="margin-top:-6px;">
+            <div class="toolbar-left">
+              <div class="field">
+                <label>Baseline Month</label>
+                <select class="month-select" onchange="onMonthChange(this.value); renderOutputTable();"></select>
+              </div>
+              <div class="field">
+                <label>SKU Filter</label>
+                <div class="sku-dropdown">
+                  <button type="button" class="sku-dropdown-btn" onclick="toggleSkuDropdown(this)"><span class="sku-dropdown-label">All SKUs</span> <span class="caret">&#9662;</span></button>
+                  <div class="sku-dropdown-panel sku-filter-bar"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SIMULATION TABLE SECTION — KPI hero tiles + full output data grid (formerly a tabbed sub-panel;
+             now displays unconditionally, stacked above the EDA section below). -->
+        <div id="output-sub-table" class="output-sub-panel">
+          <div class="glass-card">
+            <div class="kpi-hero-row" id="kpiHeroRow">
+              <div class="kpi-tile kpi-tile-current">
+                <div class="kpi-tile-label">&#127942; MONTHLY PORTFOLIO REVENUE</div>
+                <div class="kpi-tile-value" id="kpiCurrentValue">&#8377;0</div>
+                <div class="kpi-tile-sub" id="kpiCurrentSub">vs &#8377;0 current baseline</div>
+                <span class="kpi-badge" id="kpiRevVarianceBadge">+0.00%</span>
+              </div>
+              <div class="kpi-tile kpi-tile-simulated">
+                <div class="kpi-tile-label">&#10024; MONTHLY REVENUE LIFT</div>
+                <div class="kpi-tile-value" id="kpiSimulatedValue">&#8377;0</div>
+                <div class="kpi-tile-sub" id="kpiDeltaContext">Simulated &#8377;0 &#8722; Current &#8377;0</div>
+              </div>
+              <div class="kpi-tile kpi-tile-delta" id="kpiVolumeCard">
+                <div class="kpi-tile-label">&#9889; MONTHLY PORTFOLIO VOLUME MOVEMENT</div>
+                <div class="kpi-tile-value" id="kpiDeltaValue">+0 units</div>
+                <div class="kpi-tile-sub" id="kpiVolumeSub">Simulated 0 units &#8722; Current 0 units</div>
+                <span class="kpi-badge" id="kpiVolVarianceBadge">+0.00%</span>
+              </div>
+              <div class="kpi-tile kpi-tile-profit" id="kpiProfitCard">
+                <div class="kpi-tile-label">&#128176; TOTAL PROFIT (&#8377;)</div>
+                <div class="kpi-tile-value" id="kpiProfitSimValue">&#8377;0</div>
+                <div class="kpi-tile-sub" id="kpiProfitBaselineSub">vs &#8377;0 baseline profit</div>
+                <span class="kpi-badge" id="kpiProfitVarianceBadge">+0.00%</span>
+              </div>
+            </div>
+            <div class="scroll-x">
+              <table>
+                <thead>
+                  <tr>
+                    <th colspan="10" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
+                    <th colspan="15" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
+                  </tr>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Period</th>
+                    <th class="num">Current PTC (&#8377;)</th>
+                    <th class="num">PTC Change (%)</th>
+                    <th class="num">Simulated PTC (&#8377;)</th>
+                    <th class="num">Current OSA (%)</th>
+                    <th class="num">Simulated OSA (%)</th>
+                    <th class="num">Marketing Budget (&#8377;)</th>
+                    <th class="num">Budget Change (%)</th>
+                    <th class="num">Simulated Budget (&#8377;)</th>
+                    <th>Scenario</th>
+                    <th class="num">Avg_Daily_Volume (Current)</th>
+                    <th class="num">Avg_Daily_Volume (Simulated)</th>
+                    <th class="num">Volume lost &#916;</th>
+                    <th class="num">VTM Gain</th>
+                    <th class="num">Final Avg_Daily_Volume (Simulated)</th>
+                    <th class="num">Baseline Monthly Volume</th>
+                    <th class="num">Simulated Monthly Volume</th>
+                    <th class="num">Volume &#916;%</th>
+                    <th class="num">Baseline Monthly Revenue (&#8377;)</th>
+                    <th class="num">Simulated Monthly Revenue (&#8377;)</th>
+                    <th class="num">Revenue &#916; %</th>
+                    <th class="num">Baseline Profit (&#8377;)</th>
+                    <th class="num">Simulated Profit (&#8377;)</th>
+                    <th class="num">Profit &#916; %</th>
+                  </tr>
+                </thead>
+                <tbody id="outputTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- AI BUSINESS INSIGHTS & STRATEGY ENGINE -->
+          <div class="glass-card ai-suite-card">
+            <div class="ai-suite-head">
+              <h3 class="ai-suite-title">&#10024; KRBL Portfolio Intelligence</h3>
+            </div>
+            <div id="aiInsightsBody" class="ai-insights-body"></div>
+          </div>
+
+        </div>
+
+        <!-- EDA SECTION — all Chart.js visualisations (formerly a tabbed sub-panel; now stacked
+             directly below the Simulation Table section above, always visible). -->
+        <div id="output-sub-eda" class="output-sub-panel">
+
+          <!-- TOP 5 SKUs — REVENUE & VOLUME LIFT DRIVERS -->
+          <div class="glass-card" style="padding:16px 20px 10px;">
+            <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Monthly Revenue &amp; Volume Lift</div>
+            <div class="charts-grid" style="display:flex; gap:16px; flex-wrap:wrap;">
+              <div style="flex:1 1 320px; min-width:280px;">
+                <div style="font-size:12px; font-weight:700; color:#4A0E17; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY REVENUE LIFT</div>
+                <div style="position:relative; height:280px;">
+                  <canvas id="revenueLiftChart" style="max-height: 280px; width: 100%;"></canvas>
+                </div>
+              </div>
+              <div style="flex:1 1 320px; min-width:280px;">
+                <div style="font-size:12px; font-weight:700; color:#9C7B2E; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY VOLUME LIFT (UNITS)</div>
+                <div style="position:relative; height:280px;">
+                  <canvas id="volumeLiftChart" style="max-height: 280px; width: 100%;"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BASELINE vs SIMULATED COMPARISON CHARTS -->
+          <div class="glass-card compare-card">
+            <h3 class="section-title" style="margin-bottom:4px;">Baseline vs Simulated Comparison</h3>
+            <div class="compare-legend">
+              <span class="legend-item"><span class="legend-swatch base"></span> Baseline</span>
+              <span class="legend-item"><span class="legend-swatch sim"></span> Simulated</span>
+            </div>
+            <div class="field comparison-view-field">
+              <label>View Comparison For:</label>
+              <select class="comparison-view-select" onchange="onComparisonViewChange(this.value)"></select>
+            </div>
+            <div class="charts-grid compare-grid">
+              <div class="chart-panel compare-panel">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                  <h4 style="margin:0 0 0;">Monthly Portfolio Baseline vs Simulated Units</h4>
+                  <span class="kpi-badge" id="compareUnitsDeltaBadge">+0.00%</span>
+                </div>
+                <div style="position:relative; height:240px; margin-top:12px;">
+                  <canvas id="compareUnitsChart"></canvas>
+                </div>
+              </div>
+              <div class="chart-panel compare-panel">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                  <h4 style="margin:0 0 0;">Monthly Portfolio Baseline vs Simulated Revenue</h4>
+                  <span class="kpi-badge" id="compareRevenueDeltaBadge">+0.00%</span>
+                </div>
+                <div style="position:relative; height:240px; margin-top:12px;">
+                  <canvas id="compareRevenueChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BASELINE vs SIMULATED FINANCIALS — stacked bar comparing Cost + Profit breakdown
+               Strictly synchronized to computeProfitMetrics() (same engine as the KPI card + table grid):
+               Unit Cost = 0.70 × (Baseline PTC / 1.12), fixed and reused for BOTH bars — only Volume
+               (Baseline Units vs Simulated Units) differs, so Profit correctly diverges from Revenue.
+               Both bars stack to equal their respective total Revenue. -->
+          <div class="glass-card" style="padding:16px 20px 14px;">
+            <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128200; BASELINE vs SIMULATED FINANCIALS</div>
+            <div style="font-size:11px; color:var(--muted); margin-bottom:12px; line-height:1.55;">
+              Stacked &#8377; comparison: <strong>Cost</strong> + <strong>Profit</strong> segments stack to equal Total Revenue for each scenario.
+              Tooltips display absolute &#8377; value, percentage share of Revenue, and &mdash; on the Simulated bar &mdash; percentage variance vs Baseline.
+              Simulated Cost&nbsp;=&nbsp;0.70&nbsp;&times;&nbsp;(Sim&nbsp;PTC&nbsp;/&nbsp;1.12)&nbsp;&times;&nbsp;Sim&nbsp;Units.
+            </div>
+            <div style="position:relative; height:360px;">
+              <canvas id="profitabilityCurveChart"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- SAVE SCENARIO — moved to the very bottom of the Output Dashboard, after all charts,
+             graphs, and analysis sections above, per stakeholder layout request. -->
+        <div class="glass-card">
+          <h3 class="section-title">Save This Scenario</h3>
+          <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Name this scenario and push it to the Scenario Library so it can be revisited later.</p>
+          <div class="save-row">
+            <input type="text" id="scenarioNameInput" placeholder="e.g. May 2026 &mdash; 5% PTC cut + OSA recovery">
+            <button class="btn btn-primary" onclick="saveScenario()">&#128190; Save Scenario</button>
+            <span class="save-confirm" id="saveConfirm">&#10003; Saved to Scenario Library</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- MOCK AUTHENTICATION (LOGIN GATE) ----------
+// Client-side only mock auth — the hardcoded enterprise credential (ayush.goel / 12345678) unlocks the
+// workspace. Not a real security boundary; this exists purely to present a professional login gate in
+// front of the simulator on first load.
+function handleLogin(evt){
+  evt.preventDefault();
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errorBox = document.getElementById('loginError');
+  if(user === 'ayush.goel' && pass === '12345678'){
+    errorBox.style.display = 'none';
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('appShell').classList.add('visible');
+    // Re-hydrate the Scenario Library from localStorage on every successful login — guarantees scenarios
+    // saved in a PRIOR session (before logout / before the tab was closed) are visible again immediately,
+    // not just whatever happened to still be in memory.
+    loadScenariosFromStorage();
+    renderLibrary();
+  } else {
+    errorBox.style.display = 'block';
+  }
+  return false;
+}
+function handleLogout(){
+  document.getElementById('appShell').classList.remove('visible');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+const SKU_COEFFICIENTS = {
+  'IG Everyday 5':       { elasticity: -0.585728, osaCoeff: 0, budgetCoeff: -0.034328 },
+  'IG Feast Rozzana 1':  { elasticity: -0.392283, osaCoeff: 0, budgetCoeff: 0.013813 },
+  'IG Feast Rozzana 5':  { elasticity: -0.204010, osaCoeff: 0, budgetCoeff: 0.012804 },
+  'IG Mini Mogra 10':    { elasticity: -0.359517, osaCoeff: 0, budgetCoeff: 0.007449 },
+  'IG Mogra 5':          { elasticity: -0.261066, osaCoeff: 0, budgetCoeff: 0.020902 },
+  'IG Super 5':          { elasticity: -0.613825, osaCoeff: 0, budgetCoeff: 0.003572 },
+};
+
+const baseData = {
+  'April 2026': [
+    { name:'IG Everyday 5',        ptc:355.69, osa:78.00, budget:23699.35, dailyVolume:2162.17 },
+    { name:'IG Feast Rozzana 1',   ptc:99.88,  osa:78.00, budget:8540.80,  dailyVolume:1703.50 },
+    { name:'IG Feast Rozzana 5',   ptc:439.22, osa:78.00, budget:18568.24, dailyVolume:851.57  },
+    { name:'IG Mini Mogra 10',     ptc:607.94, osa:78.00, budget:4063.96,  dailyVolume:242.67  },
+    { name:'IG Mogra 5',           ptc:358.70, osa:78.00, budget:9798.98,  dailyVolume:977.70  },
+    { name:'IG Super 5',           ptc:745.30, osa:78.00, budget:6123.39,  dailyVolume:742.33  },
+  ],
+  'May 2026': [
+    { name:'IG Everyday 5',        ptc:366.56, osa:79.59, budget:21657.68, dailyVolume:2469.65 },
+    { name:'IG Feast Rozzana 1',   ptc:100.78, osa:80.10, budget:19330.23, dailyVolume:1784.77 },
+    { name:'IG Feast Rozzana 5',   ptc:459.72, osa:80.42, budget:29796.67, dailyVolume:876.55  },
+    { name:'IG Mini Mogra 10',     ptc:612.43, osa:78.65, budget:4693.01,  dailyVolume:257.23  },
+    { name:'IG Mogra 5',           ptc:374.69, osa:79.96, budget:10740.37, dailyVolume:963.61  },
+    { name:'IG Super 5',           ptc:793.35, osa:80.24, budget:5749.54,  dailyVolume:744.06  },
+  ]
+};
+// Attach each SKU's row-level coefficients to every month's baseline rows
+Object.keys(baseData).forEach(month => {
+  baseData[month] = baseData[month].map(r => ({ ...r, ...SKU_COEFFICIENTS[r.name] }));
+});
+const DEFAULT_MONTH = 'May 2026';
+
+// ---------- VOLUME TRANSFER MATRIX (vtm_metric_2.csv — restricted to the 6 approved SKUs) ----------
+// Keyed by SKU name on both axes: vtmMatrix[fromSKU][toSKU] = fraction of fromSKU's volume change captured by toSKU.
+// This is the EXACT 6x6 submatrix read from the latest vtm_metric_2.csv, mapped 1:1 to its coordinates —
+// all rows/columns involving the 3 excluded positive-elasticity SKUs (IG Mini Mogra 5, IG Mini Mogra II 10,
+// IG Mogra 10) have been dropped entirely, consistent with the negative-elasticity-only portfolio filter above.
+const vtmMatrix = {
+  "IG Everyday 5":      {"IG Everyday 5":0, "IG Feast Rozzana 1":0.023309701338938248, "IG Feast Rozzana 5":0.35937427245556625, "IG Mini Mogra 10":0.0, "IG Mogra 5":0.0, "IG Super 5":0.0},
+  "IG Feast Rozzana 1": {"IG Everyday 5":0.023150478105613607, "IG Feast Rozzana 1":0, "IG Feast Rozzana 5":0.030057559348036948, "IG Mini Mogra 10":0.0, "IG Mogra 5":0.0, "IG Super 5":0.0},
+  "IG Feast Rozzana 5": {"IG Everyday 5":0.3951479525043059, "IG Feast Rozzana 1":0.03327692676562703, "IG Feast Rozzana 5":0, "IG Mini Mogra 10":0.0, "IG Mogra 5":0.0, "IG Super 5":0.0},
+  "IG Mini Mogra 10":   {"IG Everyday 5":0.0, "IG Feast Rozzana 1":0.0, "IG Feast Rozzana 5":0.0, "IG Mini Mogra 10":0, "IG Mogra 5":0.078855363728298, "IG Super 5":0.0},
+  "IG Mogra 5":         {"IG Everyday 5":0.0, "IG Feast Rozzana 1":0.0, "IG Feast Rozzana 5":0.0, "IG Mini Mogra 10":0.06399565694528181, "IG Mogra 5":0, "IG Super 5":0.0},
+  "IG Super 5":         {"IG Everyday 5":0.0, "IG Feast Rozzana 1":0.0, "IG Feast Rozzana 5":0.0, "IG Mini Mogra 10":0.0, "IG Mogra 5":0.0, "IG Super 5":0}
+};
+// ---------- STATE ----------
+let selectedMonth = DEFAULT_MONTH;
+let priceRows = [];
+// ---------- SCENARIO LIBRARY — PERSISTENT localStorage-BACKED DATABASE SIMULATION ----------
+// savedScenarios used to live ONLY in memory, so it silently reset to empty on every browser refresh,
+// re-login, or tab close. It is now backed by the browser's localStorage API under a fixed key, so saved
+// scenarios survive refresh/logout/re-login exactly like a real persisted database would. Every mutation
+// (save/delete) writes the full array straight back to localStorage as a JSON string; on initial script
+// load (and again whenever the app returns to the login-gated state) the array is rehydrated from
+// localStorage so the Scenario Library always reflects what was actually saved, not just this page-load's
+// in-memory session.
+const SCENARIO_STORAGE_KEY = 'krbl_pricing_simulator_saved_scenarios_v1';
+// Robust persistence model: every saved scenario is an INDEPENDENT object keyed by a unique `id`
+// (timestamp + random suffix), never by its array index. This means:
+//   - save = append a new independent record with its own unique id (never overwrites siblings)
+//   - delete = remove the one record whose id matches (never positional/index-based, so it can't
+//     accidentally remove the wrong row if the in-memory list and the stored list are momentarily
+//     out of order relative to each other)
+//   - persist = read whatever is CURRENTLY in localStorage first and MERGE the in-memory array into
+//     it by id (union, not blind overwrite), so a stale read in one tab/session, a login/logout
+//     teardown, or an interrupted write can never silently wipe out scenarios that another save
+//     already committed to the real database key. The core database key itself is NEVER cleared by
+//     login/logout — only readScenarioDatabase()/writeScenarioDatabase() ever touch it, and both are
+//     additive/merge-safe by construction.
+function readScenarioDatabase(){
+  try{
+    const raw = localStorage.getItem(SCENARIO_STORAGE_KEY);
+    if(!raw) return [];
+    const parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed)) return [];
+    // Backfill a unique id for any legacy record saved before the id-based model existed, so old
+    // scenarios from earlier sessions remain loadable/deletable instead of being silently dropped.
+    return parsed.map(s => (s && !s.id) ? { ...s, id: makeScenarioId() } : s);
+  }catch(e){
+    // Corrupted/partial JSON should never nuke the database key — just treat this read as empty
+    // and let the merge-on-write logic below reconcile things on the next persist.
+    console.warn('Could not read saved scenarios from localStorage (treating as empty for this read only):', e);
+    return [];
+  }
+}
+function persistScenariosToStorage(){
+  try{
+    // Merge-by-id: union of whatever is already on disk + whatever is currently in memory. This way
+    // a concurrent tab, a previous session, or a delayed write can never be clobbered by this write.
+    const onDisk = readScenarioDatabase();
+    const merged = new Map();
+    onDisk.forEach(s => { if(s && s.id) merged.set(s.id, s); });
+    savedScenarios.forEach(s => { if(s && s.id) merged.set(s.id, s); });
+    const mergedArr = Array.from(merged.values());
+    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(mergedArr));
+    // Keep the in-memory copy in sync with the full merged database so nothing the user already
+    // saved (in this tab or another) ever disappears from the visible library.
+    savedScenarios = mergedArr;
+  }catch(e){
+    // localStorage can throw in rare cases (quota exceeded, privacy mode) — fail silently rather than
+    // breaking the simulation flow; the in-memory copy still works for the rest of this session.
+    console.warn('Could not persist scenarios to localStorage:', e);
+  }
+}
+function loadScenariosFromStorage(){
+  // Hydration strictly PULLS the complete stored array — it never clears or truncates older rows.
+  // If in-memory already holds unsaved-but-pushed records (shouldn't normally happen since save()
+  // persists immediately), merge rather than discard so nothing is lost on re-hydration either.
+  const onDisk = readScenarioDatabase();
+  const merged = new Map();
+  onDisk.forEach(s => { if(s && s.id) merged.set(s.id, s); });
+  (savedScenarios || []).forEach(s => { if(s && s.id) merged.set(s.id, s); });
+  savedScenarios = Array.from(merged.values());
+}
+function makeScenarioId(){
+  return `${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
+}
+let savedScenarios = []; // rehydrated immediately below from localStorage — never starts truly empty if a database already exists
+loadScenariosFromStorage();
+// ADVANCED SELECTION FILTERS — SKU multi-select: controls which of the 6 approved SKUs are shown in the
+// grids AND the charts (display-only filter; the calculation engine still runs on the FULL 6-SKU set so
+// VTM cross-elasticity transfers to/from hidden SKUs remain mathematically correct).
+let visibleSkus = new Set(Object.keys(SKU_COEFFICIENTS));
+// "View Comparison For:" state — 'ALL' renders the aggregated Overall Portfolio totals on the Baseline vs
+// Simulated Comparison charts; any other value is an exact SKU name and filters the charts down to just
+// that one SKU's bars. Independent of the SKU Filter (visibleSkus) above, which only controls the data grid.
+let comparisonViewSku = 'ALL';
+let lastVisibleComputed = []; // cache of the most recently rendered grid's computed rows, so the comparison
+// dropdown can re-render the charts instantly on change without recomputing the whole engine.
+
+function initPriceRows(month){
+  priceRows = baseData[month].map(s => ({ ...s, change:0, simOsa:s.osa, budgetChange:0, simBudget:s.budget }));
+}
+initPriceRows(selectedMonth);
+
+// ---------- COLLAPSIBLE SIDEBAR TOGGLE ----------
+// Toggles `.sidebar-collapsed` on the app-shell wrapper (which drives both the sidebar's
+// off-canvas slide-out and the main-content wrapper's full-width expansion via CSS).
+// After the 0.3s CSS transition settles, all 4 locked Chart.js instances (the two Top-5 SKU
+// lift charts + the two Baseline-vs-Simulated comparison charts) are force-resized so their
+// canvases recalculate and stretch cleanly across the newly available viewport width.
+function resizeAllDashboardCharts(){
+  [revenueLiftChartInstance, volumeLiftChartInstance, compareUnitsChartInstance, compareRevenueChartInstance, profCurveChartInstance]
+    .forEach(inst => { if(inst && typeof inst.resize === 'function'){ inst.resize(); } });
+  window.dispatchEvent(new Event('resize'));
+}
+(function initSidebarToggle(){
+  const toggleBtn = document.getElementById('sidebarToggle');
+  const shellEl = document.getElementById('appShell');
+  if(!toggleBtn || !shellEl) return;
+  toggleBtn.addEventListener('click', function(){
+    shellEl.classList.toggle('sidebar-collapsed');
+    setTimeout(resizeAllDashboardCharts, 300);
+  });
+})();
+
+// ---------- NAVIGATION (permanent left sidebar) ----------
+function goToStep(step){
+  ['library','simulator','output'].forEach(s => {
+    document.getElementById('panel-'+s).classList.toggle('active', s===step);
+    document.getElementById('nav'+s.charAt(0).toUpperCase()+s.slice(1)).classList.toggle('active', s===step);
+  });
+  if(step==='library') renderLibrary();
+  if(step==='simulator') renderInputsTable();
+  if(step==='output') renderOutputTable();
+  updatePeriodLabels();
+}
+
+// ---------- PERIOD LABELS (Baseline vs Simulation) ----------
+function updatePeriodLabels(){
+  const lbl2 = document.getElementById('periodBaselineLabel2');
+  const lbl3 = document.getElementById('periodBaselineLabel3');
+  if(lbl2) lbl2.textContent = selectedMonth;
+  if(lbl3) lbl3.textContent = selectedMonth;
+}
+
+function runSimulation(){
+  document.getElementById('navOutput').disabled = false;
+  goToStep('output');
+}
+// ---------- MONTH DROPDOWN ----------
+// Baseline Month is now a clean native <select> (one per panel — Pricing Simulator & Output Dashboard),
+// matched by the shared .month-select class instead of a single unique id, since both panels need their
+// own dropdown instance kept in sync with the same selectedMonth state.
+function populateMonthDropdown(){
+  document.querySelectorAll('.month-select').forEach(sel => {
+    sel.innerHTML = '';
+    Object.keys(baseData).forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m; opt.textContent = m;
+      if(m === selectedMonth) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.value = selectedMonth; // belt-and-suspenders: force the dropdown's displayed value to match state
+  });
+}
+function onMonthChange(month){
+  selectedMonth = month;
+  initPriceRows(month);
+  document.querySelectorAll('.month-select').forEach(sel => { sel.value = month; });
+  // Instantly flips the Baseline Period chip text — e.g. "Baseline Period: April 2026 (Historical Actuals)"
+  // the moment the dropdown selection changes, with zero extra clicks required.
+  updatePeriodLabels();
+  renderInputsTable();
+}
+
+// ---------- ADVANCED SELECTION FILTERS ----------
+// SKU Multi-select Filter — now presented as a compact dropdown-menu trigger button (instead of an
+// inline checkbox row) that reveals the same checkboxes in a floating panel. This is a DISPLAY-ONLY
+// filter: the calc engine (computeAll/computeAllVolumes) always runs across the FULL 6-SKU set so VTM
+// cross-elasticity to/from a hidden SKU stays correct; only the rendered rows/bars are filtered down to
+// `visibleSkus`.
+function renderSkuFilterBars(){
+  const allNames = Object.keys(SKU_COEFFICIENTS);
+  const html = allNames.map(name => {
+    const checked = visibleSkus.has(name) ? 'checked' : '';
+    const safeId = 'skuchk_' + name.replace(/[^a-zA-Z0-9]+/g,'_');
+    return `<label class="sku-chk" for="${safeId}"><input type="checkbox" id="${safeId}" ${checked} onchange="toggleSkuVisibility('${name.replace(/'/g,"\\'")}', this.checked)"> ${name}</label>`;
+  }).join('');
+  document.querySelectorAll('.sku-filter-bar').forEach(el => { el.innerHTML = html; });
+  const labelText = visibleSkus.size === allNames.length ? 'All SKUs' : `${visibleSkus.size} of ${allNames.length} SKUs`;
+  document.querySelectorAll('.sku-dropdown-label').forEach(el => { el.textContent = labelText; });
+}
+function toggleSkuVisibility(name, checked){
+  if(checked) visibleSkus.add(name); else visibleSkus.delete(name);
+  // Guard against filtering every SKU out of view at once.
+  if(visibleSkus.size === 0){ visibleSkus.add(name); checked = true; }
+  renderSkuFilterBars();
+  renderInputsTable();
+  if(document.getElementById('panel-output').classList.contains('active')) renderOutputTable();
+}
+// Opens/closes the SKU Filter dropdown panel — only one panel open at a time, and clicking anywhere
+// outside the dropdown (handled by the document-level listener below) closes it automatically.
+function toggleSkuDropdown(btn){
+  const dropdown = btn.closest('.sku-dropdown');
+  const wasOpen = dropdown.classList.contains('open');
+  document.querySelectorAll('.sku-dropdown.open').forEach(d => d.classList.remove('open'));
+  if(!wasOpen) dropdown.classList.add('open');
+}
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.sku-dropdown')){
+    document.querySelectorAll('.sku-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});
+
+// ---------- CALCULATION ENGINE ----------
+// Steps 1–5: simulated PTC, isolated simulated volume, volume lost, VTM gain, final simulated volume — for ALL SKUs at once.
+// Each SKU uses its OWN row-level elasticity / OSA coefficient / budget coefficient (r.elasticity, r.osaCoeff,
+// r.budgetCoeff — sourced from the audited per-SKU regression workbook), not a shared global coefficient set.
+function computeAllVolumes(){
+  const stepA = priceRows.map(r => {
+    const simPtc = r.ptc * (1 + r.change/100);
+    const budgetFactor = r.budget > 0 ? Math.pow(r.simBudget / r.budget, r.budgetCoeff) : 1;
+    // FULL-PRECISION ENGINE: Sim_Vol = Cur_Vol * (Sim_PTC/Cur_PTC)^Elasticity * (Sim_Budget/Cur_Budget)^Budget_Coeff
+    //   * exp(OSA_Coeff * (Sim_OSA - Cur_OSA) / 100)
+    // No intermediate rounding is applied anywhere in this chain — "Avg Daily Volume (Simulated)", "Volume lost Δ"
+    // and "VTM Gain" all carry the raw floating-point result through every downstream step. Rounding is applied
+    // ONLY at the final display/export layer (toFixed/Math.round in the render & CSV-export functions), never
+    // inside the math itself, so the engine stays decimal-perfect end-to-end.
+    const simVolume = r.dailyVolume
+      * Math.pow(simPtc / r.ptc, r.elasticity)
+      * budgetFactor
+      * Math.exp(r.osaCoeff * ((r.simOsa - r.osa) / 100));
+    return { row: r, simPtc, simVolume };
+  });
+  const volumeLostDelta = stepA.map(x => x.row.dailyVolume - x.simVolume); // Current - Simulated, full precision
+  // VTM Gain — Σ_j≠i volumeLostDelta_j * vtmMatrix[fromSKU_j][toSKU_i], computed on full-precision
+  // volumeLostDelta values (no early rounding feeding into this sum). volumeLostDelta_j is POSITIVE when
+  // SKU j lost volume (current > simulated) — that lost volume is exactly what flows to other SKUs as a
+  // POSITIVE additive gain via the transfer fraction, so there is no negation/inversion anywhere in this
+  // sum: Final_Avg_Daily_Volume_Simulated = Avg_Daily_Volume_Simulated + VTM_Gain, with VTM_Gain itself
+  // always acting as a positive additive contribution when upstream SKUs are losing volume to this one.
+  const vtmGain = stepA.map((x, i) => {
+    let gain = 0;
+    for(let j=0;j<stepA.length;j++){
+      if(j===i) continue;
+      const fromName = stepA[j].row.name, toName = x.row.name;
+      const frac = (vtmMatrix[fromName] && vtmMatrix[fromName][toName]) || 0;
+      gain += volumeLostDelta[j] * frac;
+    }
+    return gain;
+  });
+  return stepA.map((x,i) => ({ ...x, volumeLostDelta: volumeLostDelta[i], vtmGain: vtmGain[i], finalSimVolume: x.simVolume + vtmGain[i] }));
+}
+// Dynamic "days in simulation month" multiplier: the simulation horizon is always the calendar month
+// immediately AFTER the selected baseline month (Baseline = May 2026 -> Simulation = June 2026 = 30 days;
+// Baseline = April 2026 -> Simulation = May 2026 = 31 days). This replaces a flat "*30" assumption with the
+// actual number of days in whichever month the simulation is projecting into.
+function getSimulationMonthDays(baselineMonthLabel){
+  const [monthName, yearStr] = baselineMonthLabel.split(' ');
+  const year = parseInt(yearStr, 10);
+  const baselineMonthIndex = new Date(`${monthName} 1, ${year}`).getMonth(); // 0-based
+  const simMonthIndex = (baselineMonthIndex + 1) % 12;
+  const simYear = baselineMonthIndex === 11 ? year + 1 : year;
+  // Day 0 of (simMonthIndex+1) is the last day of simMonthIndex -> gives exact day count for that month.
+  return new Date(simYear, simMonthIndex + 1, 0).getDate();
+}
+// CALENDAR-DAYS ALIGNMENT FIX — "Monthly Volume (Current)" and "Final Monthly Volume (Simulated)" must both
+// be built off the CURRENTLY SELECTED BASELINE MONTH'S own calendar day count (e.g. April 2026 = 30 days,
+// May 2026 = 31 days), not the day count of the month the simulation horizon happens to project into. This
+// keeps Avg_Daily_Volume * Days_In_THIS_Month an exact, internally-consistent monthly figure for the
+// baseline period itself, independent of getSimulationMonthDays() (which remains in place purely to drive
+// the separate "Average Daily Volume (Next Month Baseline)" benchmarking column).
+function getCurrentMonthDays(baselineMonthLabel){
+  const [monthName, yearStr] = baselineMonthLabel.split(' ');
+  const year = parseInt(yearStr, 10);
+  const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth(); // 0-based
+  // Day 0 of (monthIndex+1) is the last day of monthIndex -> exact day count for the selected month itself.
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
+function computeAll(){
+  // Monthly Volume (Current) and Final Monthly Volume (Simulated) are anchored to the SELECTED BASELINE
+  // MONTH'S OWN calendar day count — e.g. baseline = April 2026 -> multiply by 30, baseline = May 2026 ->
+  // multiply by 31. getSimulationMonthDays() (next-month day count) is intentionally NOT used here. The
+  // "Average Daily Volume (Next Month Baseline)" benchmarking column and its getNextMonthBaselineVolume()
+  // helper have been fully removed from the calculation engine and the Output Dashboard per directive —
+  // the table now goes straight from simulated daily runs to the core monthly outputs below.
+  const daysInCurrentMonth = getCurrentMonthDays(selectedMonth);
+  return computeAllVolumes().map(x => {
+    const r = x.row;
+    const monthlyCurrent = r.dailyVolume * daysInCurrentMonth;
+    // Final_Monthly_Volume = Monthly_Volume_Current * (Avg_Daily_Volume_Simulated / Avg_Daily_Volume_Current)
+    // i.e. the monthly simulated total is held in EXACT proportion to the monthly current total — the ratio of
+    // simulated-to-current daily volume is mirrored 1:1 onto the monthly figures, so the % shift you see on the
+    // monthly columns always strictly matches the % shift on the daily columns. monthlyCurrent itself now uses
+    // the dynamic days-in-simulation-month multiplier (30 for June following May, 31 for May following April, etc.)
+    // instead of a flat "*30" assumption.
+    const monthlySimulated = r.dailyVolume ? monthlyCurrent * (x.finalSimVolume / r.dailyVolume) : 0;
+    const volDeltaPct = monthlyCurrent ? ((monthlySimulated - monthlyCurrent)/monthlyCurrent)*100 : 0;
+    const revenueCurrent = monthlyCurrent * r.ptc;
+    const revenueSimulated = monthlySimulated * x.simPtc;
+    const revenueDelta = revenueSimulated - revenueCurrent;
+    const revDeltaPct = revenueCurrent ? (revenueDelta/revenueCurrent)*100 : 0;
+    return { row:r, simPtc:x.simPtc, simVolume:x.simVolume, volumeLostDelta:x.volumeLostDelta, vtmGain:x.vtmGain, finalSimVolume:x.finalSimVolume, monthlyCurrent, monthlySimulated, volDeltaPct, revenueCurrent, revenueSimulated, revenueDelta, revDeltaPct };
+  });
+}
+// Dynamic per-row Scenario classifier: compares each SKU's simulated inputs against
+// its OWN baseline values and reports exactly which lever(s) were touched for that row.
+function scenarioLabel(c){
+  const ptcChanged = Math.abs(c.row.change) > 1e-9;
+  const osaChanged = Math.abs(c.row.simOsa - c.row.osa) > 1e-9;
+  const budgetChanged = Math.abs(c.row.simBudget - c.row.budget) > 1e-9;
+  const leversTouched = [ptcChanged, osaChanged, budgetChanged].filter(Boolean).length;
+  if(leversTouched === 0) return 'No Change';
+  if(leversTouched > 1) return 'PTC + Others';
+  if(ptcChanged) return 'PTC Change';
+  if(osaChanged) return 'OSA Change';
+  if(budgetChanged) return 'Budget Change';
+  return 'No Change';
+}
+
+// ---------- STEP 2: INPUTS-ONLY TABLE ----------
+function renderInputsTable(){
+  populateMonthDropdown();
+  renderSkuFilterBars();
+  const tbody = document.getElementById('inputsTableBody');
+  tbody.innerHTML = priceRows.map((r,i) => ({ r, i })).filter(x => visibleSkus.has(x.r.name)).map(({r,i}) => {
+    const simPtc = r.ptc * (1 + r.change/100);
+    return `<tr>
+      <td class="sku-cell">${r.name}</td>
+      <td>${selectedMonth}</td>
+      <td class="num readonly-cell">${r.ptc.toFixed(2)}</td>
+      <td class="num"><input type="number" step="0.1" inputmode="decimal" value="${r.change}" data-idx="${i}" oninput="onPctChange(this)"></td>
+      <td class="num readonly-cell sim-ptc-cell">${simPtc.toFixed(2)}</td>
+      <td class="num readonly-cell">${r.osa.toFixed(2)}</td>
+      <td class="num"><input type="number" step="0.5" min="0" max="100" value="${r.simOsa}" data-idx="${i}" oninput="onOsaChange(this)"></td>
+      <td class="num readonly-cell">&#8377;${r.budget.toFixed(2)}</td>
+      <td class="num"><input type="number" step="0.1" inputmode="decimal" class="budget-input" value="${r.budgetChange}" data-idx="${i}" oninput="onBudgetChange(this)"></td>
+      <td class="num readonly-cell sim-budget-cell">&#8377;${r.simBudget.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// PERFORMANCE FIX: these three handlers used to call renderInputsTable() on every single keystroke, which
+// rebuilt the entire grid's innerHTML each time. That full rebuild reset every input's DOM value attribute —
+// including the field the user was still actively typing into — which is exactly why a freshly-typed "-"
+// character (an intermediate, momentarily-NaN value while typing "-5") was getting wiped out and why long
+// values felt laggy/frozen on slower devices. The fix: just mutate the underlying priceRows state on every
+// keystroke (cheap, instant, never touches the DOM), and only patch the one small derived read-only cell
+// that actually depends on the typed value (Simulated PTC, next to PTC Change %) directly via textContent —
+// never re-rendering the table itself mid-type. The OSA / Budget fields don't drive any other visible
+// derived cell in this table, so their handlers don't need to touch the DOM at all while typing.
+function onPctChange(el){
+  const i = +el.dataset.idx;
+  // Negative sign ("-") types as an intermediate NaN before the digits follow. Snapshot the raw string
+  // first and special-case a lone "-" so the numeric enforcement below never clobbers it mid-keystroke —
+  // ever rewriting el.value, so the user can keep typing toward "-5", "-10", etc. without interruption.
+  const rawValue = String(el.value).trim();
+  const val = (rawValue === '-') ? 0 : (parseFloat(rawValue) || 0);
+  priceRows[i].change = val;
+  const simPtc = priceRows[i].ptc * (1 + priceRows[i].change/100);
+  const cell = el.closest('tr').querySelector('.sim-ptc-cell');
+  if(cell) cell.textContent = simPtc.toFixed(2);
+}
+function onOsaChange(el){
+  const i = +el.dataset.idx;
+  const val = parseFloat(el.value);
+  priceRows[i].simOsa = isNaN(val) ? priceRows[i].osa : val;
+}
+function onBudgetChange(el){
+  const i = +el.dataset.idx;
+  // Mirrors onPctChange: snapshot the raw string and special-case a lone "-" so the numeric
+  // enforcement below never clobbers an in-progress negative entry (e.g. typing toward "-10").
+  const rawValue = String(el.value).trim();
+  const val = (rawValue === '-') ? 0 : (parseFloat(rawValue) || 0);
+  priceRows[i].budgetChange = val;
+  priceRows[i].simBudget = priceRows[i].budget * (1 + priceRows[i].budgetChange / 100);
+  const cell = el.closest('tr').querySelector('.sim-budget-cell');
+  if(cell) cell.textContent = '₹' + priceRows[i].simBudget.toFixed(2);
+}
+
+// Global lever sliders (PTC Change / Simulated OSA / Simulated Marketing Budget) have been permanently
+// removed — all simulation inputs are now driven exclusively from the individual SKU rows in the data
+// grid below (onPctChange/onOsaChange/onBudgetChange), so resetAll() only needs to restore priceRows
+// to the baseline snapshot for the currently selected month and re-render the grid.
+function resetAll(){
+  initPriceRows(selectedMonth);
+  renderInputsTable();
+}
+
+// ---------- NULL-STATE DISPLAY OVERRIDE (rendering-layer only — never touches computeAll()/the locked
+// calc engine itself). Snaps any residual floating-point dust (e.g. 0.01 / -0.02) on the VTM Gain /
+// Volume lost Δ / Volume Δ% metrics to a strict, clean 0 whenever either (a) the metric has already
+// resolved to a true near-zero value, or (b) this SKU's own PTC Change (%) and Budget Change (%) levers
+// are both untouched AND there is no genuine incoming cross-elasticity gain from other SKUs moving — so a
+// real cannibalization/VTM gain from another SKU's change is still shown correctly, only pure noise is
+// suppressed. ----------
+const VTM_NULL_EPSILON = 1e-9;
+function applyVtmNullStateOverride(c){
+  const ownLeversUntouched = Math.abs(c.row.change) < VTM_NULL_EPSILON && Math.abs(c.row.budgetChange) < VTM_NULL_EPSILON;
+  let { volumeLostDelta, vtmGain, finalSimVolume, simVolume, monthlySimulated, volDeltaPct } = c;
+
+  // Snap genuine floating-point dust to exact 0 regardless of cause.
+  if(Math.abs(vtmGain) < VTM_NULL_EPSILON) vtmGain = 0;
+  if(Math.abs(volumeLostDelta) < VTM_NULL_EPSILON) volumeLostDelta = 0;
+  if(Math.abs(volDeltaPct) < VTM_NULL_EPSILON) volDeltaPct = 0;
+
+  // Own levers untouched + no real incoming VTM gain ⇒ force every downstream volume-change metric to a
+  // strict, clean zero so "0 units" / "0.00%" always renders exactly, never "0.01%" noise.
+  if(ownLeversUntouched && vtmGain === 0){
+    volumeLostDelta = 0;
+    finalSimVolume = c.row.dailyVolume;
+    simVolume = c.row.dailyVolume;
+    monthlySimulated = c.monthlyCurrent;
+    volDeltaPct = 0;
+  }
+  return { ...c, volumeLostDelta, vtmGain, finalSimVolume, simVolume, monthlySimulated, volDeltaPct };
+}
+
+// ---------- STEP 3: OUTPUT TABLE ----------
+// ---------- PROFIT METRICS HELPER (display-only, derived purely from locked engine outputs) ----------
+// HOTFIX: Unit Cost (COGS per unit) is a structural/physical property of the SKU — it does NOT float
+// just because a hypothetical Simulated PTC is being tested. It is anchored to BASELINE PTC and reused
+// for BOTH the Baseline and Simulated cost lines below; only VOLUME (which responds to elasticity) is
+// allowed to differ between the two states.
+//   Baseline Unit Cost   = 0.70 × (Baseline PTC / 1.12)                          [fixed structural cost]
+//   Baseline Total Cost  = Baseline Monthly Volume  × Baseline Unit Cost
+//   Baseline Profit (₹)  = Baseline Monthly Revenue − Baseline Total Cost
+//   Simulated Total Cost = Simulated Monthly Volume × Baseline Unit Cost         [same fixed unit cost]
+//   Simulated Profit (₹) = Simulated Monthly Revenue − Simulated Total Cost
+//   Profit % Change      = ((Simulated Profit − Baseline Profit) / Baseline Profit) × 100
+// Why this matters: Revenue = Volume × PTC in both states. If Unit Cost were instead recomputed off the
+// SIMULATED PTC (0.70 × SimPTC/1.12), Total Cost would always equal exactly 0.625 × Revenue in every
+// state, forcing Profit to always equal exactly 0.375 × Revenue — which makes Profit % Lift mathematically
+// IDENTICAL to Revenue % Lift on every simulation, regardless of elasticity. Anchoring Unit Cost to Baseline
+// PTC removes that false identity: Cost now moves only with Volume, so Profit % Lift correctly diverges
+// from Revenue % Lift based on the SKU's true volume elasticity and margin structure.
+// Guarded against a zero/near-zero Baseline Profit (returns 0 if Simulated Profit is also ~0, otherwise
+// null → shown as "N/A"). Never writes to priceRows or the calc engine — reads only already-computed
+// fields off `c`.
+function computeProfitMetrics(c){
+  const r = c.row;
+  const baselineUnitCost = 0.70 * (r.ptc / 1.12); // fixed structural COGS/unit — anchored to Baseline PTC only
+  const baselineProfit   = c.revenueCurrent   - (c.monthlyCurrent   * baselineUnitCost);
+  const simulatedProfit  = c.revenueSimulated - (c.monthlySimulated * baselineUnitCost); // same unit cost, volume-driven only
+  let profitChangePct;
+  if(Math.abs(baselineProfit) < 1e-9){
+    profitChangePct = Math.abs(simulatedProfit) < 1e-9 ? 0 : null;
+  } else {
+    profitChangePct = ((simulatedProfit - baselineProfit) / baselineProfit) * 100;
+  }
+  return { baselineProfit, simulatedProfit, profitChangePct };
+}
+
+function renderOutputTable(){
+  renderSkuFilterBars();
+  const computed = computeAll().map(applyVtmNullStateOverride); // full 6-SKU engine output — VTM cross-elasticity always uses ALL SKUs; null-state override is display-only
+  const visibleComputed = computed.filter(c => visibleSkus.has(c.row.name)); // display-only SKU filter
+  const tbody = document.getElementById('outputTableBody');
+  tbody.innerHTML = visibleComputed.map(c => {
+    const volCls = c.volDeltaPct >= 0 ? 'pos' : 'neg';
+    const revCls = c.revDeltaPct >= 0 ? 'pos' : 'neg';
+    const pm = computeProfitMetrics(c);
+    const profitCls = pm.profitChangePct === null ? '' : (pm.profitChangePct >= 0 ? 'pos' : 'neg');
+    const profitChangeLabel = pm.profitChangePct === null ? 'N/A' : (pm.profitChangePct>=0?'+':'') + pm.profitChangePct.toFixed(2) + '%';
+    return `<tr>
+      <td class="sku-cell">${c.row.name}</td>
+      <td>${selectedMonth}</td>
+      <td class="num readonly-cell">${c.row.ptc.toFixed(2)}</td>
+      <td class="num readonly-cell">${c.row.change}</td>
+      <td class="num readonly-cell">${c.simPtc.toFixed(2)}</td>
+      <td class="num readonly-cell">${c.row.osa.toFixed(2)}</td>
+      <td class="num readonly-cell">${c.row.simOsa}</td>
+      <td class="num readonly-cell">&#8377;${c.row.budget.toFixed(2)}</td>
+      <td class="num readonly-cell">${c.row.budgetChange}</td>
+      <td class="num readonly-cell">&#8377;${c.row.simBudget.toFixed(2)}</td>
+      <td><span class="scenario-tag scenario-${scenarioLabel(c).replace(/[^a-zA-Z]+/g,'')}">${scenarioLabel(c)}</span></td>
+      <td class="num">${Math.round(c.row.dailyVolume)}</td>
+      <td class="num">${Math.round(c.simVolume)}</td>
+      <td class="num">${Math.round(c.volumeLostDelta)}</td>
+      <td class="num">${Math.round(c.vtmGain)}</td>
+      <td class="num">${Math.round(c.finalSimVolume)}</td>
+      <td class="num">${Math.round(c.monthlyCurrent)}</td>
+      <td class="num">${Math.round(c.monthlySimulated)}</td>
+      <td class="num ${volCls}">${c.volDeltaPct.toFixed(2)}%</td>
+      <td class="num">&#8377;${Math.round(c.revenueCurrent).toLocaleString('en-IN')}</td>
+      <td class="num">&#8377;${Math.round(c.revenueSimulated).toLocaleString('en-IN')}</td>
+      <td class="num ${revCls}">${c.revDeltaPct.toFixed(2)}%</td>
+      <td class="num">&#8377;${(pm.baselineProfit<0?'-':'')}${Math.abs(Math.round(pm.baselineProfit)).toLocaleString('en-IN')}</td>
+      <td class="num">&#8377;${(pm.simulatedProfit<0?'-':'')}${Math.abs(Math.round(pm.simulatedProfit)).toLocaleString('en-IN')}</td>
+      <td class="num ${profitCls}">${profitChangeLabel}</td>
+    </tr>`;
+  }).join('');
+  lastVisibleComputed = visibleComputed;
+  renderAiInsights(computed); // always reasons over the FULL 6-SKU set so cross-SKU VTM commentary stays correct
+  renderKpiTiles(computed);   // purely additive, read-only Executive KPI Hero Tiles — does not touch calc engine
+  // EDA charts are no longer behind a separate tab — they're stacked directly below the table on
+  // this same page, so they must always re-render alongside it every time the output is refreshed.
+  renderEdaPanel();
+}
+
+// ---------- EXECUTIVE KPI HERO CARDS (visual-only, read-only over `computed`) ----------
+// Card 1: Current vs Simulated Revenue (primary = simulated revenue) + revenue variance % badge.
+// Card 2: Absolute Revenue Cash Lift (Simulated - Current) + delta context line.
+// Card 3: Portfolio Volume Movement (primary = simulated monthly volume) + Volume Δ% badge.
+function renderKpiTiles(computed){
+  const elCur = document.getElementById('kpiCurrentValue');
+  const elCurSub = document.getElementById('kpiCurrentSub');
+  const elRevBadge = document.getElementById('kpiRevVarianceBadge');
+  const elSim = document.getElementById('kpiSimulatedValue');
+  const elDeltaCtx = document.getElementById('kpiDeltaContext');
+  const elDelta = document.getElementById('kpiDeltaValue');
+  const elVolBadge = document.getElementById('kpiVolVarianceBadge');
+  const elVolumeCard = document.getElementById('kpiVolumeCard');
+  const elVolumeSub = document.getElementById('kpiVolumeSub');
+  if(!elCur || !elSim || !elDelta || !elRevBadge || !elVolBadge) return;
+
+  const totalCurrentRev = computed.reduce((s,c)=>s+c.revenueCurrent,0);
+  const totalSimulatedRev = computed.reduce((s,c)=>s+c.revenueSimulated,0);
+  const revDelta = totalSimulatedRev - totalCurrentRev;
+  const revDeltaPct = totalCurrentRev !== 0 ? (revDelta/totalCurrentRev)*100 : 0;
+
+  const totalCurrentVol = computed.reduce((s,c)=>s+c.monthlyCurrent,0);
+  const totalSimulatedVol = computed.reduce((s,c)=>s+c.monthlySimulated,0);
+  const volDeltaPct = totalCurrentVol !== 0 ? ((totalSimulatedVol-totalCurrentVol)/totalCurrentVol)*100 : 0;
+
+  // Card 1 — primary bold text is the absolute SIMULATED revenue, with current baseline as context.
+  elCur.textContent = '₹' + Math.round(totalSimulatedRev).toLocaleString('en-IN');
+  if(elCurSub) elCurSub.textContent = 'vs ₹' + Math.round(totalCurrentRev).toLocaleString('en-IN') + ' current baseline';
+  elRevBadge.textContent = (revDeltaPct>=0?'+':'') + revDeltaPct.toFixed(2) + '%';
+  elRevBadge.className = 'kpi-badge ' + (revDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
+
+  // Card 2 — absolute cash lift figure, plus its full numeric context underneath.
+  elSim.textContent = (revDelta>=0?'+':'-') + '₹' + Math.round(Math.abs(revDelta)).toLocaleString('en-IN');
+  if(elDeltaCtx) elDeltaCtx.textContent = 'Simulated ₹' + Math.round(totalSimulatedRev).toLocaleString('en-IN') + ' − Current ₹' + Math.round(totalCurrentRev).toLocaleString('en-IN');
+
+  // Card 3 — primary hero number is the NET monthly volume movement (Simulated − Baseline), mirroring the
+  // absolute cash-lift pattern used by Card 2 (e.g. shows "+0 units" rather than the full cumulative
+  // baseline volume when nothing has changed). The cumulative Simulated/Current totals are demoted to the
+  // smaller secondary sub-text underneath. Badge still tracks Volume Δ%. Whenever the portfolio volume
+  // movement is negative, the card's left accent border and primary numeric text switch from Green to
+  // Crimson/Coral Warning Red (#D9383A) to visually match the negative badge state.
+  const volDelta = totalSimulatedVol - totalCurrentVol;
+  elDelta.textContent = (volDelta>=0?'+':'-') + Math.round(Math.abs(volDelta)).toLocaleString('en-IN') + ' units';
+  if(elVolumeSub) elVolumeSub.textContent = 'Simulated ' + Math.round(totalSimulatedVol).toLocaleString('en-IN') + ' units − Current ' + Math.round(totalCurrentVol).toLocaleString('en-IN') + ' units';
+  elVolBadge.textContent = (volDeltaPct>=0?'+':'') + volDeltaPct.toFixed(2) + '%';
+  elVolBadge.className = 'kpi-badge ' + (volDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
+  if(elVolumeCard){
+    elVolumeCard.classList.toggle('kpi-tile-delta-negative', volDeltaPct < 0);
+  }
+
+  // Card 4 — Total Profit (₹): Baseline vs Simulated, summed across the same `computed` set used above.
+  // Profit per SKU = Revenue − [0.70 × (PTC / 1.12) × Units], via the shared computeProfitMetrics() helper
+  // (identical math to the Financials Stacked Bar Chart in the EDA tab, applied at the portfolio level here).
+  const elProfitCard = document.getElementById('kpiProfitCard');
+  const elProfitSim = document.getElementById('kpiProfitSimValue');
+  const elProfitBaseSub = document.getElementById('kpiProfitBaselineSub');
+  const elProfitBadge = document.getElementById('kpiProfitVarianceBadge');
+  if(elProfitCard && elProfitSim && elProfitBaseSub && elProfitBadge){
+    let totalBaselineProfit = 0, totalSimulatedProfit = 0;
+    computed.forEach(c => {
+      const pm = computeProfitMetrics(c);
+      totalBaselineProfit  += pm.baselineProfit;
+      totalSimulatedProfit += pm.simulatedProfit;
+    });
+    let profitVariancePct;
+    if(Math.abs(totalBaselineProfit) < 1e-9){
+      profitVariancePct = Math.abs(totalSimulatedProfit) < 1e-9 ? 0 : null;
+    } else {
+      profitVariancePct = ((totalSimulatedProfit - totalBaselineProfit) / totalBaselineProfit) * 100;
+    }
+    elProfitSim.textContent = (totalSimulatedProfit<0?'-':'') + '₹' + Math.abs(Math.round(totalSimulatedProfit)).toLocaleString('en-IN');
+    elProfitBaseSub.textContent = 'vs ' + (totalBaselineProfit<0?'-':'') + '₹' + Math.abs(Math.round(totalBaselineProfit)).toLocaleString('en-IN') + ' baseline profit';
+    if(profitVariancePct === null){
+      elProfitBadge.textContent = 'N/A';
+      elProfitBadge.className = 'kpi-badge';
+    } else {
+      elProfitBadge.textContent = (profitVariancePct>=0?'+':'') + profitVariancePct.toFixed(2) + '%';
+      elProfitBadge.className = 'kpi-badge ' + (profitVariancePct>=0 ? 'kpi-up' : 'kpi-down');
+    }
+    elProfitCard.classList.toggle('kpi-tile-profit-negative', profitVariancePct !== null && profitVariancePct < 0);
+  }
+}
+
+// ---------- EDA PANEL RENDERER ----------
+// Single entry-point called by goToStep('eda'). Re-computes the full 6-SKU output (with the null-state
+// override applied), refreshes lastVisibleComputed, populates the comparison dropdown, then triggers all
+// three EDA chart renders. Mirrors the data pipeline used by renderOutputTable() but scoped to visuals only.
+function renderEdaPanel(){
+  const computed = computeAll().map(applyVtmNullStateOverride);
+  const visibleComputed = computed.filter(c => visibleSkus.has(c.row.name));
+  lastVisibleComputed = visibleComputed;
+  populateComparisonDropdown();
+  renderTop5SkuChart(visibleComputed);
+  renderComparisonCharts(visibleComputed);
+  renderProfitabilityCurveChart();
+}
+
+// ---------- BASELINE vs SIMULATED FINANCIALS STACKED BAR CHART (visual-only, pure presentation layer) ----------
+// Renders two side-by-side vertically stacked bars for direct P&L comparison. STRICTLY synchronized to the
+// same computeProfitMetrics() engine that drives the Total Profit KPI card and the Table Grid Profit
+// columns — no independent cost math lives in this chart, and no hardcoded revenue percentage split is
+// ever applied. Cost per SKU uses a Baseline-PTC-anchored Unit Cost (a fixed structural COGS/unit) for
+// BOTH periods; only Volume — which responds to elasticity — differs between Baseline and Simulated. This
+// is what lets Profit % Lift correctly diverge from Revenue % Lift instead of mirroring it.
+//   Baseline Unit Cost   = 0.70 × (Baseline PTC / 1.12)                    [fixed structural cost]
+//   Total Baseline Cost  = Σ (monthlyCurrent   × Baseline Unit Cost)
+//   Baseline Profit      = Total Baseline Revenue  − Total Baseline Cost
+//   Total Simulated Cost = Σ (monthlySimulated × Baseline Unit Cost)       [same fixed unit cost, volume-driven]
+//   Simulated Profit     = Total Simulated Revenue − Total Simulated Cost
+//
+// Each stacked bar totals to its respective Revenue (Cost + Profit = Revenue by construction).
+// Tooltips show absolute ₹ value + percentage share of the respective bar's total Revenue, plus (on the
+// Simulated bar) the % variance vs Baseline for each segment.
+// Pure presentation layer — never writes to priceRows or the calculation engine.
+let profCurveChartInstance = null;
+let profCurveRetryCount = 0;
+function renderProfitabilityCurveChart(){
+  const canvas = document.getElementById('profitabilityCurveChart');
+  if(!canvas) return;
+  if(typeof Chart === 'undefined'){
+    if(profCurveRetryCount < 40){ profCurveRetryCount++; setTimeout(renderProfitabilityCurveChart, 250); }
+    else { console.warn('Financials Stacked Bar: Chart.js failed to load.'); }
+    return;
+  }
+  profCurveRetryCount = 0;
+  if(profCurveChartInstance){ profCurveChartInstance.destroy(); profCurveChartInstance = null; }
+
+  // Pull current simulation state from the locked calc engine (VTM null-state override applied).
+  const computed = computeAll().map(applyVtmNullStateOverride);
+
+  // STRICT DATA SYNCHRONIZATION: aggregate directly off computeProfitMetrics() — the SAME shared profit
+  // engine that drives the Total Profit KPI card and the Simulation Table Grid Profit columns. No local
+  // percentage-based revenue partitioning happens here (no fixed 62.5%/37.5% split of any kind) — Cost is
+  // derived algebraically as Revenue − Profit, where Profit itself comes from Sum(Units × Baseline-anchored
+  // Unit Cost) per SKU. This guarantees the chart can never drift out of sync with the KPI card again.
+  let totalBaselineRevenue = 0, totalBaselineProfit = 0;
+  let totalSimRevenue      = 0, totalSimProfit      = 0;
+
+  computed.forEach(c => {
+    const pm = computeProfitMetrics(c); // single source of truth — identical to the KPI card / table grid
+    totalBaselineRevenue += c.revenueCurrent;
+    totalSimRevenue      += c.revenueSimulated;
+    totalBaselineProfit  += pm.baselineProfit;
+    totalSimProfit       += pm.simulatedProfit;
+  });
+
+  const totalBaselineCost = totalBaselineRevenue - totalBaselineProfit;
+  const totalSimCost      = totalSimRevenue      - totalSimProfit;
+
+  // Pre-compute % shares of Revenue for tooltip display
+  const pctByCost   = [
+    totalBaselineRevenue > 0 ? (totalBaselineCost   / totalBaselineRevenue * 100).toFixed(1) : '0.0',
+    totalSimRevenue > 0      ? (totalSimCost        / totalSimRevenue      * 100).toFixed(1) : '0.0'
+  ];
+  const pctByProfit = [
+    totalBaselineRevenue > 0 ? (totalBaselineProfit / totalBaselineRevenue * 100).toFixed(1) : '0.0',
+    totalSimRevenue > 0      ? (totalSimProfit      / totalSimRevenue      * 100).toFixed(1) : '0.0'
+  ];
+  // Revenue totals indexed by bar position (0=Baseline, 1=Simulated) — used in tooltip closure
+  const revByBar = [Math.round(totalBaselineRevenue), Math.round(totalSimRevenue)];
+
+  // Pre-compute % VARIANCE of Simulated vs Baseline for Cost and Profit segments.
+  // Formula: ((Simulated − Baseline) / Baseline) × 100, guarded against a zero Baseline
+  // (which would otherwise produce Infinity/NaN). If both Baseline and Simulated are ~0,
+  // the change is reported as 0%; if only Baseline is ~0, the change is reported as null
+  // (rendered as "N/A" — a percentage off a zero base is not meaningful).
+  function pctChangeVsBaseline(simVal, baseVal){
+    if(Math.abs(baseVal) < 1e-9){
+      return Math.abs(simVal) < 1e-9 ? 0 : null;
+    }
+    return ((simVal - baseVal) / baseVal) * 100;
+  }
+  const costChangePct   = pctChangeVsBaseline(totalSimCost, totalBaselineCost);
+  const profitChangePct = pctChangeVsBaseline(totalSimProfit, totalBaselineProfit);
+
+  const textStyle = { color:'#555555', font:{ size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' } };
+  const fmtInr    = (v) => '₹' + Math.abs(Math.round(v)).toLocaleString('en-IN');
+  // Formats a % variance value for tooltip display: explicit "+" sign on gains, "N/A" when baseline was ~0.
+  const fmtChangePct = (pct) => {
+    if(pct === null) return 'N/A vs Baseline';
+    const sign = pct >= 0 ? '+' : '';
+    return `${sign}${pct.toFixed(1)}% vs Baseline`;
+  };
+
+  profCurveChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Baseline', 'Simulated'],
+      datasets: [
+        {
+          // BOTTOM SEGMENT — Cost (Muted Gold)
+          label: 'Cost (₹)',
+          data: [Math.round(totalBaselineCost), Math.round(totalSimCost)],
+          backgroundColor: 'rgba(197,160,89,0.88)',
+          borderColor: '#C5A059',
+          borderWidth: 1.5,
+          borderSkipped: false,
+          borderRadius: 0,
+          stack: 'financials',
+          order: 1
+        },
+        {
+          // TOP SEGMENT — Profit (Forest Green)
+          label: 'Profit (₹)',
+          data: [Math.round(totalBaselineProfit), Math.round(totalSimProfit)],
+          backgroundColor: 'rgba(46,125,94,0.88)',
+          borderColor: '#2E7D5E',
+          borderWidth: 1.5,
+          borderSkipped: false,
+          borderRadius: { topLeft:6, topRight:6, bottomLeft:0, bottomRight:0 },
+          stack: 'financials',
+          order: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: {
+            ...textStyle, boxWidth:14, padding:16,
+            generateLabels: () => [
+              { text:'Cost (₹)',   fillStyle:'rgba(197,160,89,0.88)', strokeStyle:'#C5A059', lineWidth:1.5, hidden:false },
+              { text:'Profit (₹)', fillStyle:'rgba(46,125,94,0.88)',  strokeStyle:'#2E7D5E', lineWidth:1.5, hidden:false }
+            ]
+          }
+        },
+        tooltip: {
+          backgroundColor: '#1E1E1E',
+          titleColor: '#C5A059',
+          bodyColor: '#fff',
+          padding: 13,
+          titleFont: { family:'Inter, "Helvetica Neue", sans-serif', size:11, weight:'700' },
+          bodyFont:  { family:'Inter, "Helvetica Neue", sans-serif', size:12, weight:'600' },
+          callbacks: {
+            title: (items) => items[0].label + ' Financials',
+            afterTitle: (items) => {
+              const i = items[0].dataIndex;
+              return '  Total Revenue: ' + fmtInr(revByBar[i]);
+            },
+            label: (ctx) => {
+              const i       = ctx.dataIndex;
+              const val     = ctx.parsed.y;
+              const isCost  = ctx.datasetIndex === 0;
+              const pct     = isCost ? pctByCost[i] : pctByProfit[i];
+              const suffix  = val < 0 ? '  [LOSS]' : '';
+              const segName = isCost ? 'Cost   ' : 'Profit ';
+              const lines   = [`  ${segName}: ${fmtInr(val)}  (${pct}% of Revenue)${suffix}`];
+              // Simulated bar (index 1) gets an extra line showing % variance vs its Baseline counterpart.
+              if(i === 1){
+                const changePct = isCost ? costChangePct : profitChangePct;
+                lines.push(`  ${segName.trim()}: ${fmtChangePct(changePct)}`);
+              }
+              return lines;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: { ...textStyle, maxRotation:0 },
+          grid: { display:false }
+        },
+        y: {
+          stacked: true,
+          title: {
+            display: true,
+            text: 'Absolute Value (₹)',
+            color: '#4A0E17',
+            font: { size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' }
+          },
+          ticks: { ...textStyle, callback: (v) => '₹' + Number(Math.abs(v)).toLocaleString('en-IN') },
+          grid: { color:'rgba(74,14,23,0.05)', borderDash:[4,4] },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+// ---------- TOP 5 SKUs REVENUE & VOLUME LIFT DRIVERS CHART (visual-only, read-only over `computed`) ----------
+// Sorts the SKUs CURRENTLY VISIBLE under the active SKU Filter dropdown selection by absolute revenue
+// lift (revenueSimulated - revenueCurrent), takes the top 5 of THAT filtered set, and renders a grouped
+// horizontal Chart.js bar chart (Revenue Lift + Volume Lift side-by-side per SKU) themed to the
+// maroon/gold palette. Pure presentation layer — never reads/writes calc-engine state, only the
+// already-computed, already-filtered array handed in by renderOutputTable().
+let revenueLiftChartInstance = null;
+let volumeLiftChartInstance = null;
+let top5SkuChartRetryCount = 0;
+function renderTop5SkuChart(computed){
+  const revCanvas = document.getElementById('revenueLiftChart');
+  const volCanvas = document.getElementById('volumeLiftChart');
+  if(!revCanvas || !volCanvas) return;
+  // Chart.js loads from a CDN <script> tag in <head>; on slow networks the global `Chart` object
+  // may not exist yet at the exact instant the very first renderTop5SkuChart() call fires (e.g. user
+  // jumps straight to the Output Dashboard before the script finishes downloading). Rather than silently
+  // giving up and leaving the cards permanently blank, retry on a short timer until the library is ready.
+  if(typeof Chart === 'undefined'){
+    if(top5SkuChartRetryCount < 40){ // ~10s max retry window
+      top5SkuChartRetryCount++;
+      setTimeout(() => renderTop5SkuChart(computed), 250);
+    } else {
+      console.warn('Top 5 SKU charts: Chart.js failed to load from CDN.');
+    }
+    return;
+  }
+  top5SkuChartRetryCount = 0;
+
+  // Destroy BOTH chart instances cleanly before re-rendering — this is the shared sync pipeline the
+  // global SKU Filter dropdown drives (toggleSkuVisibility() -> renderOutputTable() -> renderTop5SkuChart()),
+  // guaranteeing the Revenue Lift and Volume Lift canvases always stay perfectly in sync with each other
+  // and with the active filter selection.
+  if(revenueLiftChartInstance){ revenueLiftChartInstance.destroy(); revenueLiftChartInstance = null; }
+  if(volumeLiftChartInstance){ volumeLiftChartInstance.destroy(); volumeLiftChartInstance = null; }
+
+  if(!computed || computed.length === 0){
+    return; // nothing in the active SKU Filter selection — leave both canvases blank rather than chart nothing
+  }
+
+  const ranked = computed
+    .map(c => ({
+      name: c.row.name,
+      revenueLift: c.revenueDelta,
+      revDeltaPct: c.revDeltaPct,
+      volumeLift: c.monthlySimulated - c.monthlyCurrent,
+      volDeltaPct: c.volDeltaPct
+    }))
+    .sort((a,b) => Math.abs(b.revenueLift) - Math.abs(a.revenueLift))
+    .slice(0,5);
+
+  const labels = ranked.map(r => r.name);
+  const revenueData = ranked.map(r => Math.round(r.revenueLift));
+  const volumeData = ranked.map(r => Math.round(r.volumeLift));
+  const revPctByIdx = ranked.map(r => r.revDeltaPct);
+  const volPctByIdx = ranked.map(r => r.volDeltaPct);
+
+  // Shared visual config applied to both standalone charts — horizontal bars, rounded corners, and a
+  // %-aware tooltip callback wired to that chart's own percentage array.
+  const baseScaleTextStyle = { color:'#555555', font:{ size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' } };
+
+  revenueLiftChartInstance = new Chart(revCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Monthly Revenue Lift (₹)',
+        data: revenueData,
+        backgroundColor: '#4A0E17',
+        borderColor: '#4A0E17',
+        borderWidth: 1,
+        borderRadius: 6,
+        borderSkipped: false,
+        maxBarThickness: 22
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1E1E1E',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          padding: 8,
+          titleFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
+          bodyFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
+          callbacks: {
+            label: (ctx) => {
+              const idx = ctx.dataIndex;
+              const v = ctx.parsed.x;
+              const sign = v >= 0 ? '+' : '';
+              const pct = revPctByIdx[idx];
+              return `Monthly Revenue Lift: ${sign}₹${Math.abs(v).toLocaleString('en-IN')} (${pct>=0?'+':''}${pct.toFixed(1)}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          grid: { color:'rgba(74,14,23,0.05)', borderDash:[5,5] },
+          ticks: { ...baseScaleTextStyle, callback: (v) => '₹' + Number(v).toLocaleString('en-IN') }
+        },
+        y: {
+          ticks: baseScaleTextStyle,
+          grid: { display:false }
+        }
+      }
+    }
+  });
+
+  volumeLiftChartInstance = new Chart(volCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Monthly Volume Lift (units)',
+        data: volumeData,
+        backgroundColor: '#C5A059',
+        borderColor: '#C5A059',
+        borderWidth: 1,
+        borderRadius: 6,
+        borderSkipped: false,
+        maxBarThickness: 22
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1E1E1E',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          padding: 8,
+          titleFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
+          bodyFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
+          callbacks: {
+            label: (ctx) => {
+              const idx = ctx.dataIndex;
+              const v = ctx.parsed.x;
+              const sign = v >= 0 ? '+' : '';
+              const pct = volPctByIdx[idx];
+              return `Monthly Volume Lift: ${sign}${Math.abs(v).toLocaleString('en-IN')} units (${pct>=0?'+':''}${pct.toFixed(1)}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          grid: { color:'rgba(197,160,89,0.10)', borderDash:[5,5] },
+          ticks: { ...baseScaleTextStyle, callback: (v) => Number(v).toLocaleString('en-IN') }
+        },
+        y: {
+          ticks: baseScaleTextStyle,
+          grid: { display:false }
+        }
+      }
+    }
+  });
+}
+
+// ---------- KRBL REVENUE STRATEGY & INTELLIGENCE SUITE — DYNAMIC TEXT-PARSER ENGINE ----------
+// Fusion engine: premium glassmorphic card/badge UI (unchanged) driven by the mathematically exact
+// text templates from the detailed insights block. Every numeric value below comes directly off this
+// run's computeAll() output (price/elasticity, VTM cross-elasticity, revenue variance) — no generic
+// copy. Pure read-only function of `computed`; safe to call on every Output Dashboard re-render,
+// including every "Run Simulation & View Outputs" click. Each rendered row gets a small staggered
+// animation-delay so the suite reads as a fresh live model pass each time.
+function renderAiInsights(computed){
+  const body = document.getElementById('aiInsightsBody');
+  if(!body) return;
+  if(!computed || computed.length === 0){
+    body.innerHTML = `<div class="ai-insights-empty">Run a simulation to generate strategy insights.</div>`;
+    return;
+  }
+  const fmtRs = v => `&#8377;${Math.round(Math.abs(v)).toLocaleString('en-IN')}`;
+  const daysInCurrentMonth = getCurrentMonthDays(selectedMonth);
+  // cards: STRICTLY max 4 — one consolidated card per category. Every number below reads directly off
+  // `computed` (the exact same array feeding the live table rows), so April vs May always reconciles
+  // to the last rupee with what's on the grid. No cached/static text, no decoupled recomputation.
+  const cards = [];
+
+  // ============ CARD 1 — ⚡ STRATEGIC PORTFOLIO LIFT (Dark Navy / Gold) ============
+  // Sum of Simulated Revenue minus Sum of Current Revenue across the live table rows — total cash delta
+  // (₹) and overall portfolio revenue variance %, recomputed fresh on every call.
+  const totalRevCur = computed.reduce((s,c)=>s+c.revenueCurrent,0);
+  const totalRevSim = computed.reduce((s,c)=>s+c.revenueSimulated,0);
+  const portfolioRevDelta = totalRevSim - totalRevCur;
+  const portfolioRevPct = totalRevCur ? (portfolioRevDelta/totalRevCur*100) : 0;
+  cards.push({
+    type:'lift', label:'Strategic Portfolio Lift', icon:'&#9889;',
+    html:`Portfolio Simulated Revenue of ${fmtRs(totalRevSim)} versus Current Revenue of ${fmtRs(totalRevCur)} nets a total cash ${portfolioRevDelta>=0?'gain':'loss'} of <b>${fmtRs(portfolioRevDelta)}</b>, an overall portfolio revenue variance of <b>${portfolioRevPct>=0?'+':''}${portfolioRevPct.toFixed(2)}%</b> versus baseline this period.`
+  });
+
+  // ============ CARD 2 — 📈 PORTFOLIO GROWTH DRIVERS (Emerald Green / Gold) ============
+  // Consolidates every SKU with a positive volume or revenue lift into ONE line: leads with the top
+  // revenue contributor (by revenueDelta) and the top volume contributor (by volDeltaPct).
+  const revGainers = computed.filter(c => c.revenueDelta > 0).sort((a,b)=>b.revenueDelta-a.revenueDelta);
+  const volGainers = computed.filter(c => c.volDeltaPct > 0.01).sort((a,b)=>b.volDeltaPct-a.volDeltaPct);
+  if(revGainers.length || volGainers.length){
+    const leadRev = revGainers[0] || null;
+    const leadVol = volGainers.find(c => !leadRev || c.row.name !== leadRev.row.name) || volGainers[0] || null;
+    let driverHtml;
+    if(leadRev && leadVol){
+      driverHtml = `Primary commercial drivers this period are led by <b>${leadRev.row.name}</b> (contributing ${fmtRs(leadRev.revenueDelta)}, +${leadRev.revDeltaPct.toFixed(2)}%) and <b>${leadVol.row.name}</b> (expanding volume by ${leadVol.volDeltaPct.toFixed(2)}%), operating within highly favorable elasticity zones.`;
+    } else if(leadRev){
+      driverHtml = `Primary commercial driver this period is <b>${leadRev.row.name}</b>, contributing ${fmtRs(leadRev.revenueDelta)} of incremental revenue (+${leadRev.revDeltaPct.toFixed(2)}%), operating within a highly favorable elasticity zone.`;
+    } else {
+      driverHtml = `Primary commercial driver this period is <b>${leadVol.row.name}</b>, expanding volume by ${leadVol.volDeltaPct.toFixed(2)}%, operating within a highly favorable elasticity zone.`;
+    }
+    cards.push({ type:'driver', label:'Portfolio Growth Drivers', icon:'&#128200;', html:driverHtml });
+  }
+
+  // ============ CARD 3 — 🔄 BRAND CANNIBALIZATION PROFILE (Dark Navy) ============
+  // For every SKU truly losing volume this run (signed volumeLostDelta > 0 — never Math.abs()'d, so a
+  // volume-GAINING SKU can never be mistaken for a cannibalization source), decompose its loss across the
+  // 6x6 vtmMatrix into per-target unit counts, keep the top 2 receiving SKUs, and club every source SKU's
+  // line into this single consolidated card.
+  const cannibalLines = [];
+  computed.forEach(from => {
+    const lostDelta = from.volumeLostDelta || 0; // signed, full precision — same field bound to the grid row
+    if(lostDelta <= 0) return; // only true volume LOSSES can cannibalize into other SKUs
+    const targets = Object.keys(vtmMatrix[from.row.name] || {}).map(toName => {
+      const frac = vtmMatrix[from.row.name][toName] || 0;
+      const unitsPerMonth = lostDelta * frac * daysInCurrentMonth; // exact contribution feeding target's vtmGain
+      return { toName, unitsPerMonth };
+    }).filter(t => t.unitsPerMonth > 0.5).sort((a,b)=>b.unitsPerMonth-a.unitsPerMonth);
+    if(!targets.length) return;
+    const top = targets.slice(0,2);
+    const targetStr = top.length === 2
+      ? `<b>${top[0].toName}</b> (~${Math.round(top[0].unitsPerMonth).toLocaleString('en-IN')} units) and <b>${top[1].toName}</b> (~${Math.round(top[1].unitsPerMonth).toLocaleString('en-IN')} units)`
+      : `<b>${top[0].toName}</b> (~${Math.round(top[0].unitsPerMonth).toLocaleString('en-IN')} units)`;
+    cannibalLines.push({ html:`Internal volume diversion detected from <b>${from.row.name}</b> primarily into ${targetStr}.`, _sort: top[0].unitsPerMonth });
+  });
+  if(cannibalLines.length){
+    cannibalLines.sort((a,b)=>b._sort-a._sort);
+    const cannibalHtml = cannibalLines.map(l=>l.html).join(' ') + ' Advise adjusting cross-channel supply chain runs to optimize localized stock depth.';
+    cards.push({ type:'cannibal', label:'Brand Cannibalization Profile', icon:'&#128260;', html:cannibalHtml });
+  }
+
+  // ============ CARD 4 — ⚠️ COMMERCIAL RISK MITIGATION (Velvet Crimson) ============
+  // Only rendered when a SKU is actually losing significant volume/revenue this run, worst-first.
+  const riskSkus = computed.filter(c => c.revDeltaPct < -0.01).sort((a,b)=>a.revDeltaPct-b.revDeltaPct);
+  if(riskSkus.length){
+    const riskHtml = riskSkus.map(c =>
+      `<b>${c.row.name}</b> is projected to lose <b>${Math.abs(c.volDeltaPct).toFixed(2)}% volume</b> and <b>${Math.abs(c.revDeltaPct).toFixed(2)}% revenue</b> (${fmtRs(c.revenueDelta)}) under this scenario &mdash; review the simulated PTC inputs on this SKU before finalizing.`
+    ).join(' ');
+    cards.push({ type:'atrisk', label:'Commercial Risk Mitigation', icon:'&#9888;', html:riskHtml });
+  }
+
+  const chipCls = { lift:'chip-lift', driver:'chip-driver', atrisk:'chip-atrisk', cannibal:'chip-cannibal' };
+  const badgeCls = { lift:'badge-lift', driver:'badge-driver', atrisk:'badge-atrisk', cannibal:'badge-cannibal' };
+
+  body.innerHTML = cards.map((f,i) => `
+    <div class="ai-insight-row" style="animation-delay:${(i*0.12).toFixed(2)}s;">
+      <div class="ai-icon-chip ${chipCls[f.type]}">${f.icon}</div>
+      <div class="ai-badge-stack">
+        <span class="ai-badge ${badgeCls[f.type]}">${f.label}</span>
+        <div class="ai-insight-text">${f.html}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ---------- COMPARISON CHART VIEW TOGGLE (Overall Portfolio vs Individual SKU) ----------
+function populateComparisonDropdown(){
+  document.querySelectorAll('.comparison-view-select').forEach(sel => {
+    const prevVal = comparisonViewSku;
+    sel.innerHTML = '';
+    const allOpt = document.createElement('option');
+    allOpt.value = 'ALL'; allOpt.textContent = 'Overall Portfolio';
+    sel.appendChild(allOpt);
+    Object.keys(SKU_COEFFICIENTS).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+    sel.value = prevVal;
+  });
+}
+function onComparisonViewChange(val){
+  comparisonViewSku = val;
+  renderComparisonCharts(lastVisibleComputed);
+}
+// Builds the row set actually fed into the chart renderers below: either a single synthetic "Overall
+// Portfolio" row (summed across every SKU currently visible in the grid) or the one matching individual
+// SKU row, depending on comparisonViewSku.
+function buildComparisonRows(computed){
+  if(comparisonViewSku === 'ALL'){
+    const monthlyCurrent = computed.reduce((s,c) => s + c.monthlyCurrent, 0);
+    const monthlySimulated = computed.reduce((s,c) => s + c.monthlySimulated, 0);
+    const revenueCurrent = computed.reduce((s,c) => s + c.revenueCurrent, 0);
+    const revenueSimulated = computed.reduce((s,c) => s + c.revenueSimulated, 0);
+    const volDeltaPct = monthlyCurrent ? ((monthlySimulated - monthlyCurrent)/monthlyCurrent)*100 : 0;
+    const revDeltaPct = revenueCurrent ? ((revenueSimulated - revenueCurrent)/revenueCurrent)*100 : 0;
+    return [{ row:{ name:'Overall Portfolio' }, monthlyCurrent, monthlySimulated, volDeltaPct, revenueCurrent, revenueSimulated, revDeltaPct }];
+  }
+  return computed.filter(c => c.row.name === comparisonViewSku);
+}
+
+// ---------- ADVANCED SIMULATION COMPARISON CHARTS ----------
+// The "Monthly Volume by SKU" and "Revenue Mix (Simulated)" progress-bar sections have been fully removed
+// from the Output Dashboard per an earlier layout directive — the grid now flows directly into this
+// Baseline vs Simulated comparison section, which is the sole chart surface on Step 3. Both panels are
+// real Chart.js bar instances (Baseline = Deep Wine Maroon #4A0E17, Simulated = Muted Gold #C5A059), with a
+// floating Delta % badge retained per card. Every number rendered here is read directly off the same
+// `computed` array (c.monthlyCurrent / c.monthlySimulated / c.revenueCurrent / c.revenueSimulated /
+// c.volDeltaPct / c.revDeltaPct) that feeds the Output Dashboard grid, so these values always tie out
+// exactly to the grid. The "View Comparison For" dropdown drives buildComparisonRows() upstream, which
+// always hands this function exactly one row — either the aggregated "Overall Portfolio" totals or the
+// one selected individual SKU — so both charts always render a clean two-bar Baseline vs Simulated view.
+let compareUnitsChartInstance = null;
+let compareRevenueChartInstance = null;
+let compareChartRetryCount = 0;
+function renderComparisonCharts(computedFull){
+  const unitsCanvas = document.getElementById('compareUnitsChart');
+  const revCanvas = document.getElementById('compareRevenueChart');
+  if(!unitsCanvas || !revCanvas) return;
+
+  // Same CDN-load retry pattern used by the Top 5 SKU charts — Chart.js may not have finished loading from
+  // the CDN yet on the very first render.
+  if(typeof Chart === 'undefined'){
+    if(compareChartRetryCount < 40){
+      compareChartRetryCount++;
+      setTimeout(() => renderComparisonCharts(computedFull), 250);
+    } else {
+      console.warn('Comparison charts: Chart.js failed to load from CDN.');
+    }
+    return;
+  }
+  compareChartRetryCount = 0;
+
+  // Destroy both chart instances cleanly before every re-render — this is the sync pipeline the "View
+  // Comparison For" dropdown drives (onComparisonViewChange() -> renderComparisonCharts()), guaranteeing
+  // both canvases always stay perfectly in sync with the active selection without throwing Chart.js
+  // "Canvas is already in use" overlap exceptions.
+  if(compareUnitsChartInstance){ compareUnitsChartInstance.destroy(); compareUnitsChartInstance = null; }
+  if(compareRevenueChartInstance){ compareRevenueChartInstance.destroy(); compareRevenueChartInstance = null; }
+
+  const computed = buildComparisonRows(computedFull); // either 1 aggregated "Overall Portfolio" row or 1 filtered SKU row
+  const row = computed[0];
+  if(!row) return;
+
+  const unitsBadge = document.getElementById('compareUnitsDeltaBadge');
+  if(unitsBadge){
+    unitsBadge.textContent = (row.volDeltaPct>=0?'+':'') + row.volDeltaPct.toFixed(2) + '%';
+    unitsBadge.className = 'kpi-badge ' + (row.volDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
+  }
+  const revBadge = document.getElementById('compareRevenueDeltaBadge');
+  if(revBadge){
+    revBadge.textContent = (row.revDeltaPct>=0?'+':'') + row.revDeltaPct.toFixed(2) + '%';
+    revBadge.className = 'kpi-badge ' + (row.revDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
+  }
+
+  const sharedTextStyle = { color:'#555555', font:{ size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' } };
+  const sharedTooltip = {
+    backgroundColor: '#1E1E1E',
+    titleColor: '#fff',
+    bodyColor: '#fff',
+    padding: 8,
+    titleFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
+    bodyFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' }
+  };
+
+  compareUnitsChartInstance = new Chart(unitsCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Baseline', 'Simulated'],
+      datasets: [{
+        data: [Math.round(row.monthlyCurrent), Math.round(row.monthlySimulated)],
+        backgroundColor: ['#4A0E17', '#C5A059'],
+        borderRadius: 4,
+        maxBarThickness: 90
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...sharedTooltip, callbacks: { label: (ctx) => `${ctx.label}: ${Math.round(ctx.parsed.y).toLocaleString('en-IN')} units` } }
+      },
+      scales: {
+        x: { ticks: sharedTextStyle, grid: { display:false } },
+        y: { ticks: { ...sharedTextStyle, callback: (v) => Number(v).toLocaleString('en-IN') }, grid: { color:'rgba(74,14,23,0.06)', borderDash:[5,5] } }
+      }
+    }
+  });
+
+  compareRevenueChartInstance = new Chart(revCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Baseline', 'Simulated'],
+      datasets: [{
+        data: [Math.round(row.revenueCurrent), Math.round(row.revenueSimulated)],
+        backgroundColor: ['#4A0E17', '#C5A059'],
+        borderRadius: 4,
+        maxBarThickness: 90
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...sharedTooltip, callbacks: { label: (ctx) => `${ctx.label}: ₹${Math.round(ctx.parsed.y).toLocaleString('en-IN')}` } }
+      },
+      scales: {
+        x: { ticks: sharedTextStyle, grid: { display:false } },
+        y: { ticks: { ...sharedTextStyle, callback: (v) => '₹' + Number(v).toLocaleString('en-IN') }, grid: { color:'rgba(74,14,23,0.06)', borderDash:[5,5] } }
+      }
+    }
+  });
+}
+
+// ---------- DOWNLOAD CSV ----------
+function downloadExcel(){
+  const computed = computeAll().map(applyVtmNullStateOverride);
+  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','PTC Change (%)','Simulated PTC (Rs)','Current OSA (%)','Simulated OSA (%)','Marketing Budget (Rs)','Budget Change (%)','Simulated Budget (Rs)','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %','Baseline Profit (Rs)','Simulated Profit (Rs)','Profit Delta %'];
+  const csvEscape = v => { const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const rows = computed.map(c => {
+    const pm = computeProfitMetrics(c);
+    return [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.change, c.simPtc.toFixed(2), c.row.osa.toFixed(2), c.row.simOsa, c.row.budget.toFixed(2), c.row.budgetChange, c.row.simBudget.toFixed(2), Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2), Math.round(pm.baselineProfit), Math.round(pm.simulatedProfit), pm.profitChangePct === null ? 'N/A' : pm.profitChangePct.toFixed(2)];
+  });
+  const csvLines = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))];
+  const csvContent = csvLines.join('\r\n');
+  const blob = new Blob(['﻿'+csvContent], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = 'KRBL_PTC_Simulated_Output.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ---------- SCENARIO LIBRARY ----------
+function saveScenario(){
+  const nameInput = document.getElementById('scenarioNameInput');
+  const name = nameInput.value.trim() || `Scenario ${savedScenarios.length+1}`;
+  // Snapshot priceRows FIRST, then recompute from that exact snapshot — guarantees the KPI
+  // tags saved into the library card always reflect the state that was actually saved, even if
+  // priceRows or selectedMonth are mutated elsewhere before this entry is rendered later.
+  const priceRowsSnapshot = priceRows.map(r => ({...r}));
+  const computed = computeAll().map(applyVtmNullStateOverride);
+  const unitsSim = computed.reduce((s,x)=>s+x.monthlySimulated,0);
+  const unitsCur = computed.reduce((s,x)=>s+x.monthlyCurrent,0);
+  const grossRevenueSim = computed.reduce((s,x)=>s+x.revenueSimulated,0);
+  const grossRevenueCur = computed.reduce((s,x)=>s+x.revenueCurrent,0);
+  savedScenarios.push({
+    id: makeScenarioId(), // unique independent identifier — this record is appended, never merged into/overwriting siblings
+    name,
+    month: selectedMonth,
+    timestamp: new Date().toLocaleString('en-IN', { dateStyle:'medium', timeStyle:'short' }),
+    priceRowsSnapshot,
+    unitsSim,
+    unitsCur,
+    volDeltaPct: unitsCur ? ((unitsSim-unitsCur)/unitsCur*100) : 0,
+    revenueSim: grossRevenueSim,
+    revenueCur: grossRevenueCur,
+    revDeltaPct: grossRevenueCur ? ((grossRevenueSim-grossRevenueCur)/grossRevenueCur*100) : 0,
+  });
+  persistScenariosToStorage(); // write the full library straight to localStorage so this survives refresh/logout
+  nameInput.value = '';
+  const confirm = document.getElementById('saveConfirm');
+  confirm.style.display = 'inline';
+  setTimeout(()=>{ confirm.style.display='none'; }, 2500);
+}
+
+function loadScenario(id){
+  const s = savedScenarios.find(x => x.id === id);
+  if(!s) return;
+  selectedMonth = s.month;
+  priceRows = s.priceRowsSnapshot.map(r => ({...r}));
+  goToStep('simulator');
+}
+function deleteScenario(id){
+  // id-based removal (never positional/index-based) so this can never delete the wrong row even if
+  // the in-memory array and the on-disk database briefly disagree on ordering.
+  savedScenarios = savedScenarios.filter(s => s.id !== id);
+  try{
+    // Mirror the deletion straight onto whatever is on disk too, rather than relying purely on the
+    // merge-on-write in persistScenariosToStorage() (which is additive-by-design and would otherwise
+    // resurrect a deleted record if it's still sitting in localStorage from another tab/session).
+    const onDisk = readScenarioDatabase().filter(s => s.id !== id);
+    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(onDisk));
+  }catch(e){
+    console.warn('Could not finalize scenario deletion in localStorage:', e);
+  }
+  renderLibrary();
+}
+
+function renderLibrary(){
+  const container = document.getElementById('libraryContent');
+  if(savedScenarios.length === 0){
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">&#128203;</div>
+        <h3>No scenarios saved yet</h3>
+        <p>Head to the Pricing Simulator, adjust your PTC, OSA and Marketing Budget levers, run the simulation, and save it here to build out your scenario library.</p>
+        <div style="margin-top:18px;">
+          <button class="btn btn-primary" onclick="goToStep('simulator')">Go to Pricing Simulator &#10148;</button>
+        </div>
+      </div>`;
+    return;
+  }
+  container.innerHTML = savedScenarios.map((s,i) => `
+    <div class="scenario-card">
+      <div class="scenario-meta">
+        <h4>${s.name}</h4>
+        <div class="sub">${s.month} &middot; saved ${s.timestamp}</div>
+        <div class="scenario-periods"><b>Baseline Period:</b> ${s.month} | <b>Simulation Period:</b> Next 30 Days</div>
+      </div>
+      <div class="scenario-stats">
+        <div><div class="v">${Math.round(s.unitsSim).toLocaleString('en-IN')}</div><div class="l">Total Volume (Monthly)</div></div>
+        <div><div class="v">₹${Math.round(s.revenueSim).toLocaleString('en-IN')}</div><div class="l">Revenue</div></div>
+        <div><div class="v ${s.volDeltaPct>=0?'pos':'neg'}">${s.volDeltaPct>=0?'+':''}${s.volDeltaPct.toFixed(2)}%</div><div class="l">Volume &Delta;</div></div>
+        <div><div class="v ${s.revDeltaPct>=0?'pos':'neg'}">${s.revDeltaPct>=0?'+':''}${s.revDeltaPct.toFixed(2)}%</div><div class="l">Revenue &Delta;</div></div>
+      </div>
+      <div class="scenario-actions">
+        <button class="btn btn-outline" onclick="loadScenario('${s.id}')">Load</button>
+        <button class="btn btn-danger" onclick="deleteScenario('${s.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+// ---------- INIT ----------
+// selectedMonth is forced to DEFAULT_MONTH ('May 2026') above, and initPriceRows(selectedMonth) has
+// already populated priceRows from baseData['May 2026'] before this script block runs further — so the
+// very first render of the inputs grid reflects May 2026 actuals immediately, with no user action required.
+// This all runs regardless of login state (it only builds DOM content); visibility of the app shell itself
+// is gated entirely by handleLogin()/handleLogout() toggling the .visible / .hidden classes above.
+populateMonthDropdown();
+renderInputsTable();
+renderLibrary();
+updatePeriodLabels();
+</script>
+</body>
+</html>
