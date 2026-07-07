@@ -450,6 +450,7 @@
   .output-sub-panel{ display:block; overflow:visible !important; margin-top:14px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
 
@@ -496,6 +497,7 @@
       <button class="side-link active" id="navLibrary" onclick="goToStep('library')"><span class="num">1</span> Scenario Library</button>
       <button class="side-link" id="navSimulator" onclick="goToStep('simulator')"><span class="num">2</span> Pricing Simulator</button>
       <button class="side-link" id="navOutput" onclick="goToStep('output')" disabled><span class="num">3</span> Output Dashboard</button>
+      <button class="side-link" id="navEda" onclick="goToStep('eda')"><span class="num">4</span> EDA Analysis</button>
     </div>
     <div class="sidebar-footer">
       <button class="logout-btn" onclick="handleLogout()">&#8634; Log Out</button>
@@ -778,6 +780,167 @@
 
       </div>
 
+      <!-- STEP 4: EDA ANALYSIS — fully client-side (PapaParse + Chart.js), reads Pricing_Features.csv
+           directly in the browser. No backend / Flask dependency of any kind. -->
+      <div class="panel" id="panel-eda">
+
+        <!-- MASTER FILTERS BAR -->
+        <div class="glass-card" style="overflow:visible !important;">
+          <div class="toolbar">
+            <h3 class="section-title" style="margin:0;">EDA Analysis &mdash; Pricing Features Dataset</h3>
+            <div class="toolbar-actions">
+              <span id="edaanDataStatus" style="font-size:11.5px; color:var(--muted);">Loading dataset&hellip;</span>
+            </div>
+          </div>
+          <div class="toolbar" style="margin-top:-6px;">
+            <div class="toolbar-left">
+              <div class="field">
+                <label>SKU Name Filter</label>
+                <select id="edaanSkuFilter" onchange="onEdaanFiltersChanged()"><option value="ALL">All SKUs</option></select>
+              </div>
+              <div class="field">
+                <label>Segment Filter</label>
+                <select id="edaanSegmentFilter" onchange="onEdaanFiltersChanged()"><option value="ALL">All Segments</option></select>
+              </div>
+              <div class="field">
+                <label>Time Interval</label>
+                <select id="edaanTimeInterval" onchange="onEdaanFiltersChanged()">
+                  <option value="daily">Daily</option>
+                  <option value="weekly" selected>Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. QUANTITY vs PTC vs COMPETITOR PTC vs MRP vs DISCOUNT -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Quantity vs PTC vs Competitor PTC vs MRP vs Discount %</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Units sold (bars, left axis) against pricing levers (lines, right axis) over the selected time interval.</div>
+          <div style="position:relative; height:340px;">
+            <canvas id="edaanChart1"></canvas>
+          </div>
+        </div>
+
+        <!-- 6. TOP 5 SKUs BY UNITS SOLD -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="toolbar" style="margin:0 0 6px;">
+            <div class="section-title" style="margin:0; font-size:13px;">&#127942; Top 5 SKUs by Units Sold</div>
+            <div class="toolbar-actions">
+              <div class="field" style="margin:0;">
+                <label style="font-size:10.5px;">Time Frame</label>
+                <select id="edaanTop5TimeFrame" onchange="renderEdaanChart2()" style="font-size:12px;">
+                  <option value="last_week">Last Week</option>
+                  <option value="last_month">Last Month</option>
+                  <option value="this_month">This Month</option>
+                  <option value="last_3_months">Last 3 Months</option>
+                  <option value="overall" selected>Overall</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div style="position:relative; height:320px;">
+            <canvas id="edaanChart2"></canvas>
+          </div>
+        </div>
+
+        <!-- 7. MARKETING BUDGET vs UNITS SOLD -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128176; Marketing Budget vs Units Sold</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="edaanChart3"></canvas>
+          </div>
+        </div>
+
+        <!-- 8. PRODUCT RANKING vs COMPETITOR RANKING vs UNITS SOLD -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128200; Product Ranking vs Competitor Ranking vs Units Sold</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Ranking axes are inverted (Rank 1 = best) so improving rank reads as an upward line.</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="edaanChart4"></canvas>
+          </div>
+        </div>
+
+        <!-- 9. OSA vs UNITS SOLD -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128230; On-Shelf Availability (OSA) vs Units Sold</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="edaanChart5"></canvas>
+          </div>
+        </div>
+
+        <!-- 10. MARKET SHARE vs UNITS SOLD -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#127919; Market Share vs Units Sold</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="edaanChart6"></canvas>
+          </div>
+        </div>
+
+        <!-- 11. FESTIVAL IMPACT ANALYSIS -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#127881; Festival Impact Analysis</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Units sold stacked/grouped by Festival Phase (Pre-Festival / Festival / Post-Festival / Normal).</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="edaanChart7"></canvas>
+          </div>
+        </div>
+
+        <!-- 12. FIRST WEEK EFFECT vs UNITS SOLD -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128197; First-Week-of-Month Effect vs Units Sold</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="edaanChart8"></canvas>
+          </div>
+        </div>
+
+        <!-- 13. WEEKEND EFFECT vs UNITS SOLD -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#127749; Weekend Effect vs Units Sold</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="edaanChart9"></canvas>
+          </div>
+        </div>
+
+        <!-- 14 & 15. SEGMENT + MSL/NON-MSL CONTRIBUTION (side by side pies) -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 10px; font-size:13px;">&#129345; Volume Contribution Breakdown</div>
+          <div class="charts-grid" style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1 1 320px; min-width:280px;">
+              <div style="font-size:12px; font-weight:700; color:#4A0E17; margin-bottom:6px;">SEGMENT CONTRIBUTION</div>
+              <div style="position:relative; height:280px;">
+                <canvas id="edaanChart10"></canvas>
+              </div>
+            </div>
+            <div style="flex:1 1 320px; min-width:280px;">
+              <div style="font-size:12px; font-weight:700; color:#9C7B2E; margin-bottom:6px;">MSL / NON-MSL CONTRIBUTION</div>
+              <div style="position:relative; height:280px;">
+                <canvas id="edaanChart11"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 16. WEIGHT VARIANT CONTRIBUTION -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#9878;&#65039; Weight Variant Contribution</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="edaanChart12"></canvas>
+          </div>
+        </div>
+
+        <!-- 17. FEATURE CORRELATION MATRIX (HEATMAP) -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128421;&#65039; Feature Correlation Matrix</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Pearson correlation across the numeric pricing/volume/availability features in the filtered dataset. Rendered as a pure Chart.js scatter-grid heatmap (no extra plugin dependency).</div>
+          <div style="position:relative; height:560px; overflow-x:auto;">
+            <canvas id="edaanChart13"></canvas>
+          </div>
+        </div>
+
+      </div>
+
     </div>
   </div>
 </div>
@@ -959,6 +1122,7 @@ initPriceRows(selectedMonth);
 function resizeAllDashboardCharts(){
   [revenueLiftChartInstance, volumeLiftChartInstance, compareUnitsChartInstance, compareRevenueChartInstance, profCurveChartInstance]
     .forEach(inst => { if(inst && typeof inst.resize === 'function'){ inst.resize(); } });
+  if(typeof window.edaanResizeAll === 'function'){ window.edaanResizeAll(); }
   window.dispatchEvent(new Event('resize'));
 }
 (function initSidebarToggle(){
@@ -973,13 +1137,14 @@ function resizeAllDashboardCharts(){
 
 // ---------- NAVIGATION (permanent left sidebar) ----------
 function goToStep(step){
-  ['library','simulator','output'].forEach(s => {
+  ['library','simulator','output','eda'].forEach(s => {
     document.getElementById('panel-'+s).classList.toggle('active', s===step);
     document.getElementById('nav'+s.charAt(0).toUpperCase()+s.slice(1)).classList.toggle('active', s===step);
   });
   if(step==='library') renderLibrary();
   if(step==='simulator') renderInputsTable();
   if(step==='output') renderOutputTable();
+  if(step==='eda' && typeof initEdaAnalysisTab === 'function') initEdaAnalysisTab();
   updatePeriodLabels();
 }
 
@@ -2169,5 +2334,8 @@ renderInputsTable();
 renderLibrary();
 updatePeriodLabels();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="eda_dashboard.js"></script>
 </body>
 </html>
