@@ -474,6 +474,7 @@
   .output-sub-panel{ display:block; overflow:visible !important; margin-top:14px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
@@ -945,7 +946,7 @@
         <!-- 17. FEATURE CORRELATION MATRIX (HEATMAP) -->
         <div class="glass-card" style="padding:16px 20px 14px;">
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128421;&#65039; Feature Correlation Matrix</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Pearson correlation across a focused set of pricing/ranking/availability/calendar features in the filtered dataset. Rendered as a pure Chart.js scatter-grid heatmap (no extra plugin dependency).</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Pearson correlation across qty and all available pricing/ranking/availability/calendar features in the filtered dataset (no engineered features added). Rendered as a lower-triangular Seaborn-style tile heatmap using Chart.js + chartjs-plugin-datalabels.</div>
           <div style="position:relative; height:800px; min-height:800px; overflow-x:auto;">
             <canvas id="edaanChart13"></canvas>
           </div>

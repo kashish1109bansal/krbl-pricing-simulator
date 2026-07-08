@@ -99,7 +99,12 @@
       const pyDow = (jsDow + 6) % 7;              // 0=Mon...6=Sun (matches pandas dt.dayofweek)
       const isWeekend = (pyDow === 5 || pyDow === 6) ? 1 : 0;
       const isFirstWeek = day <= 7 ? 1 : 0;
-      const yearWeek = `${year}-W${String(strftimeU(d)).padStart(2,'0')}`;
+      // FIX: weekly aggregation must be strict ISO-8601 (Monday -> Sunday) per stakeholder
+      // requirement, not the old pandas `%U` (Sunday-first) numbering. isoWeekInfo() returns
+      // the ISO week-year too (which can differ from the calendar year for a few days around
+      // Dec 31/Jan 1) so the year_week string sorts and buckets correctly across year boundaries.
+      const { isoYear, week: isoWeek } = isoWeekInfo(d);
+      const yearWeek = `${isoYear}-W${String(isoWeek).padStart(2,'0')}`;
       const yearMonth = `${year}-${String(month).padStart(2,'0')}`;
       const quarter = Math.ceil(month / 3);
 
@@ -174,16 +179,22 @@
   }
   function ymd(d){ return d.toISOString().slice(0,10); }
 
-  // strftime("%U") — week number with Sunday as first day of week; all days before the
-  // year's first Sunday are week 0. Matches pandas' `date.dt.strftime("%Y-W%U")` exactly
-  // (which is deliberately NOT the same as ISO week numbering).
-  function strftimeU(d){
-    const jan1 = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const jan1Dow = jan1.getUTCDay(); // 0=Sun
-    const dayOfYear = Math.round((d - jan1) / 86400000);
-    const firstSundayIndex = (7 - jan1Dow) % 7;
-    if(dayOfYear < firstSundayIndex) return 0;
-    return Math.floor((dayOfYear - firstSundayIndex) / 7) + 1;
+  // ISO-8601 week number (Monday = first day of week, week 1 = the week containing the
+  // year's first Thursday). Per stakeholder requirement, weekly aggregation buckets must
+  // run strictly Monday -> Sunday, so this replaces the previous pandas `%U` (Sunday-first,
+  // non-ISO) numbering. Returns both the ISO week number AND the ISO week-year, since the
+  // ISO year can differ from the calendar year for a few days around Dec 31 / Jan 1
+  // (e.g. 2024-12-30 falls in ISO week "2025-W01").
+  function isoWeekInfo(d){
+    const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    const dayNr = (target.getUTCDay() + 6) % 7; // Mon=0 ... Sun=6
+    target.setUTCDate(target.getUTCDate() - dayNr + 3);
+    const isoYear = target.getUTCFullYear();
+    const firstThursday = new Date(Date.UTC(isoYear, 0, 4));
+    const firstThursdayDayNr = (firstThursday.getUTCDay() + 6) % 7;
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - firstThursdayDayNr + 3);
+    const week = 1 + Math.round((target - firstThursday) / (7 * 86400000));
+    return { isoYear, week };
   }
 
   // ================================================================================
@@ -777,14 +788,15 @@
   // scales at (col, row) and colored via a coolwarm-style diverging scale; a custom
   // afterDatasetsDraw plugin prints the numeric correlation value on each cell.
   // ================================================================================
-  // FIX: narrowed to a focused set of pricing/ranking/availability/calendar features
-  // (was a broader 28-column list). Includes two newly engineered/derived fields:
-  // msl_flag (binary encoding of `msl/non-msl`, see engineerFeatures) and Variant
-  // (raw numeric weight-variant field straight from PapaParse dynamicTyping).
+  // FIX: stakeholder requirement — "don't create new features just use all available
+  // features and qty in file". This is the exact, stakeholder-specified feature list
+  // (total_qty_sold stands in for the qty/target variable, included first), with no
+  // additional engineered columns introduced beyond what already exists on the row
+  // objects from engineerFeatures (msl_flag, is_weekend, is_first_week, Variant).
   const CORR_COLS = [
-    "PTC", "Comp_ptc", "budget_per_store", "budget_per_unit", "Sku_Ranking", "Comp_Ranking",
-    "OSA_SKU", "OSA_Comp", "Market_Share", "is_weekend", "is_first_week", "Is_Fest", "Pre_Fest",
-    "Post_Fest", "MRP", "Segment_Units", "Segment_Sku_Count", "msl_flag", "Variant"
+    "total_qty_sold", "PTC", "Comp_ptc", "overall_marketing_budget", "Sku_Ranking", "OSA_SKU",
+    "Market_Share", "is_weekend", "is_first_week", "Is_Fest", "Pre_Fest", "Post_Fest", "MRP",
+    "Comp_Ranking", "Segment_Units", "msl_flag", "Variant"
   ];
   function pearson(xs, ys){
     let n=0, sx=0, sy=0;
@@ -806,67 +818,79 @@
     const rows = applyMasterFilters(RAW);
     const n = CORR_COLS.length;
     const columns = CORR_COLS.map(col => rows.map(r => r[col]));
-    const matrix = [];
-    for(let i=0;i<n;i++){
-      matrix.push(new Array(n).fill(null));
-    }
-    for(let i=0;i<n;i++){
-      for(let j=i;j<n;j++){
-        const c = i === j ? 1 : pearson(columns[i], columns[j]);
-        matrix[i][j] = c; matrix[j][i] = c;
-      }
-    }
+
+    // FIX: lower-triangular only (j <= i) — Seaborn-style masked heatmap. Removes the
+    // symmetric duplicate upper half so each pair is shown exactly once, with the
+    // diagonal (self-correlation = 1) running top-left -> bottom-right.
     const points = [];
     for(let i=0;i<n;i++){
-      for(let j=0;j<n;j++){
-        points.push({ x: CORR_COLS[j], y: CORR_COLS[i], v: matrix[i][j] });
+      for(let j=0;j<=i;j++){
+        const v = i === j ? 1 : pearson(columns[i], columns[j]);
+        points.push({ x: CORR_COLS[j], y: CORR_COLS[i], v });
       }
     }
     const canvas = document.getElementById('edaanChart13');
     if(canvas) canvas.style.width = Math.max(900, n * 34) + 'px';
 
-    const heatmapValuePlugin = {
-      id: 'edaanHeatmapValues',
-      afterDatasetsDraw(chart){
-        const { ctx } = chart;
-        const meta = chart.getDatasetMeta(0);
-        meta.data.forEach((el, idx) => {
-          const v = chart.data.datasets[0].data[idx].v;
-          if(v === null || v === undefined) return;
-          ctx.save();
-          ctx.font = '600 11px Inter, sans-serif';
-          ctx.fillStyle = Math.abs(v) > 0.55 ? '#ffffff' : '#2A1B1E';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(v.toFixed(2), el.x, el.y);
-          ctx.restore();
-        });
-      }
-    };
-
-    makeChart('edaanChart13', {
+    // FIX: premium tile UI — the point itself is now invisible (radius:0) but keeps a
+    // generous hitRadius for hover/tooltip detection. The visible "tile" is drawn by
+    // chartjs-plugin-datalabels' own backgroundColor/borderRadius/padding box, which
+    // sits flush against neighboring cells like a solid Seaborn-style square, with the
+    // correlation value rendered as the label text inside that box.
+    const hasDatalabels = typeof ChartDataLabels !== 'undefined';
+    const chartConfig = {
       type: 'scatter',
       data: {
         datasets: [{
           data: points,
           pointStyle: 'rect',
-          radius: 14,
-          hoverRadius: 14,
-          backgroundColor: points.map(p => corrToColor(p.v))
+          radius: 0,
+          hoverRadius: 0,
+          hitRadius: 18,
+          backgroundColor: 'transparent',
+          borderWidth: 0
         }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label(ctx){ const p = ctx.raw; return `${p.y} × ${p.x}: ${p.v == null ? 'n/a' : p.v.toFixed(3)}`; } } }
+          tooltip: { callbacks: { label(ctx){ const p = ctx.raw; return `${p.y} × ${p.x}: ${p.v == null ? 'n/a' : p.v.toFixed(3)}`; } } },
+          datalabels: hasDatalabels ? {
+            display: true,
+            borderRadius: 0,
+            backgroundColor(context){
+              const p = context.dataset.data[context.dataIndex];
+              return p ? corrToColor(p.v) : '#e8e8e8';
+            },
+            color(context){
+              const p = context.dataset.data[context.dataIndex];
+              const v = p ? p.v : null;
+              return (v != null && Math.abs(v) > 0.55) ? '#ffffff' : '#2A1B1E';
+            },
+            font: { size: 11, weight: '600', family: 'Inter, sans-serif' },
+            formatter(value){ return (value.v === null || value.v === undefined) ? '' : value.v.toFixed(2); },
+            padding(context){
+              // dynamically size the padding so the colored background box fills/flushes
+              // against the cell width, rather than leaving gaps between square tiles.
+              const area = context.chart.chartArea;
+              if(!area) return 10;
+              const cellW = (area.right - area.left) / n;
+              return Math.max(6, Math.round(cellW / 2 - 8));
+            },
+            align: 'center',
+            anchor: 'center'
+          } : false
         },
         scales: {
           x: { type: 'category', labels: CORR_COLS, position: 'top', offset: true, ticks: { autoSkip: false, maxRotation: 90, minRotation: 90, font: { size: 9 } }, grid: { display: false } },
           y: { type: 'category', labels: CORR_COLS, reverse: true, offset: true, ticks: { autoSkip: false, font: { size: 9 } }, grid: { display: false } }
         }
-      },
-      plugins: [heatmapValuePlugin]
-    });
+      }
+    };
+    if(hasDatalabels) chartConfig.plugins = [ChartDataLabels];
+
+    makeChart('edaanChart13', chartConfig);
   }
 
   // ---------- expose a resize hook so the existing sidebar-toggle resize sweep also catches these charts ----------
