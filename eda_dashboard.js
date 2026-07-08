@@ -127,12 +127,15 @@
       const Pre_Fest = num(r['Pre_Fest']) || 0;
       const Post_Fest = num(r['Post_Fest']) || 0;
       const festival_phase = Is_Fest === 1 ? 'Festival' : (Pre_Fest === 1 ? 'Pre-Festival' : (Post_Fest === 1 ? 'Post-Festival' : 'Normal'));
+      // msl_flag — binary encoding of the `msl/non-msl` string column, needed by the
+      // Feature Correlation Matrix (Pearson correlation only works on numeric fields).
+      const msl_flag = String(r['msl/non-msl']).trim().toLowerCase() === 'msl' ? 1 : 0;
 
       out.push({
         item_id: r['item_id'], item_name: r['item_name'],
         'Short Code': r['Short Code'], 'Segment': r['Segment'],
         'Variant Name': r['Variant Name'], 'Variant': r['Variant'],
-        'msl/non-msl': r['msl/non-msl'],
+        'msl/non-msl': r['msl/non-msl'], msl_flag,
         date: dateStr, year, month, day, quarter,
         year_week: yearWeek, year_month: yearMonth,
         is_weekend: isWeekend, is_first_week: isFirstWeek,
@@ -246,9 +249,9 @@
   // ================================================================================
   // MASTER FILTERS (SKU / Segment / Time Interval) — applied dynamically to every chart
   // ================================================================================
-  function getSkuFilter(){ const el = document.getElementById('edaanSkuFilter'); return el ? el.value : 'ALL'; }
-  function getSegmentFilter(){ const el = document.getElementById('edaanSegmentFilter'); return el ? el.value : 'ALL'; }
-  function getInterval(){ const el = document.getElementById('edaanTimeInterval'); return el ? el.value : 'weekly'; }
+  function getSkuFilter(){ const el = document.getElementById('skuFilter'); return el ? el.value : 'ALL'; }
+  function getSegmentFilter(){ const el = document.getElementById('segmentFilter'); return el ? el.value : 'ALL'; }
+  function getInterval(){ const el = document.getElementById('timeFilter'); return el ? el.value : 'weekly'; }
 
   function applyMasterFilters(rows){
     const sku = getSkuFilter();
@@ -266,8 +269,8 @@
   }
 
   function populateEdaanFilterOptions(){
-    const skuSel = document.getElementById('edaanSkuFilter');
-    const segSel = document.getElementById('edaanSegmentFilter');
+    const skuSel = document.getElementById('skuFilter');
+    const segSel = document.getElementById('segmentFilter');
     if(!skuSel || !segSel) return;
     const skus = Array.from(new Set(RAW.map(r => r['Short Code']))).sort();
     const segs = Array.from(new Set(RAW.map(r => r['Segment']))).sort();
@@ -286,7 +289,7 @@
     if(!edaanLoaded) return;
     renderEdaanChart1(); renderEdaanChart2(); renderEdaanChart3(); renderEdaanChart4(); renderEdaanChart5();
     renderEdaanChart6(); renderEdaanChart7(); renderEdaanChart8(); renderEdaanChart9(); renderEdaanChart10();
-    renderEdaanChart11(); renderEdaanChart12(); renderEdaanChart13();
+    renderEdaanChart11(); renderEdaanChart13();
   }
   window.renderEdaanChart2 = renderEdaanChart2; // wired directly to the Top-5 chart's own Time Frame dropdown
 
@@ -437,6 +440,10 @@
   // 8. PRODUCT RANKING vs COMPETITOR RANKING vs UNITS  (canvas: edaanChart4)
   // ================================================================================
   function renderEdaanChart4(){
+    // FIX: previously hardcoded to the MONTHLY table regardless of the master Time
+    // Interval filter. Now uses pickDataset() like charts 1/3/5/6 so daily/weekly/monthly
+    // selections are all honored, and both the ranking lines and the units bar render
+    // correctly across every interval.
     const interval = getInterval();
     const { dataset, xField, qtyIsLine } = pickDataset(interval);
     let rows = applyMasterFilters(dataset);
@@ -480,18 +487,23 @@
   }
 
   // ================================================================================
-  // 10. MARKET SHARE vs UNITS SOLD  (canvas: edaanChart6) — always monthly, per Python
+  // 10. MARKET SHARE vs UNITS SOLD  (canvas: edaanChart6)
   // ================================================================================
   function renderEdaanChart6(){
-    let rows = applyMasterFilters(MONTHLY);
-    rows = aggregate(rows, ['year_month'], { total_qty_sold: 'sum', Market_Share: 'mean' });
-    rows.sort(sortByX('year_month'));
+    // FIX: previously hardcoded to the MONTHLY table regardless of the master Time
+    // Interval filter. Now uses pickDataset() like charts 1/3/5 so daily/weekly/monthly
+    // selections are all honored.
+    const interval = getInterval();
+    const { dataset, xField, qtyIsLine } = pickDataset(interval);
+    let rows = applyMasterFilters(dataset);
+    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', Market_Share: 'mean' });
+    rows.sort(sortByX(xField));
     makeChart('edaanChart6', {
-      type: 'bar',
+      type: qtyIsLine ? 'line' : 'bar',
       data: {
-        labels: rows.map(r => r.year_month),
+        labels: rows.map(r => r[xField]),
         datasets: [
-          { type: 'bar', label: 'Total Units Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(197,160,89,0.65)', yAxisID: 'y' },
+          { type: qtyIsLine ? 'line' : 'bar', label: 'Total Units Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(197,160,89,0.65)', borderColor: '#C5A059', yAxisID: 'y', tension: 0.25 },
           { type: 'line', label: 'Avg Market Share (%)', data: rows.map(r => r.Market_Share != null ? r.Market_Share * 100 : null), borderColor: '#4A0E17', backgroundColor: '#4A0E17', yAxisID: 'y1', tension: 0.25 }
         ]
       },
@@ -549,24 +561,179 @@
     return `rgba(${r},${g},${b},${alpha})`;
   }
 
-  // 11. FESTIVAL IMPACT ANALYSIS (canvas: edaanChart7) — stacked bar for weekly/monthly
-  const FESTIVAL_COLORS = { 'Festival': '#C5A059', 'Pre-Festival': '#2E6F9E', 'Post-Festival': '#0E7A4E', 'Normal': '#8d7f78' };
+  // 11. FESTIVAL IMPACT ANALYSIS (canvas: edaanChart7)
+  const FESTIVAL_COLORS = { 'Festival': '#FF3333', 'Pre-Festival': '#FFC000', 'Post-Festival': '#00B050', 'Normal': '#808080' };
+  function festivalPhaseRank(phase){
+    return phase === 'Festival' ? 3 : (phase === 'Pre-Festival' ? 2 : (phase === 'Post-Festival' ? 1 : 0));
+  }
   function renderEdaanChart7(){
-    renderCategoryTimeChart('edaanChart7', 'festival_phase', v => v, v => FESTIVAL_COLORS[v] || '#8d7f78', true);
+    const interval = getInterval();
+    if(interval !== 'daily'){
+      // Weekly / Monthly: unchanged — stacked bar, one series per festival phase.
+      renderCategoryTimeChart('edaanChart7', 'festival_phase', v => v, v => FESTIVAL_COLORS[v] || FESTIVAL_COLORS['Normal'], true);
+      return;
+    }
+    // FIX (Daily view): the old code built one separate line dataset PER festival phase,
+    // each holding 0s on every date outside that phase — Chart.js then plotted those
+    // zeros as real data points, producing a "zigzag to zero" line for every phase.
+    // Now: ONE continuous 'Qty Sold' line across all dates, with each point's color
+    // driven by that date's Festival_Phase via a pointBackgroundColor array.
+    const rows = applyMasterFilters(RAW);
+    let agg = aggregate(rows, ['date'], { total_qty_sold: 'sum' });
+    const phaseByDate = new Map();
+    rows.forEach(r => {
+      const cur = phaseByDate.get(r.date);
+      if(!cur || festivalPhaseRank(r.festival_phase) > festivalPhaseRank(cur)) phaseByDate.set(r.date, r.festival_phase);
+    });
+    agg.sort(sortByX('date'));
+    const labels = agg.map(r => r.date);
+    const data = agg.map(r => r.total_qty_sold);
+    const pointColors = labels.map(d => FESTIVAL_COLORS[phaseByDate.get(d)] || FESTIVAL_COLORS['Normal']);
+    makeChart('edaanChart7', {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Qty Sold',
+          data,
+          borderColor: '#B7ADA4',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          fill: false,
+          tension: 0.15,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            display: true, position: 'top',
+            labels: {
+              boxWidth: 12, font: { size: 11 },
+              generateLabels(){
+                return Object.keys(FESTIVAL_COLORS).map(k => ({ text: k, fillStyle: FESTIVAL_COLORS[k], strokeStyle: FESTIVAL_COLORS[k], pointStyle: 'circle' }));
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { maxRotation: 70, minRotation: 0, autoSkip: true, maxTicksLimit: 24, font: { size: 10 } } },
+          y: { title: { display: true, text: 'Qty Sold', font: { size: 11 } } }
+        }
+      }
+    });
   }
 
-  // 12. FIRST WEEK EFFECT vs UNITS (canvas: edaanChart8) — grouped (not stacked), per Python
+  // 12. FIRST WEEK EFFECT vs UNITS (canvas: edaanChart8)
   function renderEdaanChart8(){
+    const interval = getInterval();
+    if(interval === 'daily'){
+      // FIX (Daily view): the old code built two separate line datasets ('First Week'
+      // and 'Rest of Month'), each holding 0s on every date outside its own bucket —
+      // Chart.js then plotted those zeros as real points, producing a messy zigzag
+      // dropping to zero. Now: ONE continuous 'Qty Sold' line across all dates, with
+      // each point's color driven by that date's day-of-month via pointBackgroundColor
+      // (day <= 7 => Gold, day > 7 => Dark Brown/Maroon).
+      const rows = applyMasterFilters(RAW);
+      const agg = aggregate(rows, ['date'], { total_qty_sold: 'sum' });
+      agg.sort(sortByX('date'));
+      const labels = agg.map(r => r.date);
+      const data = agg.map(r => r.total_qty_sold);
+      const pointColors = labels.map(d => (parseInt(d.slice(8, 10), 10) <= 7) ? '#C8A26A' : '#591717');
+      makeChart('edaanChart8', {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Qty Sold',
+            data,
+            borderColor: '#B7ADA4',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            fill: false,
+            tension: 0.15,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              display: true, position: 'top',
+              labels: {
+                boxWidth: 12, font: { size: 11 },
+                generateLabels(){
+                  return [
+                    { text: 'First Week (Day ≤ 7)', fillStyle: '#C8A26A', strokeStyle: '#C8A26A', pointStyle: 'circle' },
+                    { text: 'Rest of Month', fillStyle: '#591717', strokeStyle: '#591717', pointStyle: 'circle' }
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { maxRotation: 70, minRotation: 0, autoSkip: true, maxTicksLimit: 24, font: { size: 10 } } },
+            y: { title: { display: true, text: 'Qty Sold', font: { size: 11 } } }
+          }
+        }
+      });
+      return;
+    }
+    // FIX (Weekly view): now a Stacked Bar Chart, same treatment as Monthly — two
+    // datasets ('First Week (Day ≤ 7)' and 'Rest of Month') stacked on top of each
+    // other, with stacked:true applied to both the x and y axes.
     renderCategoryTimeChart('edaanChart8', 'is_first_week',
       v => (v === 1 ? 'First Week (Day ≤ 7)' : 'Rest of Month'),
-      v => (v === 1 ? '#C5A059' : '#4A0E17'), false);
+      v => (v === 1 ? '#C8A26A' : '#591717'), true);
   }
 
-  // 13. WEEKEND EFFECT vs UNITS (canvas: edaanChart9) — grouped (not stacked), per Python
+  // 13. WEEKEND EFFECT vs UNITS (canvas: edaanChart9)
   function renderEdaanChart9(){
+    const interval = getInterval();
+    if(interval === 'daily'){
+      // FIX: single 'bar' dataset, one bar per day, colored per-day via getDay():
+      // Weekend (Sat/Sun) = Light Orange, Weekday = Light Blue.
+      let rows = applyMasterFilters(DAILY);
+      rows = aggregate(rows, ['date'], { total_qty_sold: 'sum' });
+      rows.sort(sortByX('date'));
+      makeChart('edaanChart9', {
+        type: 'bar',
+        data: {
+          labels: rows.map(r => r.date),
+          datasets: [{
+            label: 'Qty Sold',
+            data: rows.map(r => r.total_qty_sold),
+            backgroundColor: rows.map(r => {
+              const dow = new Date(r.date + 'T00:00:00Z').getUTCDay(); // 0=Sun...6=Sat
+              return (dow === 0 || dow === 6) ? '#F5B041' : '#5DADE2';
+            }),
+            borderRadius: 2
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { maxRotation: 70, minRotation: 0, autoSkip: true, maxTicksLimit: 24, font: { size: 10 } } },
+            y: { title: { display: true, text: 'Qty Sold', font: { size: 11 } } }
+          }
+        }
+      });
+      return;
+    }
+    // Weekly & Monthly: stacked bar chart showing Weekday/Weekend stacked.
     renderCategoryTimeChart('edaanChart9', 'is_weekend',
       v => (v === 1 ? 'Weekend' : 'Weekday'),
-      v => (v === 1 ? '#C75A45' : '#2E6F9E'), false);
+      v => (v === 1 ? '#F5B041' : '#5DADE2'), true);
   }
 
   // ================================================================================
@@ -605,38 +772,19 @@
   function renderEdaanChart11(){ renderPieChart('edaanChart11', 'msl/non-msl'); }
 
   // ================================================================================
-  // 16. WEIGHT VARIANT CONTRIBUTION (canvas: edaanChart12) — bar
-  // ================================================================================
-  function renderEdaanChart12(){
-    const rows = applyMasterFilters(RAW);
-    const agg = aggregate(rows, ['Variant', 'Variant Name'], { total_qty_sold: 'sum' });
-    agg.sort((a,b) => b.total_qty_sold - a.total_qty_sold);
-    makeChart('edaanChart12', {
-      type: 'bar',
-      data: {
-        labels: agg.map(r => r['Variant Name'] || `${r['Variant']} kg`),
-        datasets: [{ label: 'Total Units Sold', data: agg.map(r => r.total_qty_sold), backgroundColor: '#4A0E17', borderRadius: 4 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { title: { display: true, text: 'Variant' } }, y: { title: { display: true, text: 'Total Units Sold' } } }
-      }
-    });
-  }
-
-  // ================================================================================
-  // 17. FEATURE CORRELATION MATRIX (canvas: edaanChart13) — pure Chart.js scatter-grid
+  // 16. FEATURE CORRELATION MATRIX (canvas: edaanChart13) — pure Chart.js scatter-grid
   // heatmap (no chartjs-chart-matrix dependency): points are placed on category x/y
   // scales at (col, row) and colored via a coolwarm-style diverging scale; a custom
   // afterDatasetsDraw plugin prints the numeric correlation value on each cell.
   // ================================================================================
+  // FIX: narrowed to a focused set of pricing/ranking/availability/calendar features
+  // (was a broader 28-column list). Includes two newly engineered/derived fields:
+  // msl_flag (binary encoding of `msl/non-msl`, see engineerFeatures) and Variant
+  // (raw numeric weight-variant field straight from PapaParse dynamicTyping).
   const CORR_COLS = [
-    'total_qty_sold','unique_cities','MRP','PTC','Comp_ptc','discount_pct','ptc_gap_vs_comp',
-    'ptc_gap_pct_vs_comp','Sku_Ranking','Comp_Ranking','overall_marketing_budget','budget_per_store',
-    'budget_per_unit','Store_Count','Category_Units','Market_Share','OSA_SKU','OSA_Comp',
-    'Segment_Units','Segment_Sku_Count','qty_per_store','qty_per_city','category_share_proxy',
-    'segment_share_proxy','is_weekend','is_first_week','Is_Fest','Pre_Fest','Post_Fest'
+    "PTC", "Comp_ptc", "budget_per_store", "budget_per_unit", "Sku_Ranking", "Comp_Ranking",
+    "OSA_SKU", "OSA_Comp", "Market_Share", "is_weekend", "is_first_week", "Is_Fest", "Pre_Fest",
+    "Post_Fest", "MRP", "Segment_Units", "Segment_Sku_Count", "msl_flag", "Variant"
   ];
   function pearson(xs, ys){
     let n=0, sx=0, sy=0;
@@ -686,7 +834,7 @@
           const v = chart.data.datasets[0].data[idx].v;
           if(v === null || v === undefined) return;
           ctx.save();
-          ctx.font = '600 9px Inter, sans-serif';
+          ctx.font = '600 11px Inter, sans-serif';
           ctx.fillStyle = Math.abs(v) > 0.55 ? '#ffffff' : '#2A1B1E';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText(v.toFixed(2), el.x, el.y);

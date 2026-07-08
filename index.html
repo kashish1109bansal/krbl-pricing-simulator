@@ -207,6 +207,30 @@
   .field label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:700; }
   select.month-select{ font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; min-width:170px; cursor:pointer; }
   .toolbar-actions{ display:flex; gap:10px; }
+
+  /* ===== EDA Analysis — premium master filters bar ===== */
+  .eda-filters-card{ overflow:visible !important; }
+  .eda-filters-header{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+  .eda-filters-title{ margin:0; font-size:15px; font-weight:800; color:#4A1515; text-transform:uppercase; letter-spacing:0.045em; }
+  .eda-filters-status{ font-size:11.5px; color:var(--muted); }
+  .eda-filters-row{ display:flex; align-items:flex-end; flex-wrap:wrap; gap:24px; overflow:visible !important; }
+  .eda-filter-group{ display:flex; flex-direction:column; gap:8px; min-width:200px; overflow:visible !important; }
+  .eda-filter-label{ font-size:12px; font-weight:700; color:#8C827A; text-transform:uppercase; letter-spacing:0.05em; }
+  .eda-filter-select{
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    width:100%; font-family:inherit; font-size:16px; font-weight:700; color:#4A1515;
+    background-color:#FAFAFA; border:1px solid #EBE6E1; border-radius:10px;
+    padding:12px 36px 12px 14px; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%234A1515' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 14px center; background-size:12px 8px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .eda-filter-select:hover{ border-color:#D8CFC7; }
+  .eda-filter-select:focus{ outline:none; border-color:#4A1515; box-shadow:0 0 0 3px rgba(74,21,21,0.14); }
+  @media (max-width:720px){
+    .eda-filters-row{ gap:16px; }
+    .eda-filter-group{ min-width:150px; flex:1 1 150px; }
+  }
   /* Every structural wrapper the SKU Filter popup is nested inside (glass card, panel, app shell) must
      never clip its own overflow, otherwise the absolutely-positioned popup gets sliced by an ancestor's
      box instead of floating freely above the page content below it. */
@@ -785,31 +809,27 @@
       <div class="panel" id="panel-eda">
 
         <!-- MASTER FILTERS BAR -->
-        <div class="glass-card" style="overflow:visible !important;">
-          <div class="toolbar">
-            <h3 class="section-title" style="margin:0;">EDA Analysis &mdash; Pricing Features Dataset</h3>
-            <div class="toolbar-actions">
-              <span id="edaanDataStatus" style="font-size:11.5px; color:var(--muted);">Loading dataset&hellip;</span>
-            </div>
+        <div class="glass-card eda-filters-card">
+          <div class="eda-filters-header">
+            <h3 class="eda-filters-title">EDA Analysis &mdash; Pricing Features Dataset</h3>
+            <span id="edaanDataStatus" class="eda-filters-status">Loading dataset&hellip;</span>
           </div>
-          <div class="toolbar" style="margin-top:-6px;">
-            <div class="toolbar-left">
-              <div class="field">
-                <label>SKU Name Filter</label>
-                <select id="edaanSkuFilter" onchange="onEdaanFiltersChanged()"><option value="ALL">All SKUs</option></select>
-              </div>
-              <div class="field">
-                <label>Segment Filter</label>
-                <select id="edaanSegmentFilter" onchange="onEdaanFiltersChanged()"><option value="ALL">All Segments</option></select>
-              </div>
-              <div class="field">
-                <label>Time Interval</label>
-                <select id="edaanTimeInterval" onchange="onEdaanFiltersChanged()">
-                  <option value="daily">Daily</option>
-                  <option value="weekly" selected>Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </div>
+          <div class="eda-filters-row">
+            <div class="eda-filter-group">
+              <label class="eda-filter-label" for="skuFilter">SKU Name Filter</label>
+              <select id="skuFilter" class="eda-filter-select" onchange="onEdaanFiltersChanged()"><option value="ALL">All SKUs</option></select>
+            </div>
+            <div class="eda-filter-group">
+              <label class="eda-filter-label" for="segmentFilter">Segment Filter</label>
+              <select id="segmentFilter" class="eda-filter-select" onchange="onEdaanFiltersChanged()"><option value="ALL">All Segments</option></select>
+            </div>
+            <div class="eda-filter-group">
+              <label class="eda-filter-label" for="timeFilter">Time Interval</label>
+              <select id="timeFilter" class="eda-filter-select" onchange="onEdaanFiltersChanged()">
+                <option value="daily">Daily</option>
+                <option value="weekly" selected>Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
             </div>
           </div>
         </div>
@@ -922,19 +942,11 @@
           </div>
         </div>
 
-        <!-- 16. WEIGHT VARIANT CONTRIBUTION -->
-        <div class="glass-card" style="padding:16px 20px 14px;">
-          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#9878;&#65039; Weight Variant Contribution</div>
-          <div style="position:relative; height:320px;">
-            <canvas id="edaanChart12"></canvas>
-          </div>
-        </div>
-
         <!-- 17. FEATURE CORRELATION MATRIX (HEATMAP) -->
         <div class="glass-card" style="padding:16px 20px 14px;">
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128421;&#65039; Feature Correlation Matrix</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Pearson correlation across the numeric pricing/volume/availability features in the filtered dataset. Rendered as a pure Chart.js scatter-grid heatmap (no extra plugin dependency).</div>
-          <div style="position:relative; height:560px; overflow-x:auto;">
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Pearson correlation across a focused set of pricing/ranking/availability/calendar features in the filtered dataset. Rendered as a pure Chart.js scatter-grid heatmap (no extra plugin dependency).</div>
+          <div style="position:relative; height:800px; min-height:800px; overflow-x:auto;">
             <canvas id="edaanChart13"></canvas>
           </div>
         </div>
