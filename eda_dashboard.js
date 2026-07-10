@@ -230,7 +230,7 @@
   const DAILY_AGG = {
     total_qty_sold:'sum', PTC:'mean', Comp_ptc:'mean', MRP:'mean', discount_pct:'mean',
     overall_marketing_budget:'mean', Sku_Ranking:'mean', Comp_Ranking:'mean', OSA_SKU:'mean', OSA_Comp:'mean',
-    Market_Share:'mean', Category_Units:'sum', Segment_Units:'sum', Store_Count:'mean',
+    Market_Share:'mean', Category_Units:'sum', Segment_Units:'sum', Segment_Sku_Count:'mean', Store_Count:'mean',
     is_weekend:'max', is_first_week:'max', Is_Fest:'max', Pre_Fest:'max', Post_Fest:'max',
     budget_per_store:'mean', budget_per_unit:'mean', qty_per_store:'mean',
     category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean'
@@ -238,7 +238,7 @@
   const WEEKLY_AGG = {
     total_qty_sold:'sum', PTC:'mean', Comp_ptc:'mean', MRP:'mean', discount_pct:'mean',
     overall_marketing_budget:'mean', Sku_Ranking:'mean', Comp_Ranking:'mean', OSA_SKU:'mean', OSA_Comp:'mean',
-    Market_Share:'mean', Category_Units:'sum', Segment_Units:'sum', Store_Count:'mean',
+    Market_Share:'mean', Category_Units:'sum', Segment_Units:'sum', Segment_Sku_Count:'mean', Store_Count:'mean',
     Is_Fest:'max', Pre_Fest:'max', Post_Fest:'max',
     budget_per_store:'mean', budget_per_unit:'mean', qty_per_store:'mean',
     category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean'
@@ -246,7 +246,7 @@
   const MONTHLY_AGG = {
     total_qty_sold:'sum', PTC:'mean', Comp_ptc:'mean', MRP:'mean', discount_pct:'mean',
     overall_marketing_budget:'mean', Sku_Ranking:'mean', Comp_Ranking:'mean', OSA_SKU:'mean', OSA_Comp:'mean',
-    Market_Share:'mean', Category_Units:'sum', Segment_Units:'sum', Store_Count:'mean',
+    Market_Share:'mean', Category_Units:'sum', Segment_Units:'sum', Segment_Sku_Count:'mean', Store_Count:'mean',
     budget_per_store:'mean', budget_per_unit:'mean', qty_per_store:'mean',
     category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean'
   };
@@ -301,6 +301,7 @@
     renderEdaanChart1(); renderEdaanChart2(); renderEdaanChart3(); renderEdaanChart4(); renderEdaanChart5();
     renderEdaanChart6(); renderEdaanChart7(); renderEdaanChart8(); renderEdaanChart9(); renderEdaanChart10();
     renderEdaanChart11(); renderEdaanChart13();
+    renderEdaanChart14(); renderEdaanChart15(); renderEdaanChart16(); renderEdaanChart17();
   }
   window.renderEdaanChart2 = renderEdaanChart2; // wired directly to the Top-5 chart's own Time Frame dropdown
 
@@ -793,11 +794,35 @@
   // (total_qty_sold stands in for the qty/target variable, included first), with no
   // additional engineered columns introduced beyond what already exists on the row
   // objects from engineerFeatures (msl_flag, is_weekend, is_first_week, Variant).
+  //
+  // UPDATE (latest stakeholder review): the candidate pool now also includes the 4
+  // newer features that power charts 14-17 — unique_cities, Store_Count, Category_Units,
+  // and Segment_Units (already present from the prior round) — so they're available for
+  // correlation analysis alongside total_qty_sold and the rest of the original 17.
   const CORR_COLS = [
     "total_qty_sold", "PTC", "Comp_ptc", "overall_marketing_budget", "Sku_Ranking", "OSA_SKU",
     "Market_Share", "is_weekend", "is_first_week", "Is_Fest", "Pre_Fest", "Post_Fest", "MRP",
-    "Comp_Ranking", "Segment_Units", "msl_flag", "Variant"
+    "Comp_Ranking", "Segment_Units", "msl_flag", "Variant",
+    "unique_cities", "Store_Count", "Category_Units"
   ];
+
+  // FIX: dynamic "zero-variance / null" filter — crucial for when a user narrows the
+  // dataset via the SKU/Segment dropdowns. A feature that becomes entirely empty, all
+  // null, or constant (zero variance) within the CURRENTLY FILTERED rows produces NaN
+  // in Pearson correlation (division by zero in the denominator) and is meaningless to
+  // plot anyway (e.g. filtering to a single SKU collapses `Variant` to one constant
+  // value for that SKU). Rather than showing a broken/blank row-column, that feature is
+  // dropped from the matrix entirely for this specific render — the matrix shrinks to
+  // only the features that are actually usable in the current filter context, and grows
+  // back to the full candidate list once the filter is cleared.
+  function getActiveCorrCols(rows, cols){
+    return cols.filter(col => {
+      const vals = rows.map(r => r[col]).filter(v => typeof v === 'number' && !Number.isNaN(v));
+      if(vals.length === 0) return false; // completely empty / all-null column
+      return Math.max(...vals) !== Math.min(...vals); // zero-variance (constant) column
+    });
+  }
+
   function pearson(xs, ys){
     let n=0, sx=0, sy=0;
     for(let i=0;i<xs.length;i++){ const x=xs[i], y=ys[i]; if(x==null||y==null||Number.isNaN(x)||Number.isNaN(y)) continue; n++; sx+=x; sy+=y; }
@@ -816,8 +841,24 @@
   }
   function renderEdaanChart13(){
     const rows = applyMasterFilters(RAW);
-    const n = CORR_COLS.length;
-    const columns = CORR_COLS.map(col => rows.map(r => r[col]));
+
+    // FIX: dynamic zero-variance / null filter, evaluated against the CURRENTLY FILTERED
+    // rows (not the full dataset) — so narrowing to a single SKU or Segment via the master
+    // filters correctly shrinks the matrix to only the features that remain meaningful
+    // (e.g. `Variant` collapses to one constant value once a single SKU is selected, and
+    // is dropped for that render rather than showing a broken/self-correlated row).
+    const activeCols = getActiveCorrCols(rows, CORR_COLS);
+    const n = activeCols.length;
+
+    const canvas = document.getElementById('edaanChart13');
+    if(n === 0){
+      // Nothing left to plot after filtering (e.g. every candidate column is constant
+      // or empty for the current filter combination) — clear any stale chart and bail.
+      if(edaanCharts['edaanChart13']){ edaanCharts['edaanChart13'].destroy(); delete edaanCharts['edaanChart13']; }
+      return;
+    }
+
+    const columns = activeCols.map(col => rows.map(r => r[col]));
 
     // FIX: lower-triangular only (j <= i) — Seaborn-style masked heatmap. Removes the
     // symmetric duplicate upper half so each pair is shown exactly once, with the
@@ -826,10 +867,9 @@
     for(let i=0;i<n;i++){
       for(let j=0;j<=i;j++){
         const v = i === j ? 1 : pearson(columns[i], columns[j]);
-        points.push({ x: CORR_COLS[j], y: CORR_COLS[i], v });
+        points.push({ x: activeCols[j], y: activeCols[i], v });
       }
     }
-    const canvas = document.getElementById('edaanChart13');
     if(canvas) canvas.style.width = Math.max(900, n * 34) + 'px';
 
     // FIX: premium tile UI — the point itself is now invisible (radius:0) but keeps a
@@ -883,14 +923,162 @@
           } : false
         },
         scales: {
-          x: { type: 'category', labels: CORR_COLS, position: 'top', offset: true, ticks: { autoSkip: false, maxRotation: 90, minRotation: 90, font: { size: 9 } }, grid: { display: false } },
-          y: { type: 'category', labels: CORR_COLS, reverse: true, offset: true, ticks: { autoSkip: false, font: { size: 9 } }, grid: { display: false } }
+          x: { type: 'category', labels: activeCols, position: 'top', offset: true, ticks: { autoSkip: false, maxRotation: 90, minRotation: 90, font: { size: 9 } }, grid: { display: false } },
+          y: { type: 'category', labels: activeCols, reverse: true, offset: true, ticks: { autoSkip: false, font: { size: 9 } }, grid: { display: false } }
         }
       }
     };
     if(hasDatalabels) chartConfig.plugins = [ChartDataLabels];
 
     makeChart('edaanChart13', chartConfig);
+  }
+
+  // ================================================================================
+  // 18. UNIQUE CITIES vs UNITS SOLD (canvas: edaanChart14)
+  // ================================================================================
+  function renderEdaanChart14(){
+    const interval = getInterval();
+    const { dataset, xField, qtyIsLine } = pickDataset(interval);
+    let rows = applyMasterFilters(dataset);
+    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', unique_cities: 'mean' });
+    rows.sort(sortByX(xField));
+    makeChart('edaanChart14', {
+      type: qtyIsLine ? 'line' : 'bar',
+      data: {
+        labels: rows.map(r => r[xField]),
+        datasets: [
+          { type: qtyIsLine ? 'line' : 'bar', label: 'Qty Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(74,14,23,0.55)', borderColor: '#4A0E17', yAxisID: 'y', tension: 0.25 },
+          { type: 'line', label: 'Unique Cities', data: rows.map(r => r.unique_cities), borderColor: '#2E6F9E', backgroundColor: '#2E6F9E', yAxisID: 'y1', tension: 0.25 }
+        ]
+      },
+      options: dualAxisOptions('Qty Sold', 'Unique Cities')
+    });
+  }
+
+  // ================================================================================
+  // 19. STORE COUNT vs UNITS SOLD (canvas: edaanChart15)
+  // ================================================================================
+  function renderEdaanChart15(){
+    const interval = getInterval();
+    const { dataset, xField, qtyIsLine } = pickDataset(interval);
+    let rows = applyMasterFilters(dataset);
+    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', Store_Count: 'mean' });
+    rows.sort(sortByX(xField));
+    makeChart('edaanChart15', {
+      type: qtyIsLine ? 'line' : 'bar',
+      data: {
+        labels: rows.map(r => r[xField]),
+        datasets: [
+          { type: qtyIsLine ? 'line' : 'bar', label: 'Qty Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(74,14,23,0.55)', borderColor: '#4A0E17', yAxisID: 'y', tension: 0.25 },
+          { type: 'line', label: 'Store Count', data: rows.map(r => r.Store_Count), borderColor: '#0E7A4E', backgroundColor: '#0E7A4E', yAxisID: 'y1', tension: 0.25 }
+        ]
+      },
+      options: dualAxisOptions('Qty Sold', 'Store Count')
+    });
+  }
+
+  // ================================================================================
+  // 20. CATEGORY UNITS vs UNITS SOLD (canvas: edaanChart16)
+  // ================================================================================
+  function renderEdaanChart16(){
+    const interval = getInterval();
+    const { dataset, xField, qtyIsLine } = pickDataset(interval);
+    let rows = applyMasterFilters(dataset);
+    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', Category_Units: 'sum' });
+    rows.sort(sortByX(xField));
+    makeChart('edaanChart16', {
+      type: qtyIsLine ? 'line' : 'bar',
+      data: {
+        labels: rows.map(r => r[xField]),
+        datasets: [
+          { type: qtyIsLine ? 'line' : 'bar', label: 'Qty Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(74,14,23,0.55)', borderColor: '#4A0E17', yAxisID: 'y', tension: 0.25 },
+          { type: 'line', label: 'Category Units', data: rows.map(r => r.Category_Units), borderColor: '#C75A45', backgroundColor: '#C75A45', yAxisID: 'y1', tension: 0.25 }
+        ]
+      },
+      options: dualAxisOptions('Qty Sold', 'Category Units')
+    });
+  }
+
+  // ================================================================================
+  // 21. SEGMENT UNITS vs UNITS SOLD  (canvas: edaanChart17)
+  // Special requirement: label Segment_Sku_Count, but ONLY at "dip points" (local minima)
+  // of the Segment_Units line — a point whose value is lower than BOTH of its immediate
+  // neighbors. Implemented via chartjs-plugin-datalabels' per-dataset `datalabels`
+  // override (set only on the Segment_Units dataset, so the Qty Sold bars never get a
+  // label), using its `display` callback to test the dip condition and `formatter` to
+  // render "SKU Count: <value>" from a parallel Segment_Sku_Count array.
+  // ================================================================================
+  function renderEdaanChart17(){
+    const interval = getInterval();
+    const { dataset, xField, qtyIsLine } = pickDataset(interval);
+    let rows = applyMasterFilters(dataset);
+    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', Segment_Units: 'sum', Segment_Sku_Count: 'mean' });
+    rows.sort(sortByX(xField));
+
+    const segmentUnitsData = rows.map(r => r.Segment_Units);
+    const skuCounts = rows.map(r => r.Segment_Sku_Count);
+
+    const hasDatalabels = typeof ChartDataLabels !== 'undefined';
+    const chartOptions = dualAxisOptions('Qty Sold', 'Segment Units');
+    // Off by default at the chart level — only the Segment_Units line dataset opts back
+    // in via its own per-dataset `datalabels` override below, so the Qty Sold bars never
+    // show a label.
+    chartOptions.plugins.datalabels = { display: false };
+
+    const segmentUnitsDataset = {
+      type: 'line',
+      label: 'Segment Units',
+      data: segmentUnitsData,
+      borderColor: '#8d6a9f',
+      backgroundColor: '#8d6a9f',
+      yAxisID: 'y1',
+      tension: 0.25,
+      pointRadius: 3,
+      pointHoverRadius: 5
+    };
+
+    if(hasDatalabels){
+      segmentUnitsDataset.datalabels = {
+        // CRITICAL LOGIC: a "dip point" is a local minimum — cur < prev AND cur < next.
+        // Edge points (index 0 or the last index) have no second neighbor and never qualify.
+        display(context){
+          const data = context.dataset.data;
+          const i = context.dataIndex;
+          if(i <= 0 || i >= data.length - 1) return false;
+          const prev = data[i - 1], cur = data[i], next = data[i + 1];
+          if(cur === null || cur === undefined || prev === null || prev === undefined || next === null || next === undefined) return false;
+          return cur < prev && cur < next;
+        },
+        formatter(value, context){
+          const v = skuCounts[context.dataIndex];
+          return (v === null || v === undefined) ? '' : `SKU Count: ${Math.round(v)}`;
+        },
+        align: 'bottom',
+        anchor: 'end',
+        color: '#4A0E17',
+        font: { size: 10, weight: '600', family: 'Inter, sans-serif' },
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderRadius: 4,
+        borderColor: '#8d6a9f',
+        borderWidth: 1,
+        padding: { top: 3, bottom: 3, left: 5, right: 5 }
+      };
+    }
+
+    const chartConfig = {
+      type: qtyIsLine ? 'line' : 'bar',
+      data: {
+        labels: rows.map(r => r[xField]),
+        datasets: [
+          { type: qtyIsLine ? 'line' : 'bar', label: 'Qty Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(74,14,23,0.55)', borderColor: '#4A0E17', yAxisID: 'y', tension: 0.25 },
+          segmentUnitsDataset
+        ]
+      },
+      options: chartOptions
+    };
+    if(hasDatalabels) chartConfig.plugins = [ChartDataLabels];
+
+    makeChart('edaanChart17', chartConfig);
   }
 
   // ---------- expose a resize hook so the existing sidebar-toggle resize sweep also catches these charts ----------
