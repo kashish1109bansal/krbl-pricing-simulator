@@ -143,20 +143,25 @@
 
   .glass-card{ background: var(--glass); backdrop-filter: blur(16px); border:1px solid var(--border); border-radius:14px; box-shadow: var(--shadow-md); padding:18px 22px; margin-bottom:16px; }
 
-  /* Executive KPI Hero Tiles */
-  .kpi-hero-row{ display:flex; gap:14px; margin:4px 0 18px; flex-wrap:wrap; }
-  .kpi-tile{ flex:1 1 220px; min-width:220px; background: var(--glass-strong); border:1px solid var(--border); border-radius:14px; box-shadow: 0 10px 30px rgba(74,14,23,0.04); padding:16px 18px; transition: transform .15s ease, box-shadow .15s ease; }
+  /* Executive KPI Hero Tiles — 4-card summary strip (Qty Sold / Revenue / Profit ₹ / Profit Margin %),
+     laid out as a strict CSS grid so all 4 cards sit cleanly in a single row on desktop, collapsing to
+     2-per-row on tablet and 1-per-row on mobile. */
+  .kpi-hero-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin:4px 0 18px; }
+  @media (max-width:900px){ .kpi-hero-row{ grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width:520px){ .kpi-hero-row{ grid-template-columns: 1fr; } }
+  .kpi-tile{ min-width:0; background: var(--glass-strong); border:1px solid var(--border); border-radius:14px; box-shadow: 0 10px 30px rgba(74,14,23,0.04); padding:16px 18px; transition: transform .15s ease, box-shadow .15s ease; }
   .kpi-tile-label{ font-size:10.5px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color: var(--muted); margin-bottom:8px; }
   .kpi-tile-value{ font-size:22px; font-weight:800; color: var(--maroon); font-variant-numeric: tabular-nums; }
   .kpi-tile-sub{ font-size:11px; color: var(--muted); margin-top:6px; }
+  .kpi-tile-sub b{ color: var(--ink); font-weight:800; }
   .kpi-tile-trend{ font-size:13px; font-weight:800; color: var(--green); margin-top:6px; }
   .kpi-tile-current{ border-left:4px solid var(--maroon); }
   .kpi-tile-simulated{ border-left:4px solid var(--gold); }
   .kpi-tile-simulated:hover{ box-shadow: 0 10px 28px rgba(197,160,89,0.30); transform: translateY(-2px); }
   .kpi-tile-delta{ border-left:4px solid var(--green); }
   .kpi-tile-delta .kpi-tile-value{ color: var(--green); }
-  /* Negative-state override — Portfolio Volume Movement card switches its left accent border and
-     primary numeric text from Green to Crimson/Coral Warning Red whenever volume movement is negative. */
+  /* Negative-state override — any simulated-value card switches its left accent border and primary
+     numeric text from Green to Crimson/Coral Warning Red whenever its delta is negative. */
   .kpi-tile-delta.kpi-tile-delta-negative{ border-left:4px solid #D9383A; }
   .kpi-tile-delta.kpi-tile-delta-negative .kpi-tile-value{ color: #D9383A; }
   .kpi-tile-profit{ border-left:4px solid #2E6E8E; }
@@ -352,9 +357,13 @@
   /* Dynamic per-row Scenario tags (Step 3 output table) */
   .scenario-tag{ display:inline-block; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:800; letter-spacing:0.02em; text-transform:uppercase; white-space:nowrap; }
   .scenario-NoChange{ background:rgba(122,6,36,0.07); color:var(--muted); }
+  .scenario-PTCChange{ background:rgba(46,110,142,0.14); color:#2E6E8E; }
   .scenario-StoreAvailabilityChange{ background:rgba(212,175,55,0.18); color:#8a6d10; }
   .scenario-RankingChange{ background:rgba(30,130,76,0.12); color:var(--green); }
+  .scenario-PTCStoreAvailability{ background:var(--maroon); color:#fff; }
+  .scenario-PTCRanking{ background:var(--maroon); color:#fff; }
   .scenario-StoreAvailabilityRanking{ background:var(--maroon); color:#fff; }
+  .scenario-PTCStoreAvailabilityRanking{ background:var(--maroon-dark); color:#fff; }
 
   .section-title{ font-size:13px; font-weight:800; color:var(--maroon-dark); text-transform:uppercase; letter-spacing:0.06em; margin:0 0 14px; }
 
@@ -518,10 +527,10 @@
       </div>
     </div>
     <div class="side-nav">
-      <button class="side-link active" id="navLibrary" onclick="goToStep('library')"><span class="num">1</span> Scenario Library</button>
-      <button class="side-link" id="navSimulator" onclick="goToStep('simulator')"><span class="num">2</span> Pricing Simulator</button>
-      <button class="side-link" id="navOutput" onclick="goToStep('output')" disabled><span class="num">3</span> Output Dashboard</button>
-      <button class="side-link" id="navEda" onclick="goToStep('eda')"><span class="num">4</span> EDA Analysis</button>
+      <button class="side-link" id="navEda" onclick="goToStep('eda')"><span class="num">1</span> EDA Analysis</button>
+      <button class="side-link active" id="navLibrary" onclick="goToStep('library')"><span class="num">2</span> Scenario Library</button>
+      <button class="side-link" id="navSimulator" onclick="goToStep('simulator')"><span class="num">3</span> Pricing Simulator</button>
+      <button class="side-link" id="navOutput" onclick="goToStep('output')" disabled><span class="num">4</span> Output Dashboard</button>
     </div>
     <div class="sidebar-footer">
       <button class="logout-btn" onclick="handleLogout()">&#8634; Log Out</button>
@@ -578,13 +587,17 @@
             <table>
               <thead>
                 <tr>
-                  <th colspan="6" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
+                  <th colspan="10" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
                 </tr>
                 <tr>
                   <th>SKU</th>
                   <th>Period</th>
+                  <th class="num" title="Current PTC (Price to Consumer), sourced from the dataset for the selected baseline month">Current PTC (&#8377;)</th>
+                  <th class="num" title="Type a % change here to simulate a new PTC — automatically updates the Simulated PTC value alongside it">PTC % Change</th>
+                  <th class="num" title="Adjust this to simulate a new PTC directly — automatically updates the % Change value alongside it">Simulated PTC (&#8377;)</th>
                   <th class="num" title="Store Availability = Store Count × On-Shelf Availability (OSA), sourced from the dataset for the selected baseline month">Current Store Availability (Store Count &times; OSA)</th>
-                  <th class="num" title="Adjust this to simulate a change in the SKU's effective store availability (Store Count × OSA)">Simulated Store Availability (Store Count &times; OSA)</th>
+                  <th class="num" title="Type a % change here to simulate a new Store Availability — automatically updates the Simulated value alongside it">Store Availability % Change</th>
+                  <th class="num" title="Adjust this to simulate a change in the SKU's effective store availability (Store Count × OSA) — automatically updates the % Change value alongside it">Simulated Store Availability (Store Count &times; OSA)</th>
                   <th class="num">Current Product Ranking</th>
                   <th class="num">Simulated Product Ranking</th>
                 </tr>
@@ -637,33 +650,43 @@
         <div id="output-sub-table" class="output-sub-panel">
           <div class="glass-card">
             <div class="kpi-hero-row" id="kpiHeroRow">
-              <div class="kpi-tile kpi-tile-current">
-                <div class="kpi-tile-label">&#128202; PROFIT % (BASELINE)</div>
-                <div class="kpi-tile-value" id="kpiProfitBaselineValue">0.00%</div>
-                <div class="kpi-tile-sub">Baseline portfolio profit margin</div>
+              <div class="kpi-tile kpi-tile-simulated" id="kpiQtyCard">
+                <div class="kpi-tile-label">&#128230; TOTAL QTY SOLD</div>
+                <div class="kpi-tile-value" id="kpiQtySimulatedValue">0</div>
+                <div class="kpi-tile-sub">Baseline: <b id="kpiQtyBaselineValue">0</b></div>
+                <span class="kpi-badge" id="kpiQtyDeltaBadge">+0.00%</span>
               </div>
-              <div class="kpi-tile kpi-tile-simulated">
-                <div class="kpi-tile-label">&#10024; PROFIT % (SIMULATED)</div>
-                <div class="kpi-tile-value" id="kpiProfitSimulatedValue">0.00%</div>
-                <div class="kpi-tile-sub">Simulated portfolio profit margin</div>
+              <div class="kpi-tile kpi-tile-simulated" id="kpiRevenueCard">
+                <div class="kpi-tile-label">&#128176; TOTAL REVENUE (&#8377;)</div>
+                <div class="kpi-tile-value" id="kpiRevenueSimulatedValue">&#8377;0</div>
+                <div class="kpi-tile-sub">Baseline: <b id="kpiRevenueBaselineValue">&#8377;0</b></div>
+                <span class="kpi-badge" id="kpiRevenueDeltaBadge">+0.00%</span>
               </div>
-              <div class="kpi-tile kpi-tile-profit" id="kpiProfitDiffCard">
-                <div class="kpi-tile-label">&#128176; PROFIT % DIFFERENCE</div>
-                <div class="kpi-tile-value" id="kpiProfitDiffValue">+0.00 pts</div>
-                <div class="kpi-tile-sub">Simulated &#8722; Baseline (absolute variance)</div>
-                <span class="kpi-badge" id="kpiProfitDiffBadge">+0.00 pts</span>
+              <div class="kpi-tile kpi-tile-profit" id="kpiProfitCard">
+                <div class="kpi-tile-label">&#127974; TOTAL PROFIT (&#8377;)</div>
+                <div class="kpi-tile-value" id="kpiProfitSimulatedValue">&#8377;0</div>
+                <div class="kpi-tile-sub">Baseline: <b id="kpiProfitBaselineValue">&#8377;0</b></div>
+                <span class="kpi-badge" id="kpiProfitDeltaBadge">+0.00%</span>
+              </div>
+              <div class="kpi-tile kpi-tile-profit" id="kpiMarginCard">
+                <div class="kpi-tile-label">&#128202; PROFIT MARGIN (%)</div>
+                <div class="kpi-tile-value" id="kpiMarginSimulatedValue">0.00%</div>
+                <div class="kpi-tile-sub">Baseline: <b id="kpiMarginBaselineValue">0.00%</b></div>
+                <span class="kpi-badge" id="kpiMarginDeltaBadge">+0.00 pts</span>
               </div>
             </div>
             <div class="scroll-x">
               <table>
                 <thead>
                   <tr>
-                    <th colspan="6" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
+                    <th colspan="8" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
                     <th colspan="15" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
                   </tr>
                   <tr>
                     <th>SKU</th>
                     <th>Period</th>
+                    <th class="num" title="Current PTC (Price to Consumer), sourced from the dataset for the selected baseline month">Current PTC (&#8377;)</th>
+                    <th class="num" title="The simulated value of this SKU's PTC">Simulated PTC (&#8377;)</th>
                     <th class="num" title="Store Availability = Store Count × On-Shelf Availability (OSA), sourced from the dataset for the selected baseline month">Current Store Availability (Store Count &times; OSA)</th>
                     <th class="num" title="The simulated value of this SKU's effective store availability (Store Count × OSA)">Simulated Store Availability (Store Count &times; OSA)</th>
                     <th class="num">Current Product Ranking</th>
@@ -971,11 +994,11 @@ function handleLogout(){
 // equation is now the single source of truth for Simulated_Qty, applied UNIVERSALLY across all 6 SKUs
 // (per DS team direction — no per-SKU variation):
 //   log(Qty) = Intercept - 0.605473*log(PTC) - 0.283782*log(Ranking) + 0.165892*log(Store_Ava) + Other
-// Store_Ava = Store Count x On-Shelf Availability (OSA). PTC is NOT an active simulation lever in this UI,
-// so its coefficient is retained here purely for documentation/traceability — its contribution to
-// Simulated_Qty is always a 1x multiplier since Simulated PTC == Baseline PTC (see computeAllVolumes()).
+// Store_Ava = Store Count x On-Shelf Availability (OSA). PTC IS an active simulation lever in this UI
+// (restored per manager feedback) — its coefficient below drives a live (Sim_PTC/Base_PTC)^-0.605473
+// term inside computeAllVolumes(), exactly like Store Availability and Product Ranking.
 const REGRESSION_COEFFICIENTS = {
-  ptc: -0.605473,      // NOT an active lever in this UI — PTC change is always 0, so this always contributes a 1x multiplier
+  ptc: -0.605473,      // PTC (Price) elasticity — active lever
   ranking: -0.283782,  // Product Ranking elasticity (lower rank number = better, hence the negative sign is correct)
   storeAva: 0.165892   // Store Availability (Store Count x OSA) elasticity
 };
@@ -1110,7 +1133,7 @@ let lastVisibleComputed = []; // cache of the most recently rendered grid's comp
 // dropdown can re-render the charts instantly on change without recomputing the whole engine.
 
 function initPriceRows(month){
-  priceRows = baseData[month].map(s => ({ ...s, simStoreAva: s.storeAva, simProductRanking: s.productRanking }));
+  priceRows = baseData[month].map(s => ({ ...s, simPtc: s.ptc, simStoreAva: s.storeAva, simProductRanking: s.productRanking }));
 }
 initPriceRows(selectedMonth);
 
@@ -1234,19 +1257,24 @@ document.addEventListener('click', function(e){
 //   log(Qty) = Intercept - 0.605473*log(PTC) - 0.283782*log(Ranking) + 0.165892*log(Store_Ava) + Other
 //   => New_Qty = Base_Qty * (Sim_PTC/Base_PTC)^(-0.605473) * (Sim_StoreAva/Base_StoreAva)^(0.165892)
 //                        * (Sim_Ranking/Base_Ranking)^(-0.283782)
-// PTC is NOT an active simulation lever in this UI, so Sim_PTC == Base_PTC always, making that factor
-// exactly 1 — it is omitted from the formula below (kept only as documentation via REGRESSION_COEFFICIENTS.ptc).
+// PTC IS an active simulation lever in this UI (restored per manager feedback) — Sim_PTC is driven live
+// by the PTC / PTC % Change inputs in the data grid, so this factor now genuinely moves with user input
+// exactly like the Store Availability and Product Ranking factors below.
+//   - Increasing PTC (price) decreases Volume (negative elasticity, -0.605473).
 //   - Increasing Store Availability (Store Count × OSA) increases Volume (positive elasticity, +0.165892).
 //   - Improving Product Ranking (a LOWER rank number is better, e.g. moving from rank 10 to rank 1)
 //     increases Volume (negative elasticity, -0.283782, applied to the sim/base ratio directly — a ratio
 //     below 1, i.e. an improved/lower ranking number, raised to a negative power yields a >1 multiplier).
 function computeAllVolumes(){
   const stepA = priceRows.map(r => {
-    const simPtc = r.ptc; // PTC is fixed — no longer a simulation lever; its regression contribution is always 1x.
     // Guard against zero/negative inputs reaching Math.pow with a negative exponent (which would yield
     // Infinity or NaN) by clamping the simulated values to a small positive epsilon.
+    const safeSimPtc = Math.max(r.simPtc, 1e-6);
     const safeSimStoreAva = Math.max(r.simStoreAva, 1e-6);
     const safeSimRanking = Math.max(r.simProductRanking, 1e-6);
+    const ptcFactor = r.ptc > 0
+      ? Math.pow(safeSimPtc / r.ptc, REGRESSION_COEFFICIENTS.ptc)
+      : 1;
     const storeAvaFactor = r.storeAva > 0
       ? Math.pow(safeSimStoreAva / r.storeAva, REGRESSION_COEFFICIENTS.storeAva)
       : 1;
@@ -1257,8 +1285,8 @@ function computeAllVolumes(){
     // and "VTM Gain" all carry the raw floating-point result through every downstream step. Rounding is applied
     // ONLY at the final display/export layer (toFixed/Math.round in the render & CSV-export functions), never
     // inside the math itself, so the engine stays decimal-perfect end-to-end.
-    const simVolume = Math.max(0, r.dailyVolume * storeAvaFactor * rankFactor);
-    return { row: r, simPtc, simVolume };
+    const simVolume = Math.max(0, r.dailyVolume * ptcFactor * storeAvaFactor * rankFactor);
+    return { row: r, simPtc: r.simPtc, simVolume };
   });
   const volumeLostDelta = stepA.map(x => x.row.dailyVolume - x.simVolume); // Current - Simulated, full precision
   // VTM Gain — Σ_j≠i volumeLostDelta_j * vtmMatrix[fromSKU_j][toSKU_i], computed on full-precision
@@ -1334,14 +1362,16 @@ function computeAll(){
 // Dynamic per-row Scenario classifier: compares each SKU's simulated inputs against
 // its OWN baseline values and reports exactly which lever(s) were touched for that row.
 function scenarioLabel(c){
+  const ptcChanged = Math.abs(c.row.simPtc - c.row.ptc) > 1e-9;
   const storeAvaChanged = Math.abs(c.row.simStoreAva - c.row.storeAva) > 1e-9;
   const rankChanged = Math.abs(c.row.simProductRanking - c.row.productRanking) > 1e-9;
-  const leversTouched = [storeAvaChanged, rankChanged].filter(Boolean).length;
-  if(leversTouched === 0) return 'No Change';
-  if(leversTouched > 1) return 'Store Availability + Ranking';
-  if(storeAvaChanged) return 'Store Availability Change';
-  if(rankChanged) return 'Ranking Change';
-  return 'No Change';
+  const touched = [];
+  if(ptcChanged) touched.push('PTC');
+  if(storeAvaChanged) touched.push('Store Availability');
+  if(rankChanged) touched.push('Ranking');
+  if(touched.length === 0) return 'No Change';
+  if(touched.length === 1) return touched[0] + ' Change';
+  return touched.join(' + ');
 }
 
 // ---------- STEP 2: INPUTS-ONLY TABLE ----------
@@ -1350,30 +1380,74 @@ function renderInputsTable(){
   renderSkuFilterBars();
   const tbody = document.getElementById('inputsTableBody');
   tbody.innerHTML = priceRows.map((r,i) => ({ r, i })).filter(x => visibleSkus.has(x.r.name)).map(({r,i}) => {
+    const ptcPct = r.ptc ? ((r.simPtc - r.ptc) / r.ptc) * 100 : 0;
+    const storeAvaPct = r.storeAva ? ((r.simStoreAva - r.storeAva) / r.storeAva) * 100 : 0;
     return `<tr>
       <td class="sku-cell">${r.name}</td>
       <td>${selectedMonth}</td>
+      <td class="num readonly-cell">&#8377;${r.ptc.toFixed(2)}</td>
+      <td class="num"><input type="number" step="0.01" inputmode="decimal" class="ptc-pct-input" value="${ptcPct.toFixed(2)}" data-idx="${i}" oninput="onPtcPctChange(this)"></td>
+      <td class="num"><input type="number" step="0.01" min="0.01" inputmode="decimal" class="ptc-sim-input" value="${r.simPtc.toFixed(2)}" data-idx="${i}" oninput="onPtcSimChange(this)"></td>
       <td class="num readonly-cell">${r.storeAva.toLocaleString('en-IN', {maximumFractionDigits:2, minimumFractionDigits:2})}</td>
-      <td class="num"><input type="number" step="0.01" min="0.01" inputmode="decimal" value="${r.simStoreAva.toFixed(2)}" data-idx="${i}" oninput="onStoreAvaChange(this)"></td>
+      <td class="num"><input type="number" step="0.01" inputmode="decimal" class="storeava-pct-input" value="${storeAvaPct.toFixed(2)}" data-idx="${i}" oninput="onStoreAvaPctChange(this)"></td>
+      <td class="num"><input type="number" step="0.01" min="0.01" inputmode="decimal" class="storeava-sim-input" value="${r.simStoreAva.toFixed(2)}" data-idx="${i}" oninput="onStoreAvaSimChange(this)"></td>
       <td class="num readonly-cell">${r.productRanking}</td>
       <td class="num"><input type="number" step="1" min="1" inputmode="numeric" value="${r.simProductRanking}" data-idx="${i}" oninput="onRankingChange(this)"></td>
     </tr>`;
   }).join('');
 }
 
-// PERFORMANCE FIX: these two handlers used to call renderInputsTable() on every single keystroke, which
+// PERFORMANCE FIX: these handlers used to call renderInputsTable() on every single keystroke, which
 // rebuilt the entire grid's innerHTML each time. That full rebuild reset every input's DOM value attribute —
 // including the field the user was still actively typing into — which caused laggy/frozen typing on slower
-// devices. The fix: just mutate the underlying priceRows state on every keystroke (cheap, instant, never
-// touches the DOM). Neither Store Availability nor Product Ranking drives any other visible derived cell in
-// this table, so their handlers don't need to touch the DOM at all while typing.
-function onStoreAvaChange(el){
+// devices. The fix: just mutate the underlying priceRows state on every keystroke (cheap, instant), and for
+// the PTC / Store Availability pairs, directly patch ONLY the sibling input's `.value` in the DOM (never
+// re-render the whole table, never programmatically fire the sibling's own oninput — this keeps the two
+// inputs in sync with zero risk of an infinite update loop or fighting/cursor-jump while typing).
+function onPtcPctChange(el){
   const i = +el.dataset.idx;
-  const rawValue = String(el.value).trim();
-  const val = parseFloat(rawValue);
-  // Clamp to a small positive value — the regression formula divides by this value and raises it to a
-  // power, so zero/negative inputs must never reach computeAllVolumes().
-  priceRows[i].simStoreAva = (isNaN(val) || val <= 0) ? priceRows[i].storeAva : val;
+  const pct = parseFloat(String(el.value).trim());
+  if(isNaN(pct)) return;
+  const base = priceRows[i].ptc;
+  const newSim = base * (1 + pct / 100);
+  // Guard against zero/negative — the regression formula divides by this value and raises it to a power.
+  if(newSim > 0) priceRows[i].simPtc = newSim;
+  const row = el.closest('tr');
+  const simInput = row && row.querySelector('.ptc-sim-input');
+  if(simInput) simInput.value = priceRows[i].simPtc.toFixed(2);
+}
+function onPtcSimChange(el){
+  const i = +el.dataset.idx;
+  const val = parseFloat(String(el.value).trim());
+  if(isNaN(val) || val <= 0) return;
+  priceRows[i].simPtc = val;
+  const base = priceRows[i].ptc;
+  const pct = base ? ((val - base) / base) * 100 : 0;
+  const row = el.closest('tr');
+  const pctInput = row && row.querySelector('.ptc-pct-input');
+  if(pctInput) pctInput.value = pct.toFixed(2);
+}
+function onStoreAvaPctChange(el){
+  const i = +el.dataset.idx;
+  const pct = parseFloat(String(el.value).trim());
+  if(isNaN(pct)) return;
+  const base = priceRows[i].storeAva;
+  const newSim = base * (1 + pct / 100);
+  if(newSim > 0) priceRows[i].simStoreAva = newSim;
+  const row = el.closest('tr');
+  const simInput = row && row.querySelector('.storeava-sim-input');
+  if(simInput) simInput.value = priceRows[i].simStoreAva.toFixed(2);
+}
+function onStoreAvaSimChange(el){
+  const i = +el.dataset.idx;
+  const val = parseFloat(String(el.value).trim());
+  if(isNaN(val) || val <= 0) return;
+  priceRows[i].simStoreAva = val;
+  const base = priceRows[i].storeAva;
+  const pct = base ? ((val - base) / base) * 100 : 0;
+  const row = el.closest('tr');
+  const pctInput = row && row.querySelector('.storeava-pct-input');
+  if(pctInput) pctInput.value = pct.toFixed(2);
 }
 function onRankingChange(el){
   const i = +el.dataset.idx;
@@ -1383,8 +1457,9 @@ function onRankingChange(el){
 }
 
 // Global lever sliders have been permanently removed — all simulation inputs are now driven exclusively
-// from the individual SKU rows in the data grid below (onStoreAvaChange/onRankingChange), so resetAll()
-// only needs to restore priceRows to the baseline snapshot for the currently selected month and re-render
+// from the individual SKU rows in the data grid below (onPtcPctChange/onPtcSimChange/onStoreAvaPctChange/
+// onStoreAvaSimChange/onRankingChange), so resetAll() only needs to restore priceRows to the baseline
+// snapshot for the currently selected month and re-render
 // the grid.
 function resetAll(){
   initPriceRows(selectedMonth);
@@ -1400,7 +1475,7 @@ function resetAll(){
 // suppressed. ----------
 const VTM_NULL_EPSILON = 1e-9;
 function applyVtmNullStateOverride(c){
-  const ownLeversUntouched = Math.abs(c.row.simStoreAva - c.row.storeAva) < VTM_NULL_EPSILON && Math.abs(c.row.simProductRanking - c.row.productRanking) < VTM_NULL_EPSILON;
+  const ownLeversUntouched = Math.abs(c.row.simPtc - c.row.ptc) < VTM_NULL_EPSILON && Math.abs(c.row.simStoreAva - c.row.storeAva) < VTM_NULL_EPSILON && Math.abs(c.row.simProductRanking - c.row.productRanking) < VTM_NULL_EPSILON;
   let { volumeLostDelta, vtmGain, finalSimVolume, simVolume, monthlySimulated, volDeltaPct } = c;
 
   // Snap genuine floating-point dust to exact 0 regardless of cause.
@@ -1469,6 +1544,8 @@ function renderOutputTable(){
     return `<tr>
       <td class="sku-cell">${c.row.name}</td>
       <td>${selectedMonth}</td>
+      <td class="num readonly-cell">&#8377;${c.row.ptc.toFixed(2)}</td>
+      <td class="num readonly-cell">&#8377;${c.row.simPtc.toFixed(2)}</td>
       <td class="num readonly-cell">${c.row.storeAva.toLocaleString('en-IN', {maximumFractionDigits:2, minimumFractionDigits:2})}</td>
       <td class="num readonly-cell">${c.row.simStoreAva.toLocaleString('en-IN', {maximumFractionDigits:2, minimumFractionDigits:2})}</td>
       <td class="num readonly-cell">${c.row.productRanking}</td>
@@ -1499,42 +1576,100 @@ function renderOutputTable(){
 }
 
 // ---------- EXECUTIVE KPI HERO CARDS (visual-only, read-only over `computed`) ----------
-// Card 1: Current vs Simulated Revenue (primary = simulated revenue) + revenue variance % badge.
-// Card 2: Absolute Revenue Cash Lift (Simulated - Current) + delta context line.
-// Card 3: Portfolio Volume Movement (primary = simulated monthly volume) + Volume Δ% badge.
-// NEW (production feedback, action item #5): Financial Metrics Restructuring — every cost-related metric
-// (Revenue, Revenue Lift, Volume Movement, Total Profit ₹) has been removed from the KPI hero row. It now
-// shows exactly 3 tiles, all expressed as Profit Margin % (Portfolio Profit ÷ Portfolio Revenue × 100):
-//   Tile 1: Profit % (Baseline)   Tile 2: Profit % (Simulated)   Tile 3: Profit % Difference (absolute variance)
+// FINALIZED LAYOUT (manager sign-off) — exactly 4 summary cards across the top of the Output Dashboard,
+// each aggregated (summed) across every currently-filtered SKU, each showing its Simulated value
+// prominently with the Baseline value directly beneath it and a Delta badge (Δ% for Qty/Revenue/Profit,
+// Δ points for Profit Margin %). No Cost card, no extra/unrequested cards — strictly these 4:
+//   Card 1: Total Qty Sold      (Simulated primary / Baseline sub / Δ% badge)
+//   Card 2: Total Revenue (₹)   (Simulated primary / Baseline sub / Δ% badge)
+//   Card 3: Total Profit (₹)    (Simulated primary / Baseline sub / Δ% badge)
+//   Card 4: Profit Margin (%)   (Simulated primary / Baseline sub / Δ points badge)
+// All 4 metrics are derived purely from the already-locked calc engine (computeAll() -> applyVtmNullStateOverride()
+// -> computeProfitMetrics()), which itself runs the log-log regression (PTC / Store Availability / Product
+// Ranking elasticities) inside computeAllVolumes(). This function performs zero calculation of its own beyond
+// summation/aggregation and derived %/points deltas — it is a pure read-only presentation layer.
 function renderKpiTiles(computed){
-  const elBaseline = document.getElementById('kpiProfitBaselineValue');
-  const elSimulated = document.getElementById('kpiProfitSimulatedValue');
-  const elDiff = document.getElementById('kpiProfitDiffValue');
-  const elDiffBadge = document.getElementById('kpiProfitDiffBadge');
-  const elDiffCard = document.getElementById('kpiProfitDiffCard');
-  if(!elBaseline || !elSimulated || !elDiff) return;
+  const elQtySimulated = document.getElementById('kpiQtySimulatedValue');
+  const elQtyBaseline = document.getElementById('kpiQtyBaselineValue');
+  const elQtyBadge = document.getElementById('kpiQtyDeltaBadge');
+  const elQtyCard = document.getElementById('kpiQtyCard');
 
-  let totalBaselineProfit = 0, totalSimulatedProfit = 0, totalCurrentRev = 0, totalSimulatedRev = 0;
+  const elRevSimulated = document.getElementById('kpiRevenueSimulatedValue');
+  const elRevBaseline = document.getElementById('kpiRevenueBaselineValue');
+  const elRevBadge = document.getElementById('kpiRevenueDeltaBadge');
+  const elRevCard = document.getElementById('kpiRevenueCard');
+
+  const elProfitSimulated = document.getElementById('kpiProfitSimulatedValue');
+  const elProfitBaseline = document.getElementById('kpiProfitBaselineValue');
+  const elProfitBadge = document.getElementById('kpiProfitDeltaBadge');
+  const elProfitCard = document.getElementById('kpiProfitCard');
+
+  const elMarginSimulated = document.getElementById('kpiMarginSimulatedValue');
+  const elMarginBaseline = document.getElementById('kpiMarginBaselineValue');
+  const elMarginBadge = document.getElementById('kpiMarginDeltaBadge');
+  const elMarginCard = document.getElementById('kpiMarginCard');
+
+  if(!elQtySimulated || !elRevSimulated || !elProfitSimulated || !elMarginSimulated) return;
+
+  // ---- Aggregate all 4 metrics across every row in `computed` (the full filtered portfolio) ----
+  let totalQtyBaseline = 0, totalQtySimulated = 0;
+  let totalRevBaseline = 0, totalRevSimulated = 0;
+  let totalProfitBaseline = 0, totalProfitSimulated = 0;
   computed.forEach(c => {
     const pm = computeProfitMetrics(c);
-    totalBaselineProfit  += pm.baselineProfit;
-    totalSimulatedProfit += pm.simulatedProfit;
-    totalCurrentRev      += c.revenueCurrent;
-    totalSimulatedRev    += c.revenueSimulated;
+    totalQtyBaseline     += c.monthlyCurrent;
+    totalQtySimulated     += c.monthlySimulated;
+    totalRevBaseline      += c.revenueCurrent;
+    totalRevSimulated      += c.revenueSimulated;
+    totalProfitBaseline   += pm.baselineProfit;
+    totalProfitSimulated  += pm.simulatedProfit;
   });
 
-  const baselineProfitPct  = totalCurrentRev   !== 0 ? (totalBaselineProfit  / totalCurrentRev)   * 100 : 0;
-  const simulatedProfitPct = totalSimulatedRev !== 0 ? (totalSimulatedProfit / totalSimulatedRev) * 100 : 0;
-  const profitPctDiff = simulatedProfitPct - baselineProfitPct; // absolute variance, in percentage points
+  const marginBaselinePct  = totalRevBaseline  !== 0 ? (totalProfitBaseline  / totalRevBaseline)  * 100 : 0;
+  const marginSimulatedPct = totalRevSimulated !== 0 ? (totalProfitSimulated / totalRevSimulated) * 100 : 0;
 
-  elBaseline.textContent = baselineProfitPct.toFixed(2) + '%';
-  elSimulated.textContent = simulatedProfitPct.toFixed(2) + '%';
-  elDiff.textContent = (profitPctDiff>=0?'+':'') + profitPctDiff.toFixed(2) + ' pts';
-  if(elDiffBadge){
-    elDiffBadge.textContent = (profitPctDiff>=0?'+':'') + profitPctDiff.toFixed(2) + ' pts';
-    elDiffBadge.className = 'kpi-badge ' + (profitPctDiff>=0 ? 'kpi-up' : 'kpi-down');
+  const qtyDeltaPct = totalQtyBaseline ? ((totalQtySimulated - totalQtyBaseline) / totalQtyBaseline) * 100 : 0;
+  const revDeltaPct = totalRevBaseline ? ((totalRevSimulated - totalRevBaseline) / totalRevBaseline) * 100 : 0;
+  const profitDeltaPct = Math.abs(totalProfitBaseline) > 1e-9
+    ? ((totalProfitSimulated - totalProfitBaseline) / totalProfitBaseline) * 100
+    : (Math.abs(totalProfitSimulated) < 1e-9 ? 0 : null);
+  const marginDeltaPts = marginSimulatedPct - marginBaselinePct; // absolute variance, in percentage points
+
+  // ---- Card 1: Total Qty Sold ----
+  elQtySimulated.textContent = Math.round(totalQtySimulated).toLocaleString('en-IN');
+  elQtyBaseline.textContent = Math.round(totalQtyBaseline).toLocaleString('en-IN');
+  if(elQtyBadge){
+    elQtyBadge.textContent = (qtyDeltaPct>=0?'+':'') + qtyDeltaPct.toFixed(2) + '%';
+    elQtyBadge.className = 'kpi-badge ' + (qtyDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
   }
-  if(elDiffCard) elDiffCard.classList.toggle('kpi-tile-profit-negative', profitPctDiff < 0);
+  if(elQtyCard) elQtyCard.classList.toggle('kpi-tile-profit-negative', qtyDeltaPct < 0);
+
+  // ---- Card 2: Total Revenue (₹) ----
+  elRevSimulated.textContent = '₹' + Math.round(totalRevSimulated).toLocaleString('en-IN');
+  elRevBaseline.textContent = '₹' + Math.round(totalRevBaseline).toLocaleString('en-IN');
+  if(elRevBadge){
+    elRevBadge.textContent = (revDeltaPct>=0?'+':'') + revDeltaPct.toFixed(2) + '%';
+    elRevBadge.className = 'kpi-badge ' + (revDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
+  }
+  if(elRevCard) elRevCard.classList.toggle('kpi-tile-profit-negative', revDeltaPct < 0);
+
+  // ---- Card 3: Total Profit (₹) ----
+  elProfitSimulated.textContent = '₹' + (totalProfitSimulated<0?'-':'') + Math.abs(Math.round(totalProfitSimulated)).toLocaleString('en-IN');
+  elProfitBaseline.textContent = '₹' + (totalProfitBaseline<0?'-':'') + Math.abs(Math.round(totalProfitBaseline)).toLocaleString('en-IN');
+  if(elProfitBadge){
+    elProfitBadge.textContent = profitDeltaPct === null ? 'N/A' : (profitDeltaPct>=0?'+':'') + profitDeltaPct.toFixed(2) + '%';
+    elProfitBadge.className = 'kpi-badge ' + (profitDeltaPct !== null && profitDeltaPct < 0 ? 'kpi-down' : 'kpi-up');
+  }
+  if(elProfitCard) elProfitCard.classList.toggle('kpi-tile-profit-negative', profitDeltaPct !== null && profitDeltaPct < 0);
+
+  // ---- Card 4: Profit Margin (%) ----
+  elMarginSimulated.textContent = marginSimulatedPct.toFixed(2) + '%';
+  elMarginBaseline.textContent = marginBaselinePct.toFixed(2) + '%';
+  if(elMarginBadge){
+    elMarginBadge.textContent = (marginDeltaPts>=0?'+':'') + marginDeltaPts.toFixed(2) + ' pts';
+    elMarginBadge.className = 'kpi-badge ' + (marginDeltaPts>=0 ? 'kpi-up' : 'kpi-down');
+  }
+  if(elMarginCard) elMarginCard.classList.toggle('kpi-tile-profit-negative', marginDeltaPts < 0);
 }
 
 // ---------- EDA PANEL RENDERER ----------
@@ -1895,7 +2030,7 @@ function renderAiInsights(computed){
   const riskSkus = computed.filter(c => c.revDeltaPct < -0.01).sort((a,b)=>a.revDeltaPct-b.revDeltaPct);
   if(riskSkus.length){
     const riskHtml = riskSkus.map(c =>
-      `<b>${c.row.name}</b> is projected to lose <b>${Math.abs(c.volDeltaPct).toFixed(2)}% volume</b> and <b>${Math.abs(c.revDeltaPct).toFixed(2)}% revenue</b> (${fmtRs(c.revenueDelta)}) under this scenario &mdash; worth revisiting the Store Availability and Product Ranking settings for this SKU before finalizing.`
+      `<b>${c.row.name}</b> is projected to lose <b>${Math.abs(c.volDeltaPct).toFixed(2)}% volume</b> and <b>${Math.abs(c.revDeltaPct).toFixed(2)}% revenue</b> (${fmtRs(c.revenueDelta)}) under this scenario &mdash; worth revisiting the PTC, Store Availability, and Product Ranking settings for this SKU before finalizing.`
     ).join(' ');
     cards.push({ type:'atrisk', label:'Commercial Risk Mitigation', icon:'&#9888;', html:riskHtml });
   }
@@ -2067,11 +2202,11 @@ function renderComparisonCharts(computedFull){
 // ---------- DOWNLOAD CSV ----------
 function downloadExcel(){
   const computed = computeAll().map(applyVtmNullStateOverride);
-  const headers = ['SKU','Period','Scenario','Current Store Availability (Store Count x OSA)','Simulated Store Availability (Store Count x OSA)','Current Product Ranking','Simulated Product Ranking','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %','Baseline Profit (Rs)','Simulated Profit (Rs)','Profit Delta %'];
+  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','Simulated PTC (Rs)','Current Store Availability (Store Count x OSA)','Simulated Store Availability (Store Count x OSA)','Current Product Ranking','Simulated Product Ranking','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %','Baseline Profit (Rs)','Simulated Profit (Rs)','Profit Delta %'];
   const csvEscape = v => { const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
   const rows = computed.map(c => {
     const pm = computeProfitMetrics(c);
-    return [c.row.name, selectedMonth, scenarioLabel(c), c.row.storeAva.toFixed(2), c.row.simStoreAva.toFixed(2), c.row.productRanking, c.row.simProductRanking, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2), Math.round(pm.baselineProfit), Math.round(pm.simulatedProfit), pm.profitChangePct === null ? 'N/A' : pm.profitChangePct.toFixed(2)];
+    return [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.simPtc.toFixed(2), c.row.storeAva.toFixed(2), c.row.simStoreAva.toFixed(2), c.row.productRanking, c.row.simProductRanking, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2), Math.round(pm.baselineProfit), Math.round(pm.simulatedProfit), pm.profitChangePct === null ? 'N/A' : pm.profitChangePct.toFixed(2)];
   });
   const csvLines = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))];
   const csvContent = csvLines.join('\r\n');
@@ -2144,7 +2279,7 @@ function renderLibrary(){
       <div class="empty-state">
         <div class="empty-icon">&#128203;</div>
         <h3>No scenarios saved yet</h3>
-        <p>Head to the Pricing Simulator, adjust your Store Availability and Product Ranking levers, run the simulation, and save it here to build out your scenario library.</p>
+        <p>Head to the Pricing Simulator, adjust your PTC, Store Availability, and Product Ranking levers, run the simulation, and save it here to build out your scenario library.</p>
         <div style="margin-top:18px;">
           <button class="btn btn-primary" onclick="goToStep('simulator')">Go to Pricing Simulator &#10148;</button>
         </div>
