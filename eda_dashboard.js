@@ -327,6 +327,10 @@
     // trend charts per latest stakeholder feedback; the (PTC - Competitor PTC) vs Qty
     // chart was removed entirely at the same time).
     renderEdaanRpiTrend(); renderEdaanOsaRankTrend();
+    // NEW (MANAGER REQUEST, change 6) — static hardcoded scenario chart from coeff.pptx; cheap to
+    // re-render alongside everything else, and keeps it in the same edaanCharts registry (so it also
+    // gets destroyed/recreated cleanly and picked up by window.edaanResizeAll()).
+    renderScenarioImpactChart();
   }
 
   // ---------- shared Chart.js helpers ----------
@@ -896,29 +900,20 @@
 
   // ================================================================================
   // 21. SEGMENT UNITS vs UNITS SOLD  (canvas: edaanChart17)
-  // Special requirement: label Segment_Sku_Count, but ONLY at "dip points" (local minima)
-  // of the Segment_Units line — a point whose value is lower than BOTH of its immediate
-  // neighbors. Implemented via chartjs-plugin-datalabels' per-dataset `datalabels`
-  // override (set only on the Segment_Units dataset, so the Qty Sold bars never get a
-  // label), using its `display` callback to test the dip condition and `formatter` to
-  // render "SKU Count: <value>" from a parallel Segment_Sku_Count array.
+  // MANAGER REQUEST (change 2): the "SKU Count" metric/dataset annotation has been completely removed
+  // from this chart. It now shows a clean dual-axis view — Qty Sold (bar/line, left axis) vs Segment
+  // Units (line, right axis) — with no datalabels/annotations of any kind.
   // ================================================================================
   function renderEdaanChart17(){
     const interval = getInterval();
     const { dataset, xField, qtyIsLine } = pickDataset(interval);
     let rows = applyMasterFilters(dataset);
-    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', Segment_Units: 'sum', Segment_Sku_Count: 'mean' });
+    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', Segment_Units: 'sum' });
     rows.sort(sortByX(xField));
 
     const segmentUnitsData = rows.map(r => r.Segment_Units);
-    const skuCounts = rows.map(r => r.Segment_Sku_Count);
 
-    const hasDatalabels = typeof ChartDataLabels !== 'undefined';
     const chartOptions = dualAxisOptions('Qty Sold', 'Segment Units');
-    // Off by default at the chart level — only the Segment_Units line dataset opts back
-    // in via its own per-dataset `datalabels` override below, so the Qty Sold bars never
-    // show a label.
-    chartOptions.plugins.datalabels = { display: false };
 
     const segmentUnitsDataset = {
       type: 'line',
@@ -932,34 +927,6 @@
       pointHoverRadius: 5
     };
 
-    if(hasDatalabels){
-      segmentUnitsDataset.datalabels = {
-        // CRITICAL LOGIC: a "dip point" is a local minimum — cur < prev AND cur < next.
-        // Edge points (index 0 or the last index) have no second neighbor and never qualify.
-        display(context){
-          const data = context.dataset.data;
-          const i = context.dataIndex;
-          if(i <= 0 || i >= data.length - 1) return false;
-          const prev = data[i - 1], cur = data[i], next = data[i + 1];
-          if(cur === null || cur === undefined || prev === null || prev === undefined || next === null || next === undefined) return false;
-          return cur < prev && cur < next;
-        },
-        formatter(value, context){
-          const v = skuCounts[context.dataIndex];
-          return (v === null || v === undefined) ? '' : `SKU Count: ${Math.round(v)}`;
-        },
-        align: 'bottom',
-        anchor: 'end',
-        color: '#4A0E17',
-        font: { size: 10, weight: '600', family: 'Inter, sans-serif' },
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        borderRadius: 4,
-        borderColor: '#8d6a9f',
-        borderWidth: 1,
-        padding: { top: 3, bottom: 3, left: 5, right: 5 }
-      };
-    }
-
     const chartConfig = {
       type: qtyIsLine ? 'line' : 'bar',
       data: {
@@ -971,7 +938,6 @@
       },
       options: chartOptions
     };
-    if(hasDatalabels) chartConfig.plugins = [ChartDataLabels];
 
     makeChart('edaanChart17', chartConfig);
   }
@@ -1025,6 +991,49 @@
         ]
       },
       options: dualAxisOptions('Qty Sold', 'OSA × Product Ranking')
+    });
+  }
+
+  // ================================================================================
+  // NEW (MANAGER REQUEST, change 6) — SCENARIO IMPACT ANALYSIS (canvas: scenarioImpactChart)
+  // Illustrates the exact calculation logic from coeff.pptx: 3 hardcoded single-lever scenarios
+  // (Price +5%, Store Count +5%, Ranking 8→9), each showing Base vs New Demand (units) alongside
+  // Base vs New Profit (₹). This is a STATIC, hardcoded reference chart — it does not read from
+  // priceRows / computeAll() / any live simulation state, and is unaffected by the master filters.
+  // Demand (~4,000 units) and Profit (~₹4,00,000) live on very different scales, so — exactly like
+  // the other dual-axis EDA charts (dualAxisOptions()) — Demand is plotted on the left axis (y) and
+  // Profit on the right axis (y1), with all 4 datasets grouped per scenario label.
+  // ================================================================================
+  function renderScenarioImpactChart(){
+    const labels = ['Price Change (+5%)', 'Store Count Change (+5%)', 'Ranking Change (8 to 9)'];
+    const baseDemand = [4036.77, 4036.77, 4036.77];
+    const newDemand = [3919.27, 4069.36, 3935.59];
+    const baseProfit = [400705.9, 400705.9, 400705.9];
+    const newProfit = [408494.5, 403941.0, 390662.4];
+
+    const options = dualAxisOptions('Demand (Units)', 'Profit (₹)');
+    options.plugins.tooltip = {
+      callbacks: {
+        label(ctx){
+          const v = ctx.parsed.y;
+          const isProfit = ctx.dataset.yAxisID === 'y1';
+          return `  ${ctx.dataset.label}: ${isProfit ? '₹' + Number(v).toLocaleString('en-IN', {maximumFractionDigits:1}) : Number(v).toLocaleString('en-IN', {maximumFractionDigits:2})}`;
+        }
+      }
+    };
+
+    makeChart('scenarioImpactChart', {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Base Demand', data: baseDemand, backgroundColor: 'rgba(197,160,89,0.55)', borderColor: '#C5A059', borderWidth: 1.5, borderRadius: 5, yAxisID: 'y', maxBarThickness: 46 },
+          { label: 'New Demand', data: newDemand, backgroundColor: '#4A0E17', borderColor: '#4A0E17', borderWidth: 1.5, borderRadius: 5, yAxisID: 'y', maxBarThickness: 46 },
+          { label: 'Base Profit', data: baseProfit, backgroundColor: 'rgba(46,125,94,0.35)', borderColor: '#2E7D5E', borderWidth: 1.5, borderRadius: 5, yAxisID: 'y1', maxBarThickness: 46 },
+          { label: 'New Profit', data: newProfit, backgroundColor: '#2E7D5E', borderColor: '#2E7D5E', borderWidth: 1.5, borderRadius: 5, yAxisID: 'y1', maxBarThickness: 46 }
+        ]
+      },
+      options
     });
   }
 

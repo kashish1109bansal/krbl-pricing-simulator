@@ -272,6 +272,11 @@
   .readonly-cell{ color:var(--muted); }
   .sku-cell{ font-weight:800; color:var(--maroon-dark); font-size:11px; }
 
+  /* MANAGER REQUEST: non-"Everyday 5" SKU rows are locked to their base values in the simulation input
+     table — visually indicate that these inputs are disabled/locked. */
+  td input.locked-input[type=number]{ background-color:#f3f4f6 !important; cursor:not-allowed !important; opacity:0.7; border-color:#d1d5db; color:#6b7280; }
+  td input.locked-input[type=number]:focus{ outline:none; box-shadow:none; border-color:#d1d5db; }
+
   /* Advanced Selection Filters — Baseline Month dropdown (native <select>) & SKU Filter dropdown menu */
   select.month-select{ display:inline-block !important; }
   .sku-dropdown{ position:relative; }
@@ -464,9 +469,17 @@
   .legend-swatch{ width:14px; height:14px; border-radius:4px; display:inline-block; box-shadow:0 1px 3px rgba(0,0,0,0.25); }
   .legend-swatch.base{ background:#4A0E17; }
   .legend-swatch.sim{ background:linear-gradient(135deg,#e6c659,var(--gold)); }
-  .compare-grid{ gap:28px; }
+  /* MANAGER REQUEST (change 4): all 3 "Baseline vs Simulated" comparison charts (Volume, Revenue, Profit %)
+     now sit in ONE perfectly aligned horizontal row via CSS Grid. Falls back to a single column on narrow
+     viewports (inherits the .charts-grid max-width:980px breakpoint below). */
+  .compare-grid{ grid-template-columns: repeat(3, 1fr); gap:22px; }
   .compare-panel{ background:#fff; border:1px solid var(--border); border-radius:14px; padding:18px 20px 14px; box-shadow:0 6px 18px rgba(122,6,36,0.07); }
-  .compare-panel h4{ margin:0 0 16px; }
+  .compare-panel h4{ margin:0 0 16px; font-size:13px; }
+  /* Responsive collapse for the 3-column compare-grid (declared unconditionally above, so it needs its
+     own breakpoints — it would otherwise win over the generic .charts-grid 1-column mobile rule since
+     both are single-class selectors of equal specificity and .compare-grid is declared later). */
+  @media (max-width: 1180px){ .compare-grid{ grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 700px){ .compare-grid{ grid-template-columns: 1fr; } }
   .compare-row{ margin-bottom:20px; }
   .compare-row:last-child{ margin-bottom:4px; }
   .compare-label{ display:flex; justify-content:space-between; align-items:baseline; font-size:13px; font-weight:800; color:var(--maroon-dark); margin-bottom:9px; }
@@ -731,9 +744,10 @@
              directly below the Simulation Table section above, always visible). -->
         <div id="output-sub-eda" class="output-sub-panel">
 
-          <!-- TOP 5 SKUs — REVENUE & VOLUME LIFT DRIVERS -->
+          <!-- TOP 5 SKUs — REVENUE, VOLUME & PROFIT LIFT DRIVERS
+               MANAGER REQUEST (change 5): Profit is now a visible metric alongside Revenue/Volume lift. -->
           <div class="glass-card" style="padding:16px 20px 10px;">
-            <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Monthly Revenue &amp; Volume Lift</div>
+            <div class="section-title" style="margin:0 0 10px;font-size:13px;">&#128202; Top 5 SKUs &mdash; Monthly Revenue, Volume &amp; Profit Lift</div>
             <div class="charts-grid" style="display:flex; gap:16px; flex-wrap:wrap;">
               <div style="flex:1 1 320px; min-width:280px;">
                 <div style="font-size:12px; font-weight:700; color:#4A0E17; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY REVENUE LIFT</div>
@@ -747,10 +761,20 @@
                   <canvas id="volumeLiftChart" style="max-height: 280px; width: 100%;"></canvas>
                 </div>
               </div>
+              <div style="flex:1 1 320px; min-width:280px;">
+                <div style="font-size:12px; font-weight:700; color:#2E7D5E; margin-bottom:6px;">TOP 5 SKUs &mdash; MONTHLY PROFIT LIFT (&#8377;)</div>
+                <div style="position:relative; height:280px;">
+                  <canvas id="profitLiftChart" style="max-height: 280px; width: 100%;"></canvas>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- BASELINE vs SIMULATED COMPARISON CHARTS -->
+          <!-- BASELINE vs SIMULATED COMPARISON CHARTS
+               MANAGER REQUEST (change 4): Volume, Revenue, and Profit % comparison charts are now merged
+               into ONE glass-card with a single 3-column .compare-grid row, so all three sit perfectly
+               aligned in a single horizontal row (CSS Grid, grid-template-columns: repeat(3, 1fr)), with
+               its own responsive breakpoints collapsing to 2 then 1 column on narrower viewports. -->
           <div class="glass-card compare-card">
             <h3 class="section-title" style="margin-bottom:4px;">Baseline vs Simulated Comparison</h3>
             <div class="compare-legend">
@@ -780,18 +804,17 @@
                   <canvas id="compareRevenueChart"></canvas>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <!-- BASELINE vs SIMULATED PROFIT % — simple two-bar comparison, no cost/₹ breakdown
-               Strictly synchronized to computeProfitMetrics() (same engine as the KPI tiles + table grid). -->
-          <div class="glass-card" style="padding:16px 20px 14px;">
-            <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128200; BASELINE vs SIMULATED PROFIT %</div>
-            <div style="font-size:11px; color:var(--muted); margin-bottom:12px; line-height:1.55;">
-              Portfolio Profit Margin % (Profit &divide; Revenue &times; 100) &mdash; Baseline vs Simulated.
-            </div>
-            <div style="position:relative; height:360px;">
-              <canvas id="profitabilityCurveChart"></canvas>
+              <div class="chart-panel compare-panel">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                  <h4 style="margin:0 0 0;">Portfolio Profit % (Baseline vs Simulated)</h4>
+                </div>
+                <div style="font-size:10.5px; color:var(--muted); margin-top:4px; line-height:1.4;">
+                  Profit &divide; Revenue &times; 100 &mdash; strictly synchronized to computeProfitMetrics().
+                </div>
+                <div style="position:relative; height:240px; margin-top:8px;">
+                  <canvas id="profitabilityCurveChart"></canvas>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -891,12 +914,24 @@
           </div>
         </div>
 
-        <!-- 21. SEGMENT UNITS vs UNITS SOLD (SKU Count labeled at Segment Units dip points) -->
+        <!-- 21. SEGMENT UNITS vs UNITS SOLD -->
         <div class="glass-card" style="padding:16px 20px 14px;">
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Segment Units vs Units Sold</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Segment SKU Count is called out at each local dip (minimum) in the Segment Units line.</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Segment Units tracked alongside total Qty Sold, on a dual-axis view.</div>
           <div style="position:relative; height:320px;">
             <canvas id="edaanChart17"></canvas>
+          </div>
+        </div>
+
+        <!-- 22. SCENARIO IMPACT ANALYSIS — MANAGER REQUEST (change 6, title updated per follow-up request)
+             Static, hardcoded reference chart illustrating the exact single-lever calculation logic
+             from coeff.pptx (Price +5%, Store Count +5%, Ranking 8→9) — Base vs New Demand, Base vs
+             New Profit, per scenario. Independent of the master filters / live simulation state. -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Scenario Impact Analysis</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Illustrative single-lever scenarios &mdash; Demand (units, left axis) and Profit (&#8377;, right axis), Base vs New.</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="scenarioImpactChart"></canvas>
           </div>
         </div>
 
@@ -1148,7 +1183,10 @@ initPriceRows(selectedMonth);
 // lift charts + the two Baseline-vs-Simulated comparison charts) are force-resized so their
 // canvases recalculate and stretch cleanly across the newly available viewport width.
 function resizeAllDashboardCharts(){
-  [revenueLiftChartInstance, volumeLiftChartInstance, compareUnitsChartInstance, compareRevenueChartInstance, profCurveChartInstance]
+  // Note: eda_dashboard.js's own charts (including chart 17 and the new "Scenario Impact Analysis" chart
+  // from Change 6) live in that file's private `edaanCharts` registry and are resized via
+  // window.edaanResizeAll() below — they are NOT global variables, so they aren't listed in this array.
+  [revenueLiftChartInstance, volumeLiftChartInstance, profitLiftChartInstance, compareUnitsChartInstance, compareRevenueChartInstance, profCurveChartInstance]
     .forEach(inst => { if(inst && typeof inst.resize === 'function'){ inst.resize(); } });
   if(typeof window.edaanResizeAll === 'function'){ window.edaanResizeAll(); }
   window.dispatchEvent(new Event('resize'));
@@ -1386,17 +1424,26 @@ function renderInputsTable(){
   tbody.innerHTML = priceRows.map((r,i) => ({ r, i })).filter(x => visibleSkus.has(x.r.name)).map(({r,i}) => {
     const ptcPct = r.ptc ? ((r.simPtc - r.ptc) / r.ptc) * 100 : 0;
     const storeAvaPct = r.storeAva ? ((r.simStoreAva - r.storeAva) / r.storeAva) * 100 : 0;
+    // MANAGER REQUEST: only SKUs whose name contains "everyday 5" (case-insensitive) remain editable
+    // in the simulation input table. All other SKU rows are locked to their base values — their inputs
+    // get the `disabled` attribute plus a `.locked-input` CSS class for a visual "locked" treatment.
+    // Because `initPriceRows()` seeds simPtc/simStoreAva/simProductRanking equal to the base values, and
+    // disabled inputs can never fire `oninput`, this alone guarantees runSimulation()/computeAll() keep
+    // reading each locked SKU's base values for accurate portfolio totals — no calc-engine changes needed.
+    const isTargetSku = /everyday 5/i.test(r.name);
+    const lockAttr = isTargetSku ? '' : 'disabled';
+    const lockClass = isTargetSku ? '' : ' locked-input';
     return `<tr>
       <td class="sku-cell">${r.name}</td>
       <td>${selectedMonth}</td>
       <td class="num readonly-cell">&#8377;${r.ptc.toFixed(2)}</td>
-      <td class="num"><input type="number" step="0.01" inputmode="decimal" class="ptc-pct-input" value="${ptcPct.toFixed(2)}" data-idx="${i}" oninput="onPtcPctChange(this)"></td>
-      <td class="num"><input type="number" step="0.01" min="0.01" inputmode="decimal" class="ptc-sim-input" value="${r.simPtc.toFixed(2)}" data-idx="${i}" oninput="onPtcSimChange(this)"></td>
+      <td class="num"><input type="number" step="0.01" inputmode="decimal" class="ptc-pct-input${lockClass}" value="${ptcPct.toFixed(2)}" data-idx="${i}" oninput="onPtcPctChange(this)" ${lockAttr}></td>
+      <td class="num"><input type="number" step="0.01" min="0.01" inputmode="decimal" class="ptc-sim-input${lockClass}" value="${r.simPtc.toFixed(2)}" data-idx="${i}" oninput="onPtcSimChange(this)" ${lockAttr}></td>
       <td class="num readonly-cell">${r.storeAva.toLocaleString('en-IN', {maximumFractionDigits:2, minimumFractionDigits:2})}</td>
-      <td class="num"><input type="number" step="0.01" inputmode="decimal" class="storeava-pct-input" value="${storeAvaPct.toFixed(2)}" data-idx="${i}" oninput="onStoreAvaPctChange(this)"></td>
-      <td class="num"><input type="number" step="0.01" min="0.01" inputmode="decimal" class="storeava-sim-input" value="${r.simStoreAva.toFixed(2)}" data-idx="${i}" oninput="onStoreAvaSimChange(this)"></td>
+      <td class="num"><input type="number" step="0.01" inputmode="decimal" class="storeava-pct-input${lockClass}" value="${storeAvaPct.toFixed(2)}" data-idx="${i}" oninput="onStoreAvaPctChange(this)" ${lockAttr}></td>
+      <td class="num"><input type="number" step="0.01" min="0.01" inputmode="decimal" class="storeava-sim-input${lockClass}" value="${r.simStoreAva.toFixed(2)}" data-idx="${i}" oninput="onStoreAvaSimChange(this)" ${lockAttr}></td>
       <td class="num readonly-cell">${r.productRanking}</td>
-      <td class="num"><input type="number" step="1" min="1" inputmode="numeric" value="${r.simProductRanking}" data-idx="${i}" oninput="onRankingChange(this)"></td>
+      <td class="num"><input type="number" step="1" min="1" inputmode="numeric" class="${lockClass.trim()}" value="${r.simProductRanking}" data-idx="${i}" oninput="onRankingChange(this)" ${lockAttr}></td>
     </tr>`;
   }).join('');
 }
@@ -1633,8 +1680,9 @@ function renderKpiTiles(computed){
 
   const qtyDeltaPct = totalQtyBaseline ? ((totalQtySimulated - totalQtyBaseline) / totalQtyBaseline) * 100 : 0;
   const revDeltaPct = totalRevBaseline ? ((totalRevSimulated - totalRevBaseline) / totalRevBaseline) * 100 : 0;
-  // profitDeltaPct isn't displayed directly on the combined card, but is still used internally to decide
-  // whether the card should switch into its red/negative visual state (mirrors the sign of the profit move).
+  // MANAGER REQUEST (change 3): profitDeltaPct is now also displayed inline, right next to the baseline
+  // profit ₹ text on the combined card (e.g. "Baseline: ₹3,01,90,148 (+2.00%)"), in addition to still being
+  // used internally to decide whether the card should switch into its red/negative visual state.
   const profitDeltaPct = Math.abs(totalProfitBaseline) > 1e-9
     ? ((totalProfitSimulated - totalProfitBaseline) / totalProfitBaseline) * 100
     : (Math.abs(totalProfitSimulated) < 1e-9 ? 0 : null);
@@ -1660,7 +1708,13 @@ function renderKpiTiles(computed){
 
   // ---- Card 3 (Combined): Total Profit ₹ (main value) + Margin % / Δpts / Baseline Profit ₹ (sub-header) ----
   elProfitSimulated.textContent = '₹' + (totalProfitSimulated<0?'-':'') + Math.abs(Math.round(totalProfitSimulated)).toLocaleString('en-IN');
-  elProfitBaseline.textContent = '₹' + (totalProfitBaseline<0?'-':'') + Math.abs(Math.round(totalProfitBaseline)).toLocaleString('en-IN');
+  // MANAGER REQUEST (change 3): append the profit Δ% right next to the baseline profit ₹ text, e.g.
+  // "₹3,01,90,148 (+2.00%)". profitDeltaPct is null only in the zero-baseline-profit edge case, where no
+  // percentage change is mathematically defined — omit the parenthetical suffix entirely in that case.
+  const profitDeltaPctSuffix = profitDeltaPct !== null
+    ? ' (' + (profitDeltaPct>=0?'+':'') + profitDeltaPct.toFixed(2) + '%)'
+    : '';
+  elProfitBaseline.textContent = '₹' + (totalProfitBaseline<0?'-':'') + Math.abs(Math.round(totalProfitBaseline)).toLocaleString('en-IN') + profitDeltaPctSuffix;
   elMarginSimulated.textContent = marginSimulatedPct.toFixed(2) + '%';
   if(elMarginBadge){
     elMarginBadge.textContent = (marginDeltaPts>=0?'+':'') + marginDeltaPts.toFixed(2) + ' pts';
@@ -1787,11 +1841,13 @@ function renderProfitabilityCurveChart(){
 // already-computed, already-filtered array handed in by renderOutputTable().
 let revenueLiftChartInstance = null;
 let volumeLiftChartInstance = null;
+let profitLiftChartInstance = null;
 let top5SkuChartRetryCount = 0;
 function renderTop5SkuChart(computed){
   const revCanvas = document.getElementById('revenueLiftChart');
   const volCanvas = document.getElementById('volumeLiftChart');
-  if(!revCanvas || !volCanvas) return;
+  const profitCanvas = document.getElementById('profitLiftChart');
+  if(!revCanvas || !volCanvas || !profitCanvas) return;
   // Chart.js loads from a CDN <script> tag in <head>; on slow networks the global `Chart` object
   // may not exist yet at the exact instant the very first renderTop5SkuChart() call fires (e.g. user
   // jumps straight to the Output Dashboard before the script finishes downloading). Rather than silently
@@ -1813,27 +1869,42 @@ function renderTop5SkuChart(computed){
   // and with the active filter selection.
   if(revenueLiftChartInstance){ revenueLiftChartInstance.destroy(); revenueLiftChartInstance = null; }
   if(volumeLiftChartInstance){ volumeLiftChartInstance.destroy(); volumeLiftChartInstance = null; }
+  if(profitLiftChartInstance){ profitLiftChartInstance.destroy(); profitLiftChartInstance = null; }
 
   if(!computed || computed.length === 0){
     return; // nothing in the active SKU Filter selection — leave both canvases blank rather than chart nothing
   }
 
+  // MANAGER REQUEST (change 5): Profit is now also tracked as a visible metric alongside Revenue/Volume
+  // lift — profitLift is derived via computeProfitMetrics(c), the SAME shared profit engine that drives
+  // the KPI hero tiles, the Simulation Table Grid Profit % column, and the Profit % comparison chart.
   const ranked = computed
-    .map(c => ({
-      name: c.row.name,
-      revenueLift: c.revenueDelta,
-      revDeltaPct: c.revDeltaPct,
-      volumeLift: c.monthlySimulated - c.monthlyCurrent,
-      volDeltaPct: c.volDeltaPct
-    }))
+    .map(c => {
+      const pm = computeProfitMetrics(c);
+      const profitLift = pm.simulatedProfit - pm.baselineProfit;
+      const profitDeltaPct = Math.abs(pm.baselineProfit) > 1e-9
+        ? (profitLift / pm.baselineProfit) * 100
+        : (Math.abs(pm.simulatedProfit) < 1e-9 ? 0 : null);
+      return {
+        name: c.row.name,
+        revenueLift: c.revenueDelta,
+        revDeltaPct: c.revDeltaPct,
+        volumeLift: c.monthlySimulated - c.monthlyCurrent,
+        volDeltaPct: c.volDeltaPct,
+        profitLift,
+        profitDeltaPct
+      };
+    })
     .sort((a,b) => Math.abs(b.revenueLift) - Math.abs(a.revenueLift))
     .slice(0,5);
 
   const labels = ranked.map(r => r.name);
   const revenueData = ranked.map(r => Math.round(r.revenueLift));
   const volumeData = ranked.map(r => Math.round(r.volumeLift));
+  const profitData = ranked.map(r => Math.round(r.profitLift));
   const revPctByIdx = ranked.map(r => r.revDeltaPct);
   const volPctByIdx = ranked.map(r => r.volDeltaPct);
+  const profitPctByIdx = ranked.map(r => r.profitDeltaPct);
 
   // Shared visual config applied to both standalone charts — horizontal bars, rounded corners, and a
   // %-aware tooltip callback wired to that chart's own percentage array.
@@ -1944,6 +2015,63 @@ function renderTop5SkuChart(computed){
       }
     }
   });
+
+  // MANAGER REQUEST (change 5): third chart — Monthly Profit Lift (₹) — mirrors the Revenue Lift chart's
+  // visual style (horizontal bar, currency-formatted axis/tooltip) but in a distinct green accent color
+  // so it's visually distinguishable from the maroon Revenue and gold Volume charts.
+  profitLiftChartInstance = new Chart(profitCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Monthly Profit Lift (₹)',
+        data: profitData,
+        backgroundColor: '#2E7D5E',
+        borderColor: '#2E7D5E',
+        borderWidth: 1,
+        borderRadius: 6,
+        borderSkipped: false,
+        maxBarThickness: 22
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1E1E1E',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          padding: 8,
+          titleFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
+          bodyFont: { family: 'Inter, "Helvetica Neue", sans-serif', weight:'700' },
+          callbacks: {
+            label: (ctx) => {
+              const idx = ctx.dataIndex;
+              const v = ctx.parsed.x;
+              const sign = v >= 0 ? '+' : '';
+              const pct = profitPctByIdx[idx];
+              const pctText = pct === null ? '' : ` (${pct>=0?'+':''}${pct.toFixed(1)}%)`;
+              return `Monthly Profit Lift: ${sign}₹${Math.abs(v).toLocaleString('en-IN')}${pctText}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          grid: { color:'rgba(46,125,94,0.10)', borderDash:[5,5] },
+          ticks: { ...baseScaleTextStyle, callback: (v) => '₹' + Number(v).toLocaleString('en-IN') }
+        },
+        y: {
+          ticks: baseScaleTextStyle,
+          grid: { display:false }
+        }
+      }
+    }
+  });
 }
 
 // ---------- KRBL REVENUE STRATEGY & INTELLIGENCE SUITE — DYNAMIC TEXT-PARSER ENGINE ----------
@@ -1968,20 +2096,25 @@ function renderAiInsights(computed){
   const cards = [];
 
   // ============ CARD 1 — ⚡ STRATEGIC PORTFOLIO LIFT (Dark Navy / Gold) ============
-  // Sum of Simulated Revenue minus Sum of Current Revenue across the live table rows — total cash delta
-  // (₹) and overall portfolio revenue variance %, recomputed fresh on every call.
+  // MANAGER REQUEST (follow-up): rewritten for an executive/human tone — short, punchy, conversational
+  // sentences with a direct "so what" takeaway, no AI-transition-word vocabulary ("Furthermore",
+  // "Delving deeper", "It is evident that", "Comprehensive", "Crucial", "Underscores", "In conclusion").
+  // Every number below still comes straight off this run's computed array — only the copy changed.
   const totalRevCur = computed.reduce((s,c)=>s+c.revenueCurrent,0);
   const totalRevSim = computed.reduce((s,c)=>s+c.revenueSimulated,0);
   const portfolioRevDelta = totalRevSim - totalRevCur;
   const portfolioRevPct = totalRevCur ? (portfolioRevDelta/totalRevCur*100) : 0;
   cards.push({
     type:'lift', label:'Strategic Portfolio Lift', icon:'&#9889;',
-    html:`Simulated Revenue of ${fmtRs(totalRevSim)} compares to Current Revenue of ${fmtRs(totalRevCur)} &mdash; a ${portfolioRevDelta>=0?'gain':'drop'} of <b>${fmtRs(portfolioRevDelta)}</b>, or <b>${portfolioRevPct>=0?'+':''}${portfolioRevPct.toFixed(2)}%</b> against baseline for this period.`
+    html: portfolioRevDelta>=0
+      ? `Revenue is up <b>${fmtRs(portfolioRevDelta)}</b> (<b>+${portfolioRevPct.toFixed(2)}%</b>) against baseline &mdash; from ${fmtRs(totalRevCur)} to ${fmtRs(totalRevSim)}. Lock this scenario in before pricing conditions shift.`
+      : `Revenue is down <b>${fmtRs(portfolioRevDelta)}</b> (<b>${portfolioRevPct.toFixed(2)}%</b>) against baseline &mdash; from ${fmtRs(totalRevCur)} to ${fmtRs(totalRevSim)}. That's real money walking out the door. Don't ship this scenario without a second look.`
   });
 
   // ============ CARD 2 — 📈 PORTFOLIO GROWTH DRIVERS (Emerald Green / Gold) ============
   // Consolidates every SKU with a positive volume or revenue lift into ONE line: leads with the top
-  // revenue contributor (by revenueDelta) and the top volume contributor (by volDeltaPct).
+  // revenue contributor (by revenueDelta) and the top volume contributor (by volDeltaPct). Copy rewritten
+  // to read like a consultant pointing at the winner and telling you what to do about it.
   const revGainers = computed.filter(c => c.revenueDelta > 0).sort((a,b)=>b.revenueDelta-a.revenueDelta);
   const volGainers = computed.filter(c => c.volDeltaPct > 0.01).sort((a,b)=>b.volDeltaPct-a.volDeltaPct);
   if(revGainers.length || volGainers.length){
@@ -1989,11 +2122,11 @@ function renderAiInsights(computed){
     const leadVol = volGainers.find(c => !leadRev || c.row.name !== leadRev.row.name) || volGainers[0] || null;
     let driverHtml;
     if(leadRev && leadVol){
-      driverHtml = `Growth this period is led by <b>${leadRev.row.name}</b>, adding ${fmtRs(leadRev.revenueDelta)} in revenue (+${leadRev.revDeltaPct.toFixed(2)}%), with <b>${leadVol.row.name}</b> also picking up pace at +${leadVol.volDeltaPct.toFixed(2)}% in volume.`;
+      driverHtml = `<b>${leadRev.row.name}</b> is carrying the portfolio &mdash; up ${fmtRs(leadRev.revenueDelta)} (+${leadRev.revDeltaPct.toFixed(2)}%). <b>${leadVol.row.name}</b> is picking up volume too, +${leadVol.volDeltaPct.toFixed(2)}%. Put the next marketing rupee behind these two before spreading budget thin elsewhere.`;
     } else if(leadRev){
-      driverHtml = `Growth this period is led by <b>${leadRev.row.name}</b>, adding ${fmtRs(leadRev.revenueDelta)} in revenue (+${leadRev.revDeltaPct.toFixed(2)}%).`;
+      driverHtml = `<b>${leadRev.row.name}</b> is carrying the portfolio &mdash; up ${fmtRs(leadRev.revenueDelta)} (+${leadRev.revDeltaPct.toFixed(2)}%). Double down here while it's working.`;
     } else {
-      driverHtml = `Growth this period is led by <b>${leadVol.row.name}</b>, up +${leadVol.volDeltaPct.toFixed(2)}% in volume.`;
+      driverHtml = `<b>${leadVol.row.name}</b> is the volume story this period, up +${leadVol.volDeltaPct.toFixed(2)}%. Watch whether that turns into revenue next month before celebrating.`;
     }
     cards.push({ type:'driver', label:'Portfolio Growth Drivers', icon:'&#128200;', html:driverHtml });
   }
@@ -2002,7 +2135,8 @@ function renderAiInsights(computed){
   // For every SKU truly losing volume this run (signed volumeLostDelta > 0 — never Math.abs()'d, so a
   // volume-GAINING SKU can never be mistaken for a cannibalization source), decompose its loss across the
   // 6x6 vtmMatrix into per-target unit counts, keep the top 2 receiving SKUs, and club every source SKU's
-  // line into this single consolidated card.
+  // line into this single consolidated card. Copy rewritten to lead with the business read (it's a shift,
+  // not a loss) and end with a concrete "so what" for stock planning.
   const cannibalLines = [];
   computed.forEach(from => {
     const lostDelta = from.volumeLostDelta || 0; // signed, full precision — same field bound to the grid row
@@ -2017,20 +2151,21 @@ function renderAiInsights(computed){
     const targetStr = top.length === 2
       ? `<b>${top[0].toName}</b> (~${Math.round(top[0].unitsPerMonth).toLocaleString('en-IN')} units) and <b>${top[1].toName}</b> (~${Math.round(top[1].unitsPerMonth).toLocaleString('en-IN')} units)`
       : `<b>${top[0].toName}</b> (~${Math.round(top[0].unitsPerMonth).toLocaleString('en-IN')} units)`;
-    cannibalLines.push({ html:`Some of the volume <b>${from.row.name}</b> is losing looks like it's shifting to ${targetStr}.`, _sort: top[0].unitsPerMonth });
+    cannibalLines.push({ html:`<b>${from.row.name}</b> isn't losing volume &mdash; it's handing it to ${targetStr}.`, _sort: top[0].unitsPerMonth });
   });
   if(cannibalLines.length){
     cannibalLines.sort((a,b)=>b._sort-a._sort);
-    const cannibalHtml = cannibalLines.map(l=>l.html).join(' ') + ' Worth keeping in mind when planning stock across these SKUs.';
+    const cannibalHtml = cannibalLines.map(l=>l.html).join(' ') + ' Net portfolio impact is smaller than the SKU-level numbers suggest &mdash; check stock allocation before reacting to any one line.';
     cards.push({ type:'cannibal', label:'Brand Cannibalization Profile', icon:'&#128260;', html:cannibalHtml });
   }
 
   // ============ CARD 4 — ⚠️ COMMERCIAL RISK MITIGATION (Velvet Crimson) ============
-  // Only rendered when a SKU is actually losing significant volume/revenue this run, worst-first.
+  // Only rendered when a SKU is actually losing significant volume/revenue this run, worst-first. Copy
+  // rewritten to name the exact lever to pull instead of just describing the loss.
   const riskSkus = computed.filter(c => c.revDeltaPct < -0.01).sort((a,b)=>a.revDeltaPct-b.revDeltaPct);
   if(riskSkus.length){
     const riskHtml = riskSkus.map(c =>
-      `<b>${c.row.name}</b> is projected to lose <b>${Math.abs(c.volDeltaPct).toFixed(2)}% volume</b> and <b>${Math.abs(c.revDeltaPct).toFixed(2)}% revenue</b> (${fmtRs(c.revenueDelta)}) under this scenario &mdash; worth revisiting the PTC, Store Availability, and Product Ranking settings for this SKU before finalizing.`
+      `<b>${c.row.name}</b> is bleeding <b>${Math.abs(c.volDeltaPct).toFixed(2)}% volume</b> and <b>${Math.abs(c.revDeltaPct).toFixed(2)}% revenue</b> (${fmtRs(c.revenueDelta)}) under this scenario. Pull back on PTC, Store Availability, or Ranking here before it compounds next month.`
     ).join(' ');
     cards.push({ type:'atrisk', label:'Commercial Risk Mitigation', icon:'&#9888;', html:riskHtml });
   }
