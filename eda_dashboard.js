@@ -119,8 +119,17 @@
       const Segment_Units = num(r['Segment_Units']);
 
       const discount_pct = safeDiv(MRP !== 0 ? (MRP - PTC) : null, MRP);
-      const ptc_gap_vs_comp = (PTC != null && Comp_ptc != null) ? (PTC - Comp_ptc) : null;
-      const ptc_gap_pct_vs_comp = (Comp_ptc !== 0 && Comp_ptc != null && PTC != null) ? (PTC - Comp_ptc) / Comp_ptc : null;
+      // NEW (production feedback, action item #3; converted to a time-series trend per
+      // latest stakeholder feedback): Relative Price Index — our PTC relative to the
+      // competitor's PTC (RPI = PTC / Comp_ptc). Powers the "RPI vs Qty" trend chart;
+      // RPI > 1 means we're priced above the competitor, < 1 means below.
+      const rpi = safeDiv(PTC, Comp_ptc);
+      // NEW (production feedback, action item #3; converted to a time-series trend per
+      // latest stakeholder feedback): OSA × Product Ranking composite — powers the
+      // "(OSA × Product Ranking) vs Qty" trend chart.
+      const OSA_SKU_val = num(r['OSA_SKU']);
+      const Sku_Ranking_val = num(r['Sku_Ranking']);
+      const osa_rank_product = (OSA_SKU_val != null && Sku_Ranking_val != null) ? (OSA_SKU_val * Sku_Ranking_val) : null;
       const budget_per_store = safeDiv(overall_marketing_budget, Store_Count);
       const qty_per_store = safeDiv(total_qty_sold, Store_Count);
       const qty_per_city = safeDiv(total_qty_sold, unique_cities);
@@ -152,7 +161,7 @@
         OSA_SKU: num(r['OSA_SKU']), OSA_Comp: num(r['OSA_Comp']),
         Segment_Units, Segment_Sku_Count: num(r['Segment_Sku_Count']),
         Is_Fest, Pre_Fest, Post_Fest, festival_phase,
-        discount_pct, ptc_gap_vs_comp, ptc_gap_pct_vs_comp,
+        discount_pct, rpi, osa_rank_product,
         budget_per_store, qty_per_store, qty_per_city, budget_per_unit,
         category_share_proxy, segment_share_proxy
       });
@@ -227,13 +236,18 @@
   function sortByX(xField){ return (a,b) => a[xField] < b[xField] ? -1 : (a[xField] > b[xField] ? 1 : 0); }
 
   // ---------- 7/8/9. DAILY / WEEKLY / MONTHLY AGGREGATION DICTS (mirror the Python dicts exactly) ----------
+  // NEW (stakeholder feedback — RPI/OSA×Ranking converted from per-row scatter to time-series
+  // trend lines): `rpi` and `osa_rank_product` are now aggregated (mean) at every interval so
+  // renderEdaanRpiTrend()/renderEdaanOsaRankTrend() can plot them as a proper right-axis line
+  // alongside Qty Sold, exactly like the other dual-axis time-series charts.
   const DAILY_AGG = {
     total_qty_sold:'sum', PTC:'mean', Comp_ptc:'mean', MRP:'mean', discount_pct:'mean',
     overall_marketing_budget:'mean', Sku_Ranking:'mean', Comp_Ranking:'mean', OSA_SKU:'mean', OSA_Comp:'mean',
     Market_Share:'mean', Category_Units:'sum', Segment_Units:'sum', Segment_Sku_Count:'mean', Store_Count:'mean',
     is_weekend:'max', is_first_week:'max', Is_Fest:'max', Pre_Fest:'max', Post_Fest:'max',
     budget_per_store:'mean', budget_per_unit:'mean', qty_per_store:'mean',
-    category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean'
+    category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean',
+    rpi:'mean', osa_rank_product:'mean'
   };
   const WEEKLY_AGG = {
     total_qty_sold:'sum', PTC:'mean', Comp_ptc:'mean', MRP:'mean', discount_pct:'mean',
@@ -241,14 +255,16 @@
     Market_Share:'mean', Category_Units:'sum', Segment_Units:'sum', Segment_Sku_Count:'mean', Store_Count:'mean',
     Is_Fest:'max', Pre_Fest:'max', Post_Fest:'max',
     budget_per_store:'mean', budget_per_unit:'mean', qty_per_store:'mean',
-    category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean'
+    category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean',
+    rpi:'mean', osa_rank_product:'mean'
   };
   const MONTHLY_AGG = {
     total_qty_sold:'sum', PTC:'mean', Comp_ptc:'mean', MRP:'mean', discount_pct:'mean',
     overall_marketing_budget:'mean', Sku_Ranking:'mean', Comp_Ranking:'mean', OSA_SKU:'mean', OSA_Comp:'mean',
     Market_Share:'mean', Category_Units:'sum', Segment_Units:'sum', Segment_Sku_Count:'mean', Store_Count:'mean',
     budget_per_store:'mean', budget_per_unit:'mean', qty_per_store:'mean',
-    category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean'
+    category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean',
+    rpi:'mean', osa_rank_product:'mean'
   };
 
   function buildAggregates(){
@@ -274,9 +290,12 @@
   // selected Time Interval (mirrors the `if freq=="daily"/"weekly"/"monthly"` branches
   // that recur throughout the Python script, e.g. sections 7, 8, 9).
   function pickDataset(interval){
+    // FIX (production feedback, action item #1): Qty is now rendered as a LINE across
+    // EVERY time interval (daily/weekly/monthly), system-wide, for every dual-axis chart
+    // that consumes pickDataset() — previously only 'daily' returned qtyIsLine:true.
     if(interval === 'daily') return { dataset: DAILY, xField: 'date', qtyIsLine: true };
-    if(interval === 'weekly') return { dataset: WEEKLY, xField: 'year_week', qtyIsLine: false };
-    return { dataset: MONTHLY, xField: 'year_month', qtyIsLine: false };
+    if(interval === 'weekly') return { dataset: WEEKLY, xField: 'year_week', qtyIsLine: true };
+    return { dataset: MONTHLY, xField: 'year_month', qtyIsLine: true };
   }
 
   function populateEdaanFilterOptions(){
@@ -298,12 +317,17 @@
 
   function renderAllEdaanCharts(){
     if(!edaanLoaded) return;
-    renderEdaanChart1(); renderEdaanChart2(); renderEdaanChart3(); renderEdaanChart4(); renderEdaanChart5();
-    renderEdaanChart6(); renderEdaanChart7(); renderEdaanChart8(); renderEdaanChart9(); renderEdaanChart10();
-    renderEdaanChart11(); renderEdaanChart13();
-    renderEdaanChart14(); renderEdaanChart15(); renderEdaanChart16(); renderEdaanChart17();
+    // FIX (production feedback, action item #2): the Top-5 SKUs (chart2), Market Share
+    // (chart6), Segment/MSL pie charts (chart10/chart11), and Unique Cities (chart14)
+    // charts have been fully removed from the dashboard, both here and in their HTML.
+    renderEdaanChart1(); renderEdaanChart3(); renderEdaanChart4(); renderEdaanChart5();
+    renderEdaanChart7(); renderEdaanChart8(); renderEdaanChart9(); renderEdaanChart13();
+    renderEdaanChart15(); renderEdaanChart16(); renderEdaanChart17();
+    // NEW (production feedback, action item #3 — converted from scatter to time-series
+    // trend charts per latest stakeholder feedback; the (PTC - Competitor PTC) vs Qty
+    // chart was removed entirely at the same time).
+    renderEdaanRpiTrend(); renderEdaanOsaRankTrend();
   }
-  window.renderEdaanChart2 = renderEdaanChart2; // wired directly to the Top-5 chart's own Time Frame dropdown
 
   // ---------- shared Chart.js helpers ----------
   function makeChart(canvasId, config){
@@ -380,53 +404,6 @@
   }
 
   // ================================================================================
-  // 6. TOP 5 SKUs BY UNITS SOLD  (canvas: edaanChart2) — has its OWN Time Frame control
-  // ================================================================================
-  function filterByTimeFrame(rows, timeFrame){
-    if(!rows.length || timeFrame === 'overall') return rows;
-    const maxDateStr = rows.reduce((m, r) => r.date > m ? r.date : m, rows[0].date);
-    const maxD = new Date(maxDateStr + 'T00:00:00Z');
-    let startD, endD = maxD;
-    if(timeFrame === 'last_week'){
-      startD = new Date(maxD); startD.setUTCDate(startD.getUTCDate() - 6);
-    } else if(timeFrame === 'last_month'){
-      const firstThisMonth = new Date(Date.UTC(maxD.getUTCFullYear(), maxD.getUTCMonth(), 1));
-      const lastDayLastMonth = new Date(firstThisMonth); lastDayLastMonth.setUTCDate(lastDayLastMonth.getUTCDate() - 1);
-      startD = new Date(Date.UTC(lastDayLastMonth.getUTCFullYear(), lastDayLastMonth.getUTCMonth(), 1));
-      endD = lastDayLastMonth;
-    } else if(timeFrame === 'this_month'){
-      startD = new Date(Date.UTC(maxD.getUTCFullYear(), maxD.getUTCMonth(), 1));
-    } else if(timeFrame === 'last_3_months'){
-      startD = new Date(Date.UTC(maxD.getUTCFullYear(), maxD.getUTCMonth() - 3, maxD.getUTCDate()));
-    } else {
-      return rows;
-    }
-    const startStr = ymd(startD), endStr = ymd(endD);
-    return rows.filter(r => r.date >= startStr && r.date <= endStr);
-  }
-  function renderEdaanChart2(){
-    if(!edaanLoaded) return;
-    const tfEl = document.getElementById('edaanTop5TimeFrame');
-    const timeFrame = tfEl ? tfEl.value : 'overall';
-    let rows = applyMasterFilters(RAW);
-    rows = filterByTimeFrame(rows, timeFrame);
-    const agg = aggregate(rows, ['Short Code'], { total_qty_sold: 'sum' });
-    agg.sort((a,b) => b.total_qty_sold - a.total_qty_sold);
-    const top5 = agg.slice(0, 5).reverse(); // reverse so the #1 SKU renders at the TOP of the horizontal bar
-    makeChart('edaanChart2', {
-      type: 'bar',
-      data: { labels: top5.map(r => r['Short Code']), datasets: [{ label: 'Total Units Sold', data: top5.map(r => r.total_qty_sold), backgroundColor: '#C5A059', borderRadius: 4 }] },
-      options: {
-        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { title: { display: true, text: 'Total Units Sold' } }, y: { title: { display: true, text: 'SKU' } } },
-        layout: { padding: { right: 60 } }
-      },
-      plugins: [edaanValueLabelPlugin]
-    });
-  }
-
-  // ================================================================================
   // 7. MARKETING BUDGET vs UNITS SOLD  (canvas: edaanChart3)
   // ================================================================================
   function renderEdaanChart3(){
@@ -495,31 +472,6 @@
         ]
       },
       options: dualAxisOptions('Qty Sold', 'OSA')
-    });
-  }
-
-  // ================================================================================
-  // 10. MARKET SHARE vs UNITS SOLD  (canvas: edaanChart6)
-  // ================================================================================
-  function renderEdaanChart6(){
-    // FIX: previously hardcoded to the MONTHLY table regardless of the master Time
-    // Interval filter. Now uses pickDataset() like charts 1/3/5 so daily/weekly/monthly
-    // selections are all honored.
-    const interval = getInterval();
-    const { dataset, xField, qtyIsLine } = pickDataset(interval);
-    let rows = applyMasterFilters(dataset);
-    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', Market_Share: 'mean' });
-    rows.sort(sortByX(xField));
-    makeChart('edaanChart6', {
-      type: qtyIsLine ? 'line' : 'bar',
-      data: {
-        labels: rows.map(r => r[xField]),
-        datasets: [
-          { type: qtyIsLine ? 'line' : 'bar', label: 'Total Units Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(197,160,89,0.65)', borderColor: '#C5A059', yAxisID: 'y', tension: 0.25 },
-          { type: 'line', label: 'Avg Market Share (%)', data: rows.map(r => r.Market_Share != null ? r.Market_Share * 100 : null), borderColor: '#4A0E17', backgroundColor: '#4A0E17', yAxisID: 'y1', tension: 0.25 }
-        ]
-      },
-      options: dualAxisOptions('Total Units Sold', 'Market Share (%)')
     });
   }
 
@@ -749,41 +701,6 @@
   }
 
   // ================================================================================
-  // 14. SEGMENT CONTRIBUTION (canvas: edaanChart10) — pie
-  // 15. MSL / NON-MSL CONTRIBUTION (canvas: edaanChart11) — pie
-  // ================================================================================
-  const PIE_PALETTE = ['#4A0E17', '#C5A059', '#0E7A4E', '#2E6F9E', '#C75A45', '#8d6a9f', '#3f7d5c'];
-  function renderPieChart(canvasId, groupField){
-    const rows = applyMasterFilters(RAW);
-    const agg = aggregate(rows, [groupField], { total_qty_sold: 'sum' });
-    agg.sort((a,b) => b.total_qty_sold - a.total_qty_sold);
-    makeChart(canvasId, {
-      type: 'pie',
-      data: {
-        labels: agg.map(r => String(r[groupField])),
-        datasets: [{ data: agg.map(r => r.total_qty_sold), backgroundColor: agg.map((_, i) => PIE_PALETTE[i % PIE_PALETTE.length]) }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-          tooltip: {
-            callbacks: {
-              label(ctx){
-                const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
-                const pct = total ? (ctx.raw / total * 100).toFixed(1) : '0.0';
-                return `${ctx.label}: ${Number(ctx.raw).toLocaleString()} units (${pct}%)`;
-              }
-            }
-          }
-        }
-      }
-    });
-  }
-  function renderEdaanChart10(){ renderPieChart('edaanChart10', 'Segment'); }
-  function renderEdaanChart11(){ renderPieChart('edaanChart11', 'msl/non-msl'); }
-
-  // ================================================================================
   // 16. FEATURE CORRELATION MATRIX (canvas: edaanChart13) — pure Chart.js scatter-grid
   // heatmap (no chartjs-chart-matrix dependency): points are placed on category x/y
   // scales at (col, row) and colored via a coolwarm-style diverging scale; a custom
@@ -934,28 +851,6 @@
   }
 
   // ================================================================================
-  // 18. UNIQUE CITIES vs UNITS SOLD (canvas: edaanChart14)
-  // ================================================================================
-  function renderEdaanChart14(){
-    const interval = getInterval();
-    const { dataset, xField, qtyIsLine } = pickDataset(interval);
-    let rows = applyMasterFilters(dataset);
-    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', unique_cities: 'mean' });
-    rows.sort(sortByX(xField));
-    makeChart('edaanChart14', {
-      type: qtyIsLine ? 'line' : 'bar',
-      data: {
-        labels: rows.map(r => r[xField]),
-        datasets: [
-          { type: qtyIsLine ? 'line' : 'bar', label: 'Qty Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(74,14,23,0.55)', borderColor: '#4A0E17', yAxisID: 'y', tension: 0.25 },
-          { type: 'line', label: 'Unique Cities', data: rows.map(r => r.unique_cities), borderColor: '#2E6F9E', backgroundColor: '#2E6F9E', yAxisID: 'y1', tension: 0.25 }
-        ]
-      },
-      options: dualAxisOptions('Qty Sold', 'Unique Cities')
-    });
-  }
-
-  // ================================================================================
   // 19. STORE COUNT vs UNITS SOLD (canvas: edaanChart15)
   // ================================================================================
   function renderEdaanChart15(){
@@ -1079,6 +974,58 @@
     if(hasDatalabels) chartConfig.plugins = [ChartDataLabels];
 
     makeChart('edaanChart17', chartConfig);
+  }
+
+  // ================================================================================
+  // NEW (production feedback, action item #3 — RPI vs Qty & (OSA × Product Ranking) vs
+  // Qty) — LATEST STAKEHOLDER FEEDBACK: converted from per-row scatter plots into
+  // standard time-series trend charts, exactly matching the dual-axis pattern used by
+  // charts 3/4/5/15/16 (Qty Sold as a LINE on the left axis, the driver metric as a LINE
+  // on the right axis), fully driven by the global Time Interval filter via
+  // pickDataset()/aggregate(). The third scatter plot, (PTC − Competitor PTC) vs Qty,
+  // has been removed entirely per this feedback round — see the deleted
+  // ptc_gap_vs_comp/ptc_gap_pct_vs_comp fields (no longer computed in engineerFeatures)
+  // and the deleted edaanScatterPtcGap canvas card in index.html.
+  // ================================================================================
+
+  // Trend Chart 1: RPI (Relative Price Index = PTC / Comp_ptc) vs Qty, over time
+  function renderEdaanRpiTrend(){
+    const interval = getInterval();
+    const { dataset, xField, qtyIsLine } = pickDataset(interval);
+    let rows = applyMasterFilters(dataset);
+    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', rpi: 'mean' });
+    rows.sort(sortByX(xField));
+    makeChart('edaanRpiTrend', {
+      type: qtyIsLine ? 'line' : 'bar',
+      data: {
+        labels: rows.map(r => r[xField]),
+        datasets: [
+          { type: qtyIsLine ? 'line' : 'bar', label: 'Qty Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(74,14,23,0.55)', borderColor: '#4A0E17', yAxisID: 'y', tension: 0.25 },
+          { type: 'line', label: 'RPI (PTC ÷ Comp PTC)', data: rows.map(r => r.rpi), borderColor: '#C5A059', backgroundColor: '#C5A059', yAxisID: 'y1', tension: 0.25, pointRadius: 3, pointHoverRadius: 5 }
+        ]
+      },
+      options: dualAxisOptions('Qty Sold', 'RPI (PTC ÷ Comp PTC)')
+    });
+  }
+
+  // Trend Chart 2: (OSA × Product Ranking) vs Qty, over time — dynamic composite metric
+  function renderEdaanOsaRankTrend(){
+    const interval = getInterval();
+    const { dataset, xField, qtyIsLine } = pickDataset(interval);
+    let rows = applyMasterFilters(dataset);
+    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', osa_rank_product: 'mean' });
+    rows.sort(sortByX(xField));
+    makeChart('edaanOsaRankTrend', {
+      type: qtyIsLine ? 'line' : 'bar',
+      data: {
+        labels: rows.map(r => r[xField]),
+        datasets: [
+          { type: qtyIsLine ? 'line' : 'bar', label: 'Qty Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(74,14,23,0.55)', borderColor: '#4A0E17', yAxisID: 'y', tension: 0.25 },
+          { type: 'line', label: 'OSA × Product Ranking', data: rows.map(r => r.osa_rank_product), borderColor: '#2E6F9E', backgroundColor: '#2E6F9E', yAxisID: 'y1', tension: 0.25, pointRadius: 3, pointHoverRadius: 5 }
+        ]
+      },
+      options: dualAxisOptions('Qty Sold', 'OSA × Product Ranking')
+    });
   }
 
   // ---------- expose a resize hook so the existing sidebar-toggle resize sweep also catches these charts ----------
