@@ -352,9 +352,9 @@
   /* Dynamic per-row Scenario tags (Step 3 output table) */
   .scenario-tag{ display:inline-block; padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:800; letter-spacing:0.02em; text-transform:uppercase; white-space:nowrap; }
   .scenario-NoChange{ background:rgba(122,6,36,0.07); color:var(--muted); }
-  .scenario-DarkStoreChange{ background:rgba(212,175,55,0.18); color:#8a6d10; }
+  .scenario-StoreAvailabilityChange{ background:rgba(212,175,55,0.18); color:#8a6d10; }
   .scenario-RankingChange{ background:rgba(30,130,76,0.12); color:var(--green); }
-  .scenario-DarkStoreRanking{ background:var(--maroon); color:#fff; }
+  .scenario-StoreAvailabilityRanking{ background:var(--maroon); color:#fff; }
 
   .section-title{ font-size:13px; font-weight:800; color:var(--maroon-dark); text-transform:uppercase; letter-spacing:0.06em; margin:0 0 14px; }
 
@@ -583,8 +583,8 @@
                 <tr>
                   <th>SKU</th>
                   <th>Period</th>
-                  <th class="num">Current Dark Store Count</th>
-                  <th class="num">Simulated Dark Store Count</th>
+                  <th class="num" title="Store Availability = Store Count × On-Shelf Availability (OSA), sourced from the dataset for the selected baseline month">Current Store Availability (Store Count &times; OSA)</th>
+                  <th class="num" title="Adjust this to simulate a change in the SKU's effective store availability (Store Count × OSA)">Simulated Store Availability (Store Count &times; OSA)</th>
                   <th class="num">Current Product Ranking</th>
                   <th class="num">Simulated Product Ranking</th>
                 </tr>
@@ -664,8 +664,8 @@
                   <tr>
                     <th>SKU</th>
                     <th>Period</th>
-                    <th class="num">Current Dark Store Count</th>
-                    <th class="num">Simulated Dark Store Count</th>
+                    <th class="num" title="Store Availability = Store Count × On-Shelf Availability (OSA), sourced from the dataset for the selected baseline month">Current Store Availability (Store Count &times; OSA)</th>
+                    <th class="num" title="The simulated value of this SKU's effective store availability (Store Count × OSA)">Simulated Store Availability (Store Count &times; OSA)</th>
                     <th class="num">Current Product Ranking</th>
                     <th class="num">Simulated Product Ranking</th>
                     <th>Scenario</th>
@@ -966,41 +966,48 @@ function handleLogout(){
   document.getElementById('loginError').style.display = 'none';
 }
 
-// NEW (production feedback, action item #4): illustrative dummy multipliers for the 2 new simulation
-// levers (Dark Store Count, Product Ranking). These are NOT derived from any regression/statistical
-// model — they are simple, directionally-correct placeholders so the simulation UI and mechanics work
-// smoothly end-to-end as a frontend POC.
-// TODO: Replace these illustrative coefficients with actual Data Science regression values.
-const SKU_COEFFICIENTS = {
-  'IG Everyday 5':       { darkStoreCoeff: 0.45, rankCoeff: 0.06 },
-  'IG Feast Rozzana 1':  { darkStoreCoeff: 0.38, rankCoeff: 0.05 },
-  'IG Feast Rozzana 5':  { darkStoreCoeff: 0.30, rankCoeff: 0.04 },
-  'IG Mini Mogra 10':    { darkStoreCoeff: 0.22, rankCoeff: 0.03 },
-  'IG Mogra 5':          { darkStoreCoeff: 0.28, rankCoeff: 0.04 },
-  'IG Super 5':          { darkStoreCoeff: 0.33, rankCoeff: 0.05 },
+// UPDATED (stakeholder feedback — real Data Science regression coefficients, June 2026): the illustrative
+// per-SKU dummy multipliers have been REMOVED entirely. The Data Science team's actual log-log regression
+// equation is now the single source of truth for Simulated_Qty, applied UNIVERSALLY across all 6 SKUs
+// (per DS team direction — no per-SKU variation):
+//   log(Qty) = Intercept - 0.605473*log(PTC) - 0.283782*log(Ranking) + 0.165892*log(Store_Ava) + Other
+// Store_Ava = Store Count x On-Shelf Availability (OSA). PTC is NOT an active simulation lever in this UI,
+// so its coefficient is retained here purely for documentation/traceability — its contribution to
+// Simulated_Qty is always a 1x multiplier since Simulated PTC == Baseline PTC (see computeAllVolumes()).
+const REGRESSION_COEFFICIENTS = {
+  ptc: -0.605473,      // NOT an active lever in this UI — PTC change is always 0, so this always contributes a 1x multiplier
+  ranking: -0.283782,  // Product Ranking elasticity (lower rank number = better, hence the negative sign is correct)
+  storeAva: 0.165892   // Store Availability (Store Count x OSA) elasticity
 };
 
 const baseData = {
+  // storeCount / osa are the raw Store_Count and OSA_SKU averages for each SKU, sourced directly from
+  // Pricing_Features.csv for the respective baseline month — the "Store Availability" lever's baseline
+  // value (storeAva) is then DYNAMICALLY calculated as storeCount * osa immediately below, per SKU.
   'April 2026': [
-    { name:'IG Everyday 5',        ptc:355.69, dailyVolume:2162.17, darkStoreCount:1150, productRanking:3 },
-    { name:'IG Feast Rozzana 1',   ptc:99.88,  dailyVolume:1703.50, darkStoreCount:900,  productRanking:5 },
-    { name:'IG Feast Rozzana 5',   ptc:439.22, dailyVolume:851.57,  darkStoreCount:770,  productRanking:6 },
-    { name:'IG Mini Mogra 10',     ptc:607.94, dailyVolume:242.67,  darkStoreCount:380,  productRanking:9 },
-    { name:'IG Mogra 5',           ptc:358.70, dailyVolume:977.70,  darkStoreCount:670,  productRanking:7 },
-    { name:'IG Super 5',           ptc:745.30, dailyVolume:742.33,  darkStoreCount:620,  productRanking:8 },
+    { name:'IG Everyday 5',        ptc:355.69, dailyVolume:2162.17, storeCount:2056, osa:0.780000, productRanking:3 },
+    { name:'IG Feast Rozzana 1',   ptc:99.88,  dailyVolume:1703.50, storeCount:2056, osa:0.780000, productRanking:5 },
+    { name:'IG Feast Rozzana 5',   ptc:439.22, dailyVolume:851.57,  storeCount:2056, osa:0.780000, productRanking:6 },
+    { name:'IG Mini Mogra 10',     ptc:607.94, dailyVolume:242.67,  storeCount:2056, osa:0.780000, productRanking:9 },
+    { name:'IG Mogra 5',           ptc:358.70, dailyVolume:977.70,  storeCount:2056, osa:0.780000, productRanking:7 },
+    { name:'IG Super 5',           ptc:745.30, dailyVolume:742.33,  storeCount:2056, osa:0.780000, productRanking:8 },
   ],
   'May 2026': [
-    { name:'IG Everyday 5',        ptc:366.56, dailyVolume:2469.65, darkStoreCount:1200, productRanking:2 },
-    { name:'IG Feast Rozzana 1',   ptc:100.78, dailyVolume:1784.77, darkStoreCount:950,  productRanking:4 },
-    { name:'IG Feast Rozzana 5',   ptc:459.72, dailyVolume:876.55,  darkStoreCount:800,  productRanking:5 },
-    { name:'IG Mini Mogra 10',     ptc:612.43, dailyVolume:257.23,  darkStoreCount:400,  productRanking:8 },
-    { name:'IG Mogra 5',           ptc:374.69, dailyVolume:963.61,  darkStoreCount:700,  productRanking:6 },
-    { name:'IG Super 5',           ptc:793.35, dailyVolume:744.06,  darkStoreCount:650,  productRanking:7 },
+    { name:'IG Everyday 5',        ptc:366.56, dailyVolume:2469.65, storeCount:2091, osa:0.795852, productRanking:2 },
+    { name:'IG Feast Rozzana 1',   ptc:100.78, dailyVolume:1784.77, storeCount:2091, osa:0.801013, productRanking:4 },
+    { name:'IG Feast Rozzana 5',   ptc:459.72, dailyVolume:876.55,  storeCount:2091, osa:0.804229, productRanking:5 },
+    { name:'IG Mini Mogra 10',     ptc:612.43, dailyVolume:257.23,  storeCount:2091, osa:0.786468, productRanking:8 },
+    { name:'IG Mogra 5',           ptc:374.69, dailyVolume:963.61,  storeCount:2091, osa:0.799613, productRanking:6 },
+    { name:'IG Super 5',           ptc:793.35, dailyVolume:744.06,  storeCount:2091, osa:0.802323, productRanking:7 },
   ]
 };
-// Attach each SKU's row-level coefficients to every month's baseline rows
+// Canonical SKU name list — replaces the old SKU_COEFFICIENTS-derived key list now that per-SKU
+// illustrative coefficients no longer exist.
+const SKU_NAMES = baseData['April 2026'].map(r => r.name);
+// Dynamically calculate the "Store Availability (Store Count x OSA)" lever's baseline value for every
+// SKU, for every month, straight from the dataset: storeAva = storeCount * osa.
 Object.keys(baseData).forEach(month => {
-  baseData[month] = baseData[month].map(r => ({ ...r, ...SKU_COEFFICIENTS[r.name] }));
+  baseData[month] = baseData[month].map(r => ({ ...r, storeAva: r.storeCount * r.osa }));
 });
 const DEFAULT_MONTH = 'May 2026';
 
@@ -1094,7 +1101,7 @@ loadScenariosFromStorage();
 // ADVANCED SELECTION FILTERS — SKU multi-select: controls which of the 6 approved SKUs are shown in the
 // grids AND the charts (display-only filter; the calculation engine still runs on the FULL 6-SKU set so
 // VTM cross-elasticity transfers to/from hidden SKUs remain mathematically correct).
-let visibleSkus = new Set(Object.keys(SKU_COEFFICIENTS));
+let visibleSkus = new Set(SKU_NAMES);
 // "View Comparison For:" state — 'ALL' renders the aggregated Overall Portfolio totals on the Baseline vs
 // Simulated Comparison charts; any other value is an exact SKU name and filters the charts down to just
 // that one SKU's bars. Independent of the SKU Filter (visibleSkus) above, which only controls the data grid.
@@ -1103,7 +1110,7 @@ let lastVisibleComputed = []; // cache of the most recently rendered grid's comp
 // dropdown can re-render the charts instantly on change without recomputing the whole engine.
 
 function initPriceRows(month){
-  priceRows = baseData[month].map(s => ({ ...s, simDarkStoreCount: s.darkStoreCount, simProductRanking: s.productRanking }));
+  priceRows = baseData[month].map(s => ({ ...s, simStoreAva: s.storeAva, simProductRanking: s.productRanking }));
 }
 initPriceRows(selectedMonth);
 
@@ -1187,7 +1194,7 @@ function onMonthChange(month){
 // cross-elasticity to/from a hidden SKU stays correct; only the rendered rows/bars are filtered down to
 // `visibleSkus`.
 function renderSkuFilterBars(){
-  const allNames = Object.keys(SKU_COEFFICIENTS);
+  const allNames = SKU_NAMES;
   const html = allNames.map(name => {
     const checked = visibleSkus.has(name) ? 'checked' : '';
     const safeId = 'skuchk_' + name.replace(/[^a-zA-Z0-9]+/g,'_');
@@ -1221,27 +1228,36 @@ document.addEventListener('click', function(e){
 
 // ---------- CALCULATION ENGINE ----------
 // Steps 1–5: simulated volume, volume lost, VTM gain, final simulated volume — for ALL SKUs at once.
-// NEW (production feedback, action item #4): PTC is no longer a simulation lever, so Simulated PTC always
-// equals baseline PTC (kept purely for revenue/profit math). Volume now responds to two illustrative,
-// directionally-correct multipliers instead: Dark Store Count and Product Ranking.
-//   - Increasing Dark Store Count increases Volume (more physical points of sale reaching customers).
+// UPDATED (real Data Science regression, June 2026): the illustrative per-SKU multipliers have been
+// REMOVED. Simulated_Qty is now driven by the Data Science team's actual log-log regression equation,
+// exponentiated into power-law form and applied UNIVERSALLY (identical coefficients) across all 6 SKUs:
+//   log(Qty) = Intercept - 0.605473*log(PTC) - 0.283782*log(Ranking) + 0.165892*log(Store_Ava) + Other
+//   => New_Qty = Base_Qty * (Sim_PTC/Base_PTC)^(-0.605473) * (Sim_StoreAva/Base_StoreAva)^(0.165892)
+//                        * (Sim_Ranking/Base_Ranking)^(-0.283782)
+// PTC is NOT an active simulation lever in this UI, so Sim_PTC == Base_PTC always, making that factor
+// exactly 1 — it is omitted from the formula below (kept only as documentation via REGRESSION_COEFFICIENTS.ptc).
+//   - Increasing Store Availability (Store Count × OSA) increases Volume (positive elasticity, +0.165892).
 //   - Improving Product Ranking (a LOWER rank number is better, e.g. moving from rank 10 to rank 1)
-//     increases Volume (better shelf/app visibility).
-// TODO: Replace these illustrative coefficients with actual Data Science regression values.
+//     increases Volume (negative elasticity, -0.283782, applied to the sim/base ratio directly — a ratio
+//     below 1, i.e. an improved/lower ranking number, raised to a negative power yields a >1 multiplier).
 function computeAllVolumes(){
   const stepA = priceRows.map(r => {
-    const simPtc = r.ptc; // PTC is fixed — no longer a simulation lever.
-    const darkStoreFactor = r.darkStoreCount > 0
-      ? 1 + r.darkStoreCoeff * ((r.simDarkStoreCount - r.darkStoreCount) / r.darkStoreCount)
+    const simPtc = r.ptc; // PTC is fixed — no longer a simulation lever; its regression contribution is always 1x.
+    // Guard against zero/negative inputs reaching Math.pow with a negative exponent (which would yield
+    // Infinity or NaN) by clamping the simulated values to a small positive epsilon.
+    const safeSimStoreAva = Math.max(r.simStoreAva, 1e-6);
+    const safeSimRanking = Math.max(r.simProductRanking, 1e-6);
+    const storeAvaFactor = r.storeAva > 0
+      ? Math.pow(safeSimStoreAva / r.storeAva, REGRESSION_COEFFICIENTS.storeAva)
       : 1;
     const rankFactor = r.productRanking > 0
-      ? 1 + r.rankCoeff * ((r.productRanking - r.simProductRanking) / r.productRanking)
+      ? Math.pow(safeSimRanking / r.productRanking, REGRESSION_COEFFICIENTS.ranking)
       : 1;
     // No intermediate rounding is applied anywhere in this chain — "Avg Daily Volume (Simulated)", "Volume lost Δ"
     // and "VTM Gain" all carry the raw floating-point result through every downstream step. Rounding is applied
     // ONLY at the final display/export layer (toFixed/Math.round in the render & CSV-export functions), never
     // inside the math itself, so the engine stays decimal-perfect end-to-end.
-    const simVolume = Math.max(0, r.dailyVolume * darkStoreFactor * rankFactor);
+    const simVolume = Math.max(0, r.dailyVolume * storeAvaFactor * rankFactor);
     return { row: r, simPtc, simVolume };
   });
   const volumeLostDelta = stepA.map(x => x.row.dailyVolume - x.simVolume); // Current - Simulated, full precision
@@ -1318,12 +1334,12 @@ function computeAll(){
 // Dynamic per-row Scenario classifier: compares each SKU's simulated inputs against
 // its OWN baseline values and reports exactly which lever(s) were touched for that row.
 function scenarioLabel(c){
-  const darkStoreChanged = Math.abs(c.row.simDarkStoreCount - c.row.darkStoreCount) > 1e-9;
+  const storeAvaChanged = Math.abs(c.row.simStoreAva - c.row.storeAva) > 1e-9;
   const rankChanged = Math.abs(c.row.simProductRanking - c.row.productRanking) > 1e-9;
-  const leversTouched = [darkStoreChanged, rankChanged].filter(Boolean).length;
+  const leversTouched = [storeAvaChanged, rankChanged].filter(Boolean).length;
   if(leversTouched === 0) return 'No Change';
-  if(leversTouched > 1) return 'Dark Store + Ranking';
-  if(darkStoreChanged) return 'Dark Store Change';
+  if(leversTouched > 1) return 'Store Availability + Ranking';
+  if(storeAvaChanged) return 'Store Availability Change';
   if(rankChanged) return 'Ranking Change';
   return 'No Change';
 }
@@ -1337,8 +1353,8 @@ function renderInputsTable(){
     return `<tr>
       <td class="sku-cell">${r.name}</td>
       <td>${selectedMonth}</td>
-      <td class="num readonly-cell">${Math.round(r.darkStoreCount).toLocaleString('en-IN')}</td>
-      <td class="num"><input type="number" step="1" min="0" inputmode="numeric" value="${r.simDarkStoreCount}" data-idx="${i}" oninput="onDarkStoreChange(this)"></td>
+      <td class="num readonly-cell">${r.storeAva.toLocaleString('en-IN', {maximumFractionDigits:2, minimumFractionDigits:2})}</td>
+      <td class="num"><input type="number" step="0.01" min="0.01" inputmode="decimal" value="${r.simStoreAva.toFixed(2)}" data-idx="${i}" oninput="onStoreAvaChange(this)"></td>
       <td class="num readonly-cell">${r.productRanking}</td>
       <td class="num"><input type="number" step="1" min="1" inputmode="numeric" value="${r.simProductRanking}" data-idx="${i}" oninput="onRankingChange(this)"></td>
     </tr>`;
@@ -1349,13 +1365,15 @@ function renderInputsTable(){
 // rebuilt the entire grid's innerHTML each time. That full rebuild reset every input's DOM value attribute —
 // including the field the user was still actively typing into — which caused laggy/frozen typing on slower
 // devices. The fix: just mutate the underlying priceRows state on every keystroke (cheap, instant, never
-// touches the DOM). Neither Dark Store Count nor Product Ranking drives any other visible derived cell in
+// touches the DOM). Neither Store Availability nor Product Ranking drives any other visible derived cell in
 // this table, so their handlers don't need to touch the DOM at all while typing.
-function onDarkStoreChange(el){
+function onStoreAvaChange(el){
   const i = +el.dataset.idx;
   const rawValue = String(el.value).trim();
   const val = parseFloat(rawValue);
-  priceRows[i].simDarkStoreCount = isNaN(val) ? priceRows[i].darkStoreCount : val;
+  // Clamp to a small positive value — the regression formula divides by this value and raises it to a
+  // power, so zero/negative inputs must never reach computeAllVolumes().
+  priceRows[i].simStoreAva = (isNaN(val) || val <= 0) ? priceRows[i].storeAva : val;
 }
 function onRankingChange(el){
   const i = +el.dataset.idx;
@@ -1365,7 +1383,7 @@ function onRankingChange(el){
 }
 
 // Global lever sliders have been permanently removed — all simulation inputs are now driven exclusively
-// from the individual SKU rows in the data grid below (onDarkStoreChange/onRankingChange), so resetAll()
+// from the individual SKU rows in the data grid below (onStoreAvaChange/onRankingChange), so resetAll()
 // only needs to restore priceRows to the baseline snapshot for the currently selected month and re-render
 // the grid.
 function resetAll(){
@@ -1376,13 +1394,13 @@ function resetAll(){
 // ---------- NULL-STATE DISPLAY OVERRIDE (rendering-layer only — never touches computeAll()/the locked
 // calc engine itself). Snaps any residual floating-point dust (e.g. 0.01 / -0.02) on the VTM Gain /
 // Volume lost Δ / Volume Δ% metrics to a strict, clean 0 whenever either (a) the metric has already
-// resolved to a true near-zero value, or (b) this SKU's own Dark Store Count and Product Ranking levers
+// resolved to a true near-zero value, or (b) this SKU's own Store Availability and Product Ranking levers
 // are both untouched AND there is no genuine incoming volume gain from other SKUs moving — so a real
 // cannibalization/VTM gain from another SKU's change is still shown correctly, only pure noise is
 // suppressed. ----------
 const VTM_NULL_EPSILON = 1e-9;
 function applyVtmNullStateOverride(c){
-  const ownLeversUntouched = Math.abs(c.row.simDarkStoreCount - c.row.darkStoreCount) < VTM_NULL_EPSILON && Math.abs(c.row.simProductRanking - c.row.productRanking) < VTM_NULL_EPSILON;
+  const ownLeversUntouched = Math.abs(c.row.simStoreAva - c.row.storeAva) < VTM_NULL_EPSILON && Math.abs(c.row.simProductRanking - c.row.productRanking) < VTM_NULL_EPSILON;
   let { volumeLostDelta, vtmGain, finalSimVolume, simVolume, monthlySimulated, volDeltaPct } = c;
 
   // Snap genuine floating-point dust to exact 0 regardless of cause.
@@ -1451,8 +1469,8 @@ function renderOutputTable(){
     return `<tr>
       <td class="sku-cell">${c.row.name}</td>
       <td>${selectedMonth}</td>
-      <td class="num readonly-cell">${Math.round(c.row.darkStoreCount).toLocaleString('en-IN')}</td>
-      <td class="num readonly-cell">${Math.round(c.row.simDarkStoreCount).toLocaleString('en-IN')}</td>
+      <td class="num readonly-cell">${c.row.storeAva.toLocaleString('en-IN', {maximumFractionDigits:2, minimumFractionDigits:2})}</td>
+      <td class="num readonly-cell">${c.row.simStoreAva.toLocaleString('en-IN', {maximumFractionDigits:2, minimumFractionDigits:2})}</td>
       <td class="num readonly-cell">${c.row.productRanking}</td>
       <td class="num readonly-cell">${c.row.simProductRanking}</td>
       <td><span class="scenario-tag scenario-${scenarioLabel(c).replace(/[^a-zA-Z]+/g,'')}">${scenarioLabel(c)}</span></td>
@@ -1877,7 +1895,7 @@ function renderAiInsights(computed){
   const riskSkus = computed.filter(c => c.revDeltaPct < -0.01).sort((a,b)=>a.revDeltaPct-b.revDeltaPct);
   if(riskSkus.length){
     const riskHtml = riskSkus.map(c =>
-      `<b>${c.row.name}</b> is projected to lose <b>${Math.abs(c.volDeltaPct).toFixed(2)}% volume</b> and <b>${Math.abs(c.revDeltaPct).toFixed(2)}% revenue</b> (${fmtRs(c.revenueDelta)}) under this scenario &mdash; worth revisiting the Dark Store Count and Product Ranking settings for this SKU before finalizing.`
+      `<b>${c.row.name}</b> is projected to lose <b>${Math.abs(c.volDeltaPct).toFixed(2)}% volume</b> and <b>${Math.abs(c.revDeltaPct).toFixed(2)}% revenue</b> (${fmtRs(c.revenueDelta)}) under this scenario &mdash; worth revisiting the Store Availability and Product Ranking settings for this SKU before finalizing.`
     ).join(' ');
     cards.push({ type:'atrisk', label:'Commercial Risk Mitigation', icon:'&#9888;', html:riskHtml });
   }
@@ -1903,7 +1921,7 @@ function populateComparisonDropdown(){
     const allOpt = document.createElement('option');
     allOpt.value = 'ALL'; allOpt.textContent = 'Overall Portfolio';
     sel.appendChild(allOpt);
-    Object.keys(SKU_COEFFICIENTS).forEach(name => {
+    SKU_NAMES.forEach(name => {
       const opt = document.createElement('option');
       opt.value = name; opt.textContent = name;
       sel.appendChild(opt);
@@ -2049,11 +2067,11 @@ function renderComparisonCharts(computedFull){
 // ---------- DOWNLOAD CSV ----------
 function downloadExcel(){
   const computed = computeAll().map(applyVtmNullStateOverride);
-  const headers = ['SKU','Period','Scenario','Current Dark Store Count','Simulated Dark Store Count','Current Product Ranking','Simulated Product Ranking','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %','Baseline Profit (Rs)','Simulated Profit (Rs)','Profit Delta %'];
+  const headers = ['SKU','Period','Scenario','Current Store Availability (Store Count x OSA)','Simulated Store Availability (Store Count x OSA)','Current Product Ranking','Simulated Product Ranking','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %','Baseline Profit (Rs)','Simulated Profit (Rs)','Profit Delta %'];
   const csvEscape = v => { const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
   const rows = computed.map(c => {
     const pm = computeProfitMetrics(c);
-    return [c.row.name, selectedMonth, scenarioLabel(c), Math.round(c.row.darkStoreCount), Math.round(c.row.simDarkStoreCount), c.row.productRanking, c.row.simProductRanking, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2), Math.round(pm.baselineProfit), Math.round(pm.simulatedProfit), pm.profitChangePct === null ? 'N/A' : pm.profitChangePct.toFixed(2)];
+    return [c.row.name, selectedMonth, scenarioLabel(c), c.row.storeAva.toFixed(2), c.row.simStoreAva.toFixed(2), c.row.productRanking, c.row.simProductRanking, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2), Math.round(pm.baselineProfit), Math.round(pm.simulatedProfit), pm.profitChangePct === null ? 'N/A' : pm.profitChangePct.toFixed(2)];
   });
   const csvLines = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))];
   const csvContent = csvLines.join('\r\n');
@@ -2126,7 +2144,7 @@ function renderLibrary(){
       <div class="empty-state">
         <div class="empty-icon">&#128203;</div>
         <h3>No scenarios saved yet</h3>
-        <p>Head to the Pricing Simulator, adjust your Dark Store Count and Product Ranking levers, run the simulation, and save it here to build out your scenario library.</p>
+        <p>Head to the Pricing Simulator, adjust your Store Availability and Product Ranking levers, run the simulation, and save it here to build out your scenario library.</p>
         <div style="margin-top:18px;">
           <button class="btn btn-primary" onclick="goToStep('simulator')">Go to Pricing Simulator &#10148;</button>
         </div>
