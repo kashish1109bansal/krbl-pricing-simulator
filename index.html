@@ -685,10 +685,15 @@
               <div class="kpi-tile kpi-tile-profit" id="kpiProfitCard">
                 <div class="kpi-tile-label">&#127942; TOTAL PROFIT</div>
                 <div class="kpi-tile-value" id="kpiProfitSimulatedValue">&#8377;0</div>
+                <!-- MANAGER REQUEST (follow-up correction): the absolute profit growth % (e.g. "+7.71%")
+                     that used to be appended to the Baseline Profit chip has been removed entirely. The
+                     card now shows ONLY the Margin point-delta badge ("+2.01 pts"), and it's reordered to
+                     sit immediately next to the Baseline Profit chip (kpi-tile-baseline-chip's
+                     margin-left:auto pushes both it and this badge flush to the right edge together). -->
                 <div class="kpi-tile-profit-subheader">
                   <span class="kpi-tile-margin-chip">Margin: <b id="kpiMarginSimulatedValue">0.00%</b></span>
-                  <span class="kpi-badge" id="kpiMarginDeltaBadge">+0.00 pts</span>
                   <span class="kpi-tile-baseline-chip">Baseline: <b id="kpiProfitBaselineValue">&#8377;0</b></span>
+                  <span class="kpi-badge" id="kpiMarginDeltaBadge">+0.00 pts</span>
                 </div>
               </div>
             </div>
@@ -929,7 +934,7 @@
              New Profit, per scenario. Independent of the master filters / live simulation state. -->
         <div class="glass-card" style="padding:16px 20px 14px;">
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Scenario Impact Analysis</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Illustrative single-lever scenarios &mdash; Demand (units, left axis) and Profit (&#8377;, right axis), Base vs New.</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Illustrative single-lever scenarios &mdash; Units, Revenue, and Profit % Change vs baseline.</div>
           <div style="position:relative; height:320px;">
             <canvas id="scenarioImpactChart"></canvas>
           </div>
@@ -1680,12 +1685,15 @@ function renderKpiTiles(computed){
 
   const qtyDeltaPct = totalQtyBaseline ? ((totalQtySimulated - totalQtyBaseline) / totalQtyBaseline) * 100 : 0;
   const revDeltaPct = totalRevBaseline ? ((totalRevSimulated - totalRevBaseline) / totalRevBaseline) * 100 : 0;
-  // MANAGER REQUEST (change 3): profitDeltaPct is now also displayed inline, right next to the baseline
-  // profit ₹ text on the combined card (e.g. "Baseline: ₹3,01,90,148 (+2.00%)"), in addition to still being
-  // used internally to decide whether the card should switch into its red/negative visual state.
-  const profitDeltaPct = Math.abs(totalProfitBaseline) > 1e-9
-    ? ((totalProfitSimulated - totalProfitBaseline) / totalProfitBaseline) * 100
-    : (Math.abs(totalProfitSimulated) < 1e-9 ? 0 : null);
+  // MANAGER REQUEST (follow-up correction): the absolute profit growth % (profitDeltaPct, e.g. "+7.71%")
+  // that used to be shown on the combined Total Profit card has been removed entirely — per-row profit
+  // Δ% is still computed independently inside renderTop5SkuChart() for the Top 5 SKUs section, which is
+  // untouched by this change. This card is now driven strictly by the Margin point-delta formula:
+  //   Margin_Delta_Pts = ((Simulated_Profit / Simulated_Revenue) * 100) - ((Baseline_Profit / Baseline_Revenue) * 100)
+  // i.e. marginSimulatedPct - marginBaselinePct, both already computed above from the same totals feeding
+  // every other number on this card — this is now the single source of truth for the card's displayed
+  // delta AND its red/negative visual-state trigger (previously the negative-state trigger fell back to
+  // profitDeltaPct with marginDeltaPts only used as a fallback; now it's the other way around, exclusively).
   const marginDeltaPts = marginSimulatedPct - marginBaselinePct; // absolute variance, in percentage points
 
   // ---- Card 1: Total Qty Sold ----
@@ -1708,22 +1716,19 @@ function renderKpiTiles(computed){
 
   // ---- Card 3 (Combined): Total Profit ₹ (main value) + Margin % / Δpts / Baseline Profit ₹ (sub-header) ----
   elProfitSimulated.textContent = '₹' + (totalProfitSimulated<0?'-':'') + Math.abs(Math.round(totalProfitSimulated)).toLocaleString('en-IN');
-  // MANAGER REQUEST (change 3): append the profit Δ% right next to the baseline profit ₹ text, e.g.
-  // "₹3,01,90,148 (+2.00%)". profitDeltaPct is null only in the zero-baseline-profit edge case, where no
-  // percentage change is mathematically defined — omit the parenthetical suffix entirely in that case.
-  const profitDeltaPctSuffix = profitDeltaPct !== null
-    ? ' (' + (profitDeltaPct>=0?'+':'') + profitDeltaPct.toFixed(2) + '%)'
-    : '';
-  elProfitBaseline.textContent = '₹' + (totalProfitBaseline<0?'-':'') + Math.abs(Math.round(totalProfitBaseline)).toLocaleString('en-IN') + profitDeltaPctSuffix;
+  // MANAGER REQUEST (follow-up correction): Baseline Profit chip now shows ONLY the ₹ amount — no
+  // percentage-change suffix appended. The point-change badge (marginDeltaPts, formatted "+2.01 pts") is
+  // the sole delta indicator on this card, and is positioned immediately next to this chip in the HTML.
+  elProfitBaseline.textContent = '₹' + (totalProfitBaseline<0?'-':'') + Math.abs(Math.round(totalProfitBaseline)).toLocaleString('en-IN');
   elMarginSimulated.textContent = marginSimulatedPct.toFixed(2) + '%';
   if(elMarginBadge){
     elMarginBadge.textContent = (marginDeltaPts>=0?'+':'') + marginDeltaPts.toFixed(2) + ' pts';
     elMarginBadge.className = 'kpi-badge ' + (marginDeltaPts>=0 ? 'kpi-up' : 'kpi-down');
   }
-  // Negative-state coloring for the merged card follows the profit ₹ move (falls back to the margin
-  // direction in the zero-baseline-profit edge case where profitDeltaPct can't be computed).
-  const profitIsNegative = profitDeltaPct !== null ? profitDeltaPct < 0 : marginDeltaPts < 0;
-  if(elProfitCard) elProfitCard.classList.toggle('kpi-tile-profit-negative', profitIsNegative);
+  // Negative-state coloring for the merged card now follows the Margin point-delta exclusively — the same
+  // formula that drives the visible badge, so the card's red/negative state and the number on it can never
+  // disagree with each other.
+  if(elProfitCard) elProfitCard.classList.toggle('kpi-tile-profit-negative', marginDeltaPts < 0);
 }
 
 // ---------- EDA PANEL RENDERER ----------

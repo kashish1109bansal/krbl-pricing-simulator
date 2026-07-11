@@ -995,46 +995,101 @@
   }
 
   // ================================================================================
-  // NEW (MANAGER REQUEST, change 6) — SCENARIO IMPACT ANALYSIS (canvas: scenarioImpactChart)
-  // Illustrates the exact calculation logic from coeff.pptx: 3 hardcoded single-lever scenarios
-  // (Price +5%, Store Count +5%, Ranking 8→9), each showing Base vs New Demand (units) alongside
-  // Base vs New Profit (₹). This is a STATIC, hardcoded reference chart — it does not read from
-  // priceRows / computeAll() / any live simulation state, and is unaffected by the master filters.
-  // Demand (~4,000 units) and Profit (~₹4,00,000) live on very different scales, so — exactly like
-  // the other dual-axis EDA charts (dualAxisOptions()) — Demand is plotted on the left axis (y) and
-  // Profit on the right axis (y1), with all 4 datasets grouped per scenario label.
+  // SCENARIO IMPACT ANALYSIS (canvas: scenarioImpactChart)
+  // MANAGER REQUEST (follow-up rebuild): this chart previously showed 4 bars of absolute Base/New
+  // Demand + Profit numbers on a dual axis. It now shows exactly 3 bars per scenario — Units % Change,
+  // Revenue % Change, and Profit % Change — derived from the same coeff.pptx single-lever scenario math
+  // (Price +5%, Store Count +5%, Ranking 8→9), pre-calculated to percentages. This is still a STATIC,
+  // hardcoded reference chart — it does not read from priceRows / computeAll() / any live simulation
+  // state, and is unaffected by the master filters. Single percentage axis (no more dual-axis / y1),
+  // formatted as "+2%" / "-3%" on both the y-axis ticks and the tooltips.
   // ================================================================================
   function renderScenarioImpactChart(){
     const labels = ['Price Change (+5%)', 'Store Count Change (+5%)', 'Ranking Change (8 to 9)'];
-    const baseDemand = [4036.77, 4036.77, 4036.77];
-    const newDemand = [3919.27, 4069.36, 3935.59];
-    const baseProfit = [400705.9, 400705.9, 400705.9];
-    const newProfit = [408494.5, 403941.0, 390662.4];
+    const unitsPctChange = [-2.91, 0.81, -2.51];
+    const revenuePctChange = [1.94, 0.81, -2.51];
+    const profitPctChange = [1.94, 0.81, -2.51];
 
-    const options = dualAxisOptions('Demand (Units)', 'Profit (₹)');
-    options.plugins.tooltip = {
-      callbacks: {
-        label(ctx){
-          const v = ctx.parsed.y;
-          const isProfit = ctx.dataset.yAxisID === 'y1';
-          return `  ${ctx.dataset.label}: ${isProfit ? '₹' + Number(v).toLocaleString('en-IN', {maximumFractionDigits:1}) : Number(v).toLocaleString('en-IN', {maximumFractionDigits:2})}`;
-        }
-      }
+    const fmtPct = v => (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+
+    // MANAGER REQUEST (visual polish pass) — same pattern already used by edaanChart13's correlation
+    // heatmap: chartjs-plugin-datalabels is loaded via CDN but only attached per-chart (never globally
+    // registered), so every render checks `typeof ChartDataLabels !== 'undefined'` and degrades to no
+    // datalabels (with the built-in tooltip still working) if the CDN script hasn't loaded yet.
+    const hasDatalabels = typeof ChartDataLabels !== 'undefined';
+
+    // Slightly darker border shade of each bar's own brand color, per-dataset, so bars read as crisp
+    // solid shapes with a defined edge rather than flat color-fill floating on the canvas.
+    const darken = (hex, amt) => {
+      const n = parseInt(hex.slice(1), 16);
+      const r = Math.max(0, (n >> 16) - amt), g = Math.max(0, ((n >> 8) & 0xff) - amt), b = Math.max(0, (n & 0xff) - amt);
+      return `rgb(${r},${g},${b})`;
     };
+    const unitsColor = '#C5A059', revenueColor = '#4A0E17', profitColor = '#2E7D5E';
 
-    makeChart('scenarioImpactChart', {
+    const chartConfig = {
       type: 'bar',
       data: {
         labels,
         datasets: [
-          { label: 'Base Demand', data: baseDemand, backgroundColor: 'rgba(197,160,89,0.55)', borderColor: '#C5A059', borderWidth: 1.5, borderRadius: 5, yAxisID: 'y', maxBarThickness: 46 },
-          { label: 'New Demand', data: newDemand, backgroundColor: '#4A0E17', borderColor: '#4A0E17', borderWidth: 1.5, borderRadius: 5, yAxisID: 'y', maxBarThickness: 46 },
-          { label: 'Base Profit', data: baseProfit, backgroundColor: 'rgba(46,125,94,0.35)', borderColor: '#2E7D5E', borderWidth: 1.5, borderRadius: 5, yAxisID: 'y1', maxBarThickness: 46 },
-          { label: 'New Profit', data: newProfit, backgroundColor: '#2E7D5E', borderColor: '#2E7D5E', borderWidth: 1.5, borderRadius: 5, yAxisID: 'y1', maxBarThickness: 46 }
+          { label: 'Units % Change', data: unitsPctChange, backgroundColor: 'rgba(197,160,89,0.85)', borderColor: darken(unitsColor, 35), borderWidth: 1, borderRadius: 5, categoryPercentage: 0.75, barPercentage: 0.85, maxBarThickness: 46 },
+          { label: 'Revenue % Change', data: revenuePctChange, backgroundColor: 'rgba(74,14,23,0.85)', borderColor: darken(revenueColor, 35), borderWidth: 1, borderRadius: 5, categoryPercentage: 0.75, barPercentage: 0.85, maxBarThickness: 46 },
+          { label: 'Profit % Change', data: profitPctChange, backgroundColor: 'rgba(46,125,94,0.85)', borderColor: darken(profitColor, 35), borderWidth: 1, borderRadius: 5, categoryPercentage: 0.75, barPercentage: 0.85, maxBarThickness: 46 }
         ]
       },
-      options
-    });
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        // Headroom above/below the tallest bars so the outside-anchored datalabels never clip against
+        // the chart edge, regardless of the exact hardcoded values plugged in above.
+        layout: { padding: { top: 22, bottom: 6 } },
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label(ctx){ return `  ${ctx.dataset.label}: ${fmtPct(ctx.parsed.y)}`; }
+            }
+          },
+          // MANAGER REQUEST — data labels rendered at the tip of every bar (anchor:'end') and pushed
+          // just outside it (align:'end'), so the exact % is always legible without hovering, for both
+          // positive bars (label sits above the top) and negative bars (label sits below the bottom).
+          datalabels: hasDatalabels ? {
+            display: true,
+            anchor: 'end',
+            align: 'end',
+            offset: 4,
+            clamp: true,
+            formatter: (value) => fmtPct(value),
+            color: (ctx) => ['#C5A059','#4A0E17','#2E7D5E'][ctx.datasetIndex] || '#2A1B1E',
+            font: { size: 10.5, weight: '700', family: 'Inter, sans-serif' }
+          } : false
+        },
+        scales: {
+          x: { ticks: { maxRotation: 70, minRotation: 0, autoSkip: true, maxTicksLimit: 24, font: { size: 10 } } },
+          y: {
+            type: 'linear',
+            title: { display: true, text: '% Change', font: { size: 11 } },
+            // Auto-padding beyond the min/max data values (grace) keeps bars + their outside datalabels
+            // from ever touching the chart edge, without hardcoding a fixed suggestedMin/suggestedMax.
+            grace: '18%',
+            ticks: { callback: v => fmtPct(v) },
+            grid: {
+              // MANAGER REQUEST — prominent zero-baseline: the y=0 gridline (the x-axis bars actually
+              // sit on) is rendered much thicker and darker than every other gridline, giving positive
+              // and negative bars a solid, unmistakable anchor to grow from / hang from.
+              color: (ctx) => ctx.tick.value === 0 ? '#4b5563' : 'rgba(0,0,0,0.06)',
+              lineWidth: (ctx) => ctx.tick.value === 0 ? 2 : 1,
+              z: 1
+            }
+          }
+        }
+      }
+    };
+    // MANAGER REQUEST — per-chart (local) datalabels registration, mirroring the working pattern in
+    // renderEdaanChart13(): Chart.js only reads a config's local `plugins` array at `new Chart()`
+    // construction time, so this MUST be attached to chartConfig before it's handed to makeChart().
+    if(hasDatalabels) chartConfig.plugins = [ChartDataLabels];
+    makeChart('scenarioImpactChart', chartConfig);
   }
 
   // ---------- expose a resize hook so the existing sidebar-toggle resize sweep also catches these charts ----------
