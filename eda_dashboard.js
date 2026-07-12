@@ -995,101 +995,134 @@
   }
 
   // ================================================================================
-  // SCENARIO IMPACT ANALYSIS (canvas: scenarioImpactChart)
-  // MANAGER REQUEST (follow-up rebuild): this chart previously showed 4 bars of absolute Base/New
-  // Demand + Profit numbers on a dual axis. It now shows exactly 3 bars per scenario — Units % Change,
-  // Revenue % Change, and Profit % Change — derived from the same coeff.pptx single-lever scenario math
-  // (Price +5%, Store Count +5%, Ranking 8→9), pre-calculated to percentages. This is still a STATIC,
-  // hardcoded reference chart — it does not read from priceRows / computeAll() / any live simulation
-  // state, and is unaffected by the master filters. Single percentage axis (no more dual-axis / y1),
-  // formatted as "+2%" / "-3%" on both the y-axis ticks and the tooltips.
+  // SCENARIO IMPACT ANALYSIS (canvases: ptcChart, storeChart, rankingChart)
+  // MANAGER REQUEST (layout correction, per reference image): this is NOT one grouped bar chart with
+  // 3 scenarios on the x-axis — it is 3 SEPARATE single-series bar charts side-by-side, one per
+  // scenario, each plotting Revenue / Units / Profit % Change on its own x-axis. Still a STATIC,
+  // hardcoded reference (coeff.pptx single-lever scenario math: Price +5%, Store Count +5%,
+  // Ranking 8→9) — unaffected by master filters / live simulation state.
   // ================================================================================
   function renderScenarioImpactChart(){
-    const labels = ['Price Change (+5%)', 'Store Count Change (+5%)', 'Ranking Change (8 to 9)'];
-    const unitsPctChange = [-2.91, 0.81, -2.51];
-    const revenuePctChange = [1.94, 0.81, -2.51];
-    const profitPctChange = [1.94, 0.81, -2.51];
-
+    // MANAGER REQUEST: 4th bar added — "Margin" — to stay in sync with the 4 main KPI hero tiles
+    // (Qty, Revenue, Profit, Margin). Margin is a points-delta, not a %, but is plotted on the same
+    // axis alongside the 3 %-change bars per the finalized design (all 4 read as 0.00 for these
+    // baseline single-lever scenarios, since margin holds constant — see data arrays below).
+    const labels = ['Revenue', 'Units', 'Profit', 'Margin'];
     const fmtPct = v => (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '%';
 
-    // MANAGER REQUEST (visual polish pass) — same pattern already used by edaanChart13's correlation
-    // heatmap: chartjs-plugin-datalabels is loaded via CDN but only attached per-chart (never globally
-    // registered), so every render checks `typeof ChartDataLabels !== 'undefined'` and degrades to no
-    // datalabels (with the built-in tooltip still working) if the CDN script hasn't loaded yet.
+    // Same per-chart (local) datalabels pattern used elsewhere in this file (e.g. renderEdaanChart13):
+    // chartjs-plugin-datalabels is loaded via CDN but never globally registered, so every render checks
+    // availability and degrades to no datalabels (tooltip still works) if the CDN script hasn't loaded.
     const hasDatalabels = typeof ChartDataLabels !== 'undefined';
 
-    // Slightly darker border shade of each bar's own brand color, per-dataset, so bars read as crisp
-    // solid shapes with a defined edge rather than flat color-fill floating on the canvas.
+    // MANAGER REQUEST — single solid color for all bars across all 3 charts (no per-metric coloring).
+    const barColor = '#2563eb';
     const darken = (hex, amt) => {
       const n = parseInt(hex.slice(1), 16);
       const r = Math.max(0, (n >> 16) - amt), g = Math.max(0, ((n >> 8) & 0xff) - amt), b = Math.max(0, (n & 0xff) - amt);
       return `rgb(${r},${g},${b})`;
     };
-    const unitsColor = '#C5A059', revenueColor = '#4A0E17', profitColor = '#2E7D5E';
+    const barBorderColor = darken(barColor, 40);
 
-    const chartConfig = {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          { label: 'Units % Change', data: unitsPctChange, backgroundColor: 'rgba(197,160,89,0.85)', borderColor: darken(unitsColor, 35), borderWidth: 1, borderRadius: 5, categoryPercentage: 0.75, barPercentage: 0.85, maxBarThickness: 46 },
-          { label: 'Revenue % Change', data: revenuePctChange, backgroundColor: 'rgba(74,14,23,0.85)', borderColor: darken(revenueColor, 35), borderWidth: 1, borderRadius: 5, categoryPercentage: 0.75, barPercentage: 0.85, maxBarThickness: 46 },
-          { label: 'Profit % Change', data: profitPctChange, backgroundColor: 'rgba(46,125,94,0.85)', borderColor: darken(profitColor, 35), borderWidth: 1, borderRadius: 5, categoryPercentage: 0.75, barPercentage: 0.85, maxBarThickness: 46 }
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        // Headroom above/below the tallest bars so the outside-anchored datalabels never clip against
-        // the chart edge, regardless of the exact hardcoded values plugged in above.
-        layout: { padding: { top: 22, bottom: 6 } },
-        plugins: {
-          legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
-          tooltip: {
-            callbacks: {
-              label(ctx){ return `  ${ctx.dataset.label}: ${fmtPct(ctx.parsed.y)}`; }
-            }
-          },
-          // MANAGER REQUEST — data labels rendered at the tip of every bar (anchor:'end') and pushed
-          // just outside it (align:'end'), so the exact % is always legible without hovering, for both
-          // positive bars (label sits above the top) and negative bars (label sits below the bottom).
-          datalabels: hasDatalabels ? {
-            display: true,
-            anchor: 'end',
-            align: 'end',
-            offset: 4,
-            clamp: true,
-            formatter: (value) => fmtPct(value),
-            color: (ctx) => ['#C5A059','#4A0E17','#2E7D5E'][ctx.datasetIndex] || '#2A1B1E',
-            font: { size: 10.5, weight: '700', family: 'Inter, sans-serif' }
-          } : false
+    // Reusable factory so all 3 mini charts share identical styling and only differ by canvas id,
+    // title, and data.
+    function buildScenarioChart(canvasId, title, data){
+      const chartConfig = {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: title,
+            data,
+            backgroundColor: barColor,
+            borderColor: barBorderColor,
+            borderWidth: 1,
+            borderRadius: 5,
+            categoryPercentage: 0.75,
+            barPercentage: 0.85,
+            maxBarThickness: 56
+          }]
         },
-        scales: {
-          x: { ticks: { maxRotation: 70, minRotation: 0, autoSkip: true, maxTicksLimit: 24, font: { size: 10 } } },
-          y: {
-            type: 'linear',
-            title: { display: true, text: '% Change', font: { size: 11 } },
-            // Auto-padding beyond the min/max data values (grace) keeps bars + their outside datalabels
-            // from ever touching the chart edge, without hardcoding a fixed suggestedMin/suggestedMax.
-            grace: '18%',
-            ticks: { callback: v => fmtPct(v) },
-            grid: {
-              // MANAGER REQUEST — prominent zero-baseline: the y=0 gridline (the x-axis bars actually
-              // sit on) is rendered much thicker and darker than every other gridline, giving positive
-              // and negative bars a solid, unmistakable anchor to grow from / hang from.
-              color: (ctx) => ctx.tick.value === 0 ? '#4b5563' : 'rgba(0,0,0,0.06)',
-              lineWidth: (ctx) => ctx.tick.value === 0 ? 2 : 1,
-              z: 1
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          // MANAGER REQUEST (clipping fix, strict re-apply) — heavy padding on all 4 sides so labels
+          // at the extreme top/bottom (or near the left/right canvas edges) never get cut off.
+          layout: {
+            padding: { top: 30, bottom: 30, left: 15, right: 15 }
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: title,
+              font: { size: 12.5, weight: '700', family: 'Inter, sans-serif' },
+              color: '#2A1B1E',
+              padding: { bottom: 12 }
+            },
+            // MANAGER REQUEST (final decision) — on-bar data labels removed entirely; exact percentages
+            // are now surfaced only via the Y-axis ticks and the hover tooltip below. The 4th bar
+            // (Margin) is a points-delta rather than a %, so its tooltip suffix is "pts" to match the
+            // "pts" convention used everywhere else Margin Δ is shown (e.g. the top KPI hero tile).
+            tooltip: {
+              enabled: true,
+              callbacks: {
+                label(ctx){
+                  const isMargin = labels[ctx.dataIndex] === 'Margin';
+                  const v = Number(ctx.parsed.y);
+                  return isMargin
+                    ? `  ${(v>=0?'+':'')}${v.toFixed(2)} pts`
+                    : `  ${fmtPct(v)}`;
+                }
+              }
+            },
+            // Explicitly disabled (rather than omitted) so this stays self-documenting and survives
+            // even if chartjs-plugin-datalabels is later re-registered globally elsewhere in the app.
+            datalabels: {
+              display: false
+            },
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              ticks: { font: { size: 11 }, padding: 10 } // Push the x-axis text down so negative labels don't overlap it
+            },
+            y: {
+              type: 'linear',
+              // MANAGER REQUEST (final fix) — explicit Y-axis breathing room. Bars were hitting the
+              // absolute top/bottom of the chart area (grace alone wasn't reliably enough headroom
+              // once combined with per-bar top/bottom alignment), which pushed datalabels out of the
+              // chart area and triggered chartjs-plugin-datalabels' own auto-hide-on-overflow behavior
+              // — this is why chart 3's labels vanished entirely and chart 1's negative label got
+              // shoved down into the x-axis tick text. Hardcoded bounds guarantee the same fixed
+              // amount of space above/below the bars on all 3 charts regardless of their data range.
+              suggestedMin: -4,
+              suggestedMax: 3,
+              ticks: { callback: v => fmtPct(v) },
+              grid: {
+                // MANAGER REQUEST — prominent zero-baseline: the y=0 gridline (the x-axis bars
+                // actually sit on) is rendered much thicker and darker than every other gridline.
+                color: (ctx) => ctx.tick.value === 0 ? '#4b5563' : 'rgba(0,0,0,0.06)',
+                lineWidth: (ctx) => ctx.tick.value === 0 ? 2 : 1,
+                z: 1
+              }
             }
           }
         }
-      }
-    };
-    // MANAGER REQUEST — per-chart (local) datalabels registration, mirroring the working pattern in
-    // renderEdaanChart13(): Chart.js only reads a config's local `plugins` array at `new Chart()`
-    // construction time, so this MUST be attached to chartConfig before it's handed to makeChart().
-    if(hasDatalabels) chartConfig.plugins = [ChartDataLabels];
-    makeChart('scenarioImpactChart', chartConfig);
+      };
+      // Per-chart (local) datalabels registration — must be attached to chartConfig BEFORE it's
+      // handed to makeChart(), since Chart.js only reads a config's local `plugins` array at
+      // `new Chart()` construction time.
+      if(hasDatalabels) chartConfig.plugins = [ChartDataLabels];
+      makeChart(canvasId, chartConfig);
+    }
+
+    // MANAGER REQUEST (finalized universal Profit % formula): Profit % = (Profit * 100) / Revenue;
+    // Profit % Change = Simulated Profit % - Baseline Profit %. Per the PPT, profit margin holds
+    // ~constant at ~26.40% across all 3 single-lever scenarios, so the 3rd value (Profit, absolute
+    // ₹ % change) tracks Revenue exactly, and the 4th value (Margin, in points) is 0.00 in every
+    // chart since margin itself doesn't move — Revenue and Units values are unchanged.
+    buildScenarioChart('ptcChart',     'Impact of 5% Increase in PTC',         [1.94, -2.91, 1.94, 0.00]);
+    buildScenarioChart('storeChart',   'Impact of 5% Increase in Store Count', [0.81, 0.81, 0.81, 0.00]);
+    buildScenarioChart('rankingChart', 'Impact of Ranking Drop (8 to 9)',      [-2.51, -2.51, -2.51, 0.00]);
   }
 
   // ---------- expose a resize hook so the existing sidebar-toggle resize sweep also catches these charts ----------

@@ -143,25 +143,20 @@
 
   .glass-card{ background: var(--glass); backdrop-filter: blur(16px); border:1px solid var(--border); border-radius:14px; box-shadow: var(--shadow-md); padding:18px 22px; margin-bottom:16px; }
 
-  /* Executive KPI Hero Tiles — 3-card summary strip (Qty Sold / Revenue / Total Profit combined-with-Margin),
-     laid out as a strict CSS grid so all 3 cards stretch symmetrically across a single row on desktop,
-     collapsing to a single stacked column on narrow/mobile viewports. Card 3 was merged from the former
-     separate Profit ₹ and Profit Margin % tiles per design feedback to streamline the layout. */
-  .kpi-hero-row{ display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin:4px 0 18px; }
-  @media (max-width:780px){ .kpi-hero-row{ grid-template-columns: 1fr; } }
+  /* Executive KPI Hero Tiles — 4-card summary strip (Qty Sold / Revenue / Total Profit / Profit Margin),
+     laid out as a strict CSS grid so all 4 cards stretch symmetrically across a single row on desktop.
+     MANAGER REQUEST: Card 3 (Total Profit) and Card 4 (Profit Margin) were previously merged into one
+     tile — they are now split back into two dedicated cards so each metric gets full visual breathing
+     room, collapsing to 2 columns on tablet and a single stacked column on narrow/mobile viewports. */
+  .kpi-hero-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin:4px 0 18px; }
+  @media (max-width:1100px){ .kpi-hero-row{ grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width:560px){ .kpi-hero-row{ grid-template-columns: 1fr; } }
   .kpi-tile{ min-width:0; background: var(--glass-strong); border:1px solid var(--border); border-radius:14px; box-shadow: 0 10px 30px rgba(74,14,23,0.04); padding:16px 18px; transition: transform .15s ease, box-shadow .15s ease; }
   .kpi-tile-label{ font-size:10.5px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color: var(--muted); margin-bottom:8px; }
   .kpi-tile-value{ font-size:22px; font-weight:800; color: var(--maroon); font-variant-numeric: tabular-nums; }
   .kpi-tile-sub{ font-size:11px; color: var(--muted); margin-top:6px; }
   .kpi-tile-sub b{ color: var(--ink); font-weight:800; }
   .kpi-tile-trend{ font-size:13px; font-weight:800; color: var(--green); margin-top:6px; }
-  /* Combined Profit + Margin sub-header row (Card 3 only) — flex container stretching the Margin chip and
-     Baseline Profit chip across the card width, with a dashed divider separating it from the main value above. */
-  .kpi-tile-profit-subheader{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
-  .kpi-tile-margin-chip{ font-size:12px; font-weight:700; color: var(--muted); }
-  .kpi-tile-margin-chip b{ color: var(--ink); font-weight:800; }
-  .kpi-tile-baseline-chip{ font-size:11px; font-weight:700; color: var(--muted); margin-left:auto; }
-  .kpi-tile-baseline-chip b{ color: var(--ink); font-weight:800; }
   .kpi-tile-current{ border-left:4px solid var(--maroon); }
   .kpi-tile-simulated{ border-left:4px solid var(--gold); }
   .kpi-tile-simulated:hover{ box-shadow: 0 10px 28px rgba(197,160,89,0.30); transform: translateY(-2px); }
@@ -175,6 +170,12 @@
   .kpi-tile-profit .kpi-tile-value{ color: #2E6E8E; }
   .kpi-tile-profit.kpi-tile-profit-negative{ border-left:4px solid #D9383A; }
   .kpi-tile-profit.kpi-tile-profit-negative .kpi-tile-value{ color: #D9383A; }
+  /* Card 4 — Profit Margin (%) — split out from the old combined Total Profit tile. Distinct violet
+     accent so it reads as a clearly separate metric family from Card 3's blue Total Profit ₹ accent. */
+  .kpi-tile-margin{ border-left:4px solid #7C5CFC; }
+  .kpi-tile-margin .kpi-tile-value{ color: #7C5CFC; }
+  .kpi-tile-margin.kpi-tile-margin-negative{ border-left:4px solid #D9383A; }
+  .kpi-tile-margin.kpi-tile-margin-negative .kpi-tile-value{ color: #D9383A; }
   .kpi-badge{ display:inline-block; margin-top:8px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:800; letter-spacing:0.02em; }
   .kpi-badge.kpi-up{ background: rgba(14,122,78,0.12); color: var(--green); }
   .kpi-badge.kpi-down{ background: rgba(199,90,69,0.12); color: var(--red); }
@@ -416,8 +417,38 @@
     content:''; position:absolute; top:0; right:0; width:220px; height:220px; pointer-events:none;
     background: radial-gradient(circle at 100% 0%, rgba(212,175,55,0.16), transparent 70%);
   }
-  .ai-suite-head{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:4px; flex-wrap:wrap; }
-  .ai-suite-title{ font-size:14.5px; font-weight:800; color:var(--maroon-dark); letter-spacing:0.01em; margin:0; display:flex; align-items:center; gap:8px; }
+  /* MANAGER REQUEST: "KRBL Portfolio Intelligence" header facelift — premium glassmorphism strip
+     (frosted backdrop-blur + soft gold hairline), a gradient-text title with an icon in a gradient
+     chip, and a small uppercase eyebrow line underneath for an enterprise-SaaS feel. */
+  .ai-suite-head{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; margin:0 0 18px; flex-wrap:wrap;
+    padding:14px 20px;
+    border-radius:14px;
+    background: rgba(255,255,255,0.42);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border:1px solid rgba(212,175,55,0.32);
+    box-shadow: 0 4px 18px rgba(122,6,36,0.07), inset 0 1px 0 rgba(255,255,255,0.6);
+    position:relative;
+    z-index:1;
+  }
+  .ai-suite-heading{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .ai-suite-icon{
+    display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+    width:32px; height:32px; border-radius:10px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--maroon) 100%);
+    box-shadow: 0 4px 12px rgba(122,6,36,0.28);
+  }
+  .ai-suite-icon svg{ display:block; }
+  .ai-suite-title{
+    font-size:16.5px; font-weight:800; letter-spacing:0.03em; margin:0;
+    display:flex; align-items:center; gap:10px;
+    text-transform:uppercase;
+    background: linear-gradient(90deg, var(--maroon-dark) 0%, var(--maroon) 50%, var(--gold) 100%);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent; color:transparent;
+  }
+  .ai-suite-eyebrow{ margin:0; font-size:10.5px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--muted); }
   .ai-suite-pulse{ display:inline-flex; align-items:center; gap:6px; font-size:9.5px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#1a7f4e; background:rgba(30,130,76,0.1); border:1px solid rgba(30,130,76,0.25); border-radius:999px; padding:4px 10px; }
   .ai-suite-pulse .dot{ width:6px; height:6px; border-radius:50%; background:#1a7f4e; animation: aiPulseDot 1.6s ease-in-out infinite; }
   .ai-insights-sub{ margin:6px 0 18px; font-size:12px; color:var(--muted); position:relative; z-index:1; }
@@ -682,19 +713,21 @@
                 <div class="kpi-tile-sub">Baseline: <b id="kpiRevenueBaselineValue">&#8377;0</b></div>
                 <span class="kpi-badge" id="kpiRevenueDeltaBadge">+0.00%</span>
               </div>
+              <!-- MANAGER REQUEST: Card 3 (Total Profit) and Card 4 (Profit Margin) split back into two
+                   distinct cards — the old combined tile mixed absolute ₹ and % in one place, which read
+                   as cluttered. Each card now follows the same clean value/baseline/badge pattern as the
+                   Qty and Revenue cards above. -->
               <div class="kpi-tile kpi-tile-profit" id="kpiProfitCard">
                 <div class="kpi-tile-label">&#127942; TOTAL PROFIT</div>
                 <div class="kpi-tile-value" id="kpiProfitSimulatedValue">&#8377;0</div>
-                <!-- MANAGER REQUEST (follow-up correction): the absolute profit growth % (e.g. "+7.71%")
-                     that used to be appended to the Baseline Profit chip has been removed entirely. The
-                     card now shows ONLY the Margin point-delta badge ("+2.01 pts"), and it's reordered to
-                     sit immediately next to the Baseline Profit chip (kpi-tile-baseline-chip's
-                     margin-left:auto pushes both it and this badge flush to the right edge together). -->
-                <div class="kpi-tile-profit-subheader">
-                  <span class="kpi-tile-margin-chip">Margin: <b id="kpiMarginSimulatedValue">0.00%</b></span>
-                  <span class="kpi-tile-baseline-chip">Baseline: <b id="kpiProfitBaselineValue">&#8377;0</b></span>
-                  <span class="kpi-badge" id="kpiMarginDeltaBadge">+0.00 pts</span>
-                </div>
+                <div class="kpi-tile-sub">Baseline: <b id="kpiProfitBaselineValue">&#8377;0</b></div>
+                <span class="kpi-badge" id="kpiProfitDeltaBadge">+0.00%</span>
+              </div>
+              <div class="kpi-tile kpi-tile-margin" id="kpiMarginCard">
+                <div class="kpi-tile-label">&#128200; PROFIT MARGIN</div>
+                <div class="kpi-tile-value" id="kpiMarginSimulatedValue">0.00%</div>
+                <div class="kpi-tile-sub">Baseline: <b id="kpiMarginBaselineValue">0.00%</b></div>
+                <span class="kpi-badge" id="kpiMarginDeltaBadge">+0.00 pts</span>
               </div>
             </div>
             <div class="scroll-x">
@@ -702,7 +735,7 @@
                 <thead>
                   <tr>
                     <th colspan="8" class="col-group-base">BASELINE &amp; INDIVIDUAL SKU INPUTS</th>
-                    <th colspan="15" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
+                    <th colspan="18" class="col-group-out">SIMULATION PROJECTIONS / OUTPUTS</th>
                   </tr>
                   <tr>
                     <th>SKU</th>
@@ -728,6 +761,9 @@
                     <th class="num">Baseline Profit (&#8377;)</th>
                     <th class="num">Simulated Profit (&#8377;)</th>
                     <th class="num">Profit &#916; %</th>
+                    <th class="num">Baseline Margin (%)</th>
+                    <th class="num">Simulated Margin (%)</th>
+                    <th class="num">Margin &#916; (pts)</th>
                   </tr>
                 </thead>
                 <tbody id="outputTableBody"></tbody>
@@ -738,7 +774,18 @@
           <!-- AI BUSINESS INSIGHTS & STRATEGY ENGINE -->
           <div class="glass-card ai-suite-card">
             <div class="ai-suite-head">
-              <h3 class="ai-suite-title">&#10024; KRBL Portfolio Intelligence</h3>
+              <div class="ai-suite-heading">
+                <h3 class="ai-suite-title">
+                  <span class="ai-suite-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2.5L14.47 9.03L21 11.5L14.47 13.97L12 20.5L9.53 13.97L3 11.5L9.53 9.03L12 2.5Z" fill="#fff"/>
+                      <circle cx="19" cy="4.5" r="1.6" fill="#fff"/>
+                    </svg>
+                  </span>
+                  KRBL Portfolio Intelligence
+                </h3>
+                <p class="ai-suite-eyebrow">AI-Powered Strategic Analysis &middot; Real-Time Portfolio Insights</p>
+              </div>
             </div>
             <div id="aiInsightsBody" class="ai-insights-body"></div>
           </div>
@@ -812,6 +859,7 @@
               <div class="chart-panel compare-panel">
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
                   <h4 style="margin:0 0 0;">Portfolio Profit % (Baseline vs Simulated)</h4>
+                  <span class="kpi-badge" id="compareProfitDeltaBadge">+0.00 pts</span>
                 </div>
                 <div style="font-size:10.5px; color:var(--muted); margin-top:4px; line-height:1.4;">
                   Profit &divide; Revenue &times; 100 &mdash; strictly synchronized to computeProfitMetrics().
@@ -934,9 +982,19 @@
              New Profit, per scenario. Independent of the master filters / live simulation state. -->
         <div class="glass-card" style="padding:16px 20px 14px;">
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Scenario Impact Analysis</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Illustrative single-lever scenarios &mdash; Units, Revenue, and Profit % Change vs baseline.</div>
-          <div style="position:relative; height:320px;">
-            <canvas id="scenarioImpactChart"></canvas>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Illustrative single-lever scenarios &mdash; Revenue, Units, and Profit % Change vs baseline.</div>
+          <!-- MANAGER REQUEST (layout correction, per reference image): 3 separate side-by-side bar
+               charts (one per scenario), not one grouped chart. -->
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:20px;">
+            <div style="position:relative; height:300px;">
+              <canvas id="ptcChart"></canvas>
+            </div>
+            <div style="position:relative; height:300px;">
+              <canvas id="storeChart"></canvas>
+            </div>
+            <div style="position:relative; height:300px;">
+              <canvas id="rankingChart"></canvas>
+            </div>
           </div>
         </div>
 
@@ -1597,6 +1655,24 @@ function renderOutputTable(){
     const pm = computeProfitMetrics(c);
     const profitCls = pm.profitChangePct === null ? '' : (pm.profitChangePct >= 0 ? 'pos' : 'neg');
     const profitChangeLabel = pm.profitChangePct === null ? 'N/A' : (pm.profitChangePct>=0?'+':'') + pm.profitChangePct.toFixed(2) + '%';
+    // MANAGER REQUEST: 3 new per-row columns mirroring the top KPI Profit Margin logic —
+    // Baseline Margin % = Baseline Profit / Baseline Revenue * 100; Simulated Margin % = Simulated
+    // Profit / Simulated Revenue * 100; Margin Δ is a POINTS delta (Simulated Margin - Baseline
+    // Margin), not a %-of-% change, formatted with the same 'pts' suffix + green/red convention
+    // used everywhere else Margin Δ appears (e.g. the Profit Margin KPI tile).
+    const baselineMarginPct = c.revenueCurrent !== 0 ? (pm.baselineProfit / c.revenueCurrent) * 100 : 0;
+    const simulatedMarginPct = c.revenueSimulated !== 0 ? (pm.simulatedProfit / c.revenueSimulated) * 100 : 0;
+    // BUGFIX: round the raw delta to 2dp FIRST, then decide sign/color off the ROUNDED value —
+    // otherwise a microscopic float residue like -0.0000001 (well below the 2dp display precision)
+    // survives the `>= 0` check and renders as "-0.00 pts" in red, which reads as a real negative
+    // move even though the true value is zero at the precision we display. parseFloat(...toFixed(2))
+    // also collapses "-0" -> 0, so Object.is(-0, roundedMarginDeltaPts) is false and the sign check
+    // below is safe.
+    let roundedMarginDeltaPts = parseFloat((simulatedMarginPct - baselineMarginPct).toFixed(2));
+    if(roundedMarginDeltaPts === 0) roundedMarginDeltaPts = 0; // normalizes -0 -> 0
+    const marginDeltaPts = roundedMarginDeltaPts;
+    const marginDeltaCls = marginDeltaPts >= 0 ? 'pos' : 'neg';
+    const marginDeltaLabel = (marginDeltaPts>=0?'+':'') + marginDeltaPts.toFixed(2) + ' pts';
     return `<tr>
       <td class="sku-cell">${c.row.name}</td>
       <td>${selectedMonth}</td>
@@ -1621,6 +1697,9 @@ function renderOutputTable(){
       <td class="num">&#8377;${(pm.baselineProfit<0?'-':'')}${Math.abs(Math.round(pm.baselineProfit)).toLocaleString('en-IN')}</td>
       <td class="num">&#8377;${(pm.simulatedProfit<0?'-':'')}${Math.abs(Math.round(pm.simulatedProfit)).toLocaleString('en-IN')}</td>
       <td class="num ${profitCls}">${profitChangeLabel}</td>
+      <td class="num">${baselineMarginPct.toFixed(2)}%</td>
+      <td class="num">${simulatedMarginPct.toFixed(2)}%</td>
+      <td class="num ${marginDeltaCls}">${marginDeltaLabel}</td>
     </tr>`;
   }).join('');
   lastVisibleComputed = visibleComputed;
@@ -1655,13 +1734,18 @@ function renderKpiTiles(computed){
   const elRevBadge = document.getElementById('kpiRevenueDeltaBadge');
   const elRevCard = document.getElementById('kpiRevenueCard');
 
-  // Card 3 is the combined Total Profit tile — main value is Simulated Profit ₹, and the sub-header flex
-  // row underneath carries the Simulated Margin %, its Δ-points badge, and the Baseline Profit ₹ chip.
+  // Card 3 (Total Profit ₹) and Card 4 (Profit Margin %) are now two distinct tiles — split from the
+  // former combined card per manager request. Card 3 carries Simulated/Baseline Profit ₹ plus an
+  // Absolute Profit Growth % badge; Card 4 carries Simulated/Baseline Margin % plus the Margin Δ-points badge.
   const elProfitSimulated = document.getElementById('kpiProfitSimulatedValue');
   const elProfitBaseline = document.getElementById('kpiProfitBaselineValue');
-  const elMarginSimulated = document.getElementById('kpiMarginSimulatedValue');
-  const elMarginBadge = document.getElementById('kpiMarginDeltaBadge');
+  const elProfitBadge = document.getElementById('kpiProfitDeltaBadge');
   const elProfitCard = document.getElementById('kpiProfitCard');
+
+  const elMarginSimulated = document.getElementById('kpiMarginSimulatedValue');
+  const elMarginBaseline = document.getElementById('kpiMarginBaselineValue');
+  const elMarginBadge = document.getElementById('kpiMarginDeltaBadge');
+  const elMarginCard = document.getElementById('kpiMarginCard');
 
   if(!elQtySimulated || !elRevSimulated || !elProfitSimulated || !elMarginSimulated) return;
 
@@ -1685,15 +1769,15 @@ function renderKpiTiles(computed){
 
   const qtyDeltaPct = totalQtyBaseline ? ((totalQtySimulated - totalQtyBaseline) / totalQtyBaseline) * 100 : 0;
   const revDeltaPct = totalRevBaseline ? ((totalRevSimulated - totalRevBaseline) / totalRevBaseline) * 100 : 0;
-  // MANAGER REQUEST (follow-up correction): the absolute profit growth % (profitDeltaPct, e.g. "+7.71%")
-  // that used to be shown on the combined Total Profit card has been removed entirely — per-row profit
-  // Δ% is still computed independently inside renderTop5SkuChart() for the Top 5 SKUs section, which is
-  // untouched by this change. This card is now driven strictly by the Margin point-delta formula:
+  // MANAGER REQUEST: Card 3 (Total Profit) now shows the Absolute Profit Growth % badge again — restored
+  // now that Card 3 and Card 4 are split back into two dedicated tiles, so this no longer competes for
+  // space with the Margin %/Δpts numbers, which live entirely on Card 4 below.
+  const profitDeltaPct = totalProfitBaseline ? ((totalProfitSimulated - totalProfitBaseline) / totalProfitBaseline) * 100 : 0;
+  // Card 4 (Profit Margin) delta — in percentage POINTS, not percent-of-percent:
   //   Margin_Delta_Pts = ((Simulated_Profit / Simulated_Revenue) * 100) - ((Baseline_Profit / Baseline_Revenue) * 100)
   // i.e. marginSimulatedPct - marginBaselinePct, both already computed above from the same totals feeding
-  // every other number on this card — this is now the single source of truth for the card's displayed
-  // delta AND its red/negative visual-state trigger (previously the negative-state trigger fell back to
-  // profitDeltaPct with marginDeltaPts only used as a fallback; now it's the other way around, exclusively).
+  // every other number on this card — single source of truth for the card's displayed delta AND its
+  // red/negative visual-state trigger.
   const marginDeltaPts = marginSimulatedPct - marginBaselinePct; // absolute variance, in percentage points
 
   // ---- Card 1: Total Qty Sold ----
@@ -1714,21 +1798,25 @@ function renderKpiTiles(computed){
   }
   if(elRevCard) elRevCard.classList.toggle('kpi-tile-profit-negative', revDeltaPct < 0);
 
-  // ---- Card 3 (Combined): Total Profit ₹ (main value) + Margin % / Δpts / Baseline Profit ₹ (sub-header) ----
+  // ---- Card 3: Total Profit (₹) — Simulated / Baseline / Absolute Profit Growth % badge ----
   elProfitSimulated.textContent = '₹' + (totalProfitSimulated<0?'-':'') + Math.abs(Math.round(totalProfitSimulated)).toLocaleString('en-IN');
-  // MANAGER REQUEST (follow-up correction): Baseline Profit chip now shows ONLY the ₹ amount — no
-  // percentage-change suffix appended. The point-change badge (marginDeltaPts, formatted "+2.01 pts") is
-  // the sole delta indicator on this card, and is positioned immediately next to this chip in the HTML.
   elProfitBaseline.textContent = '₹' + (totalProfitBaseline<0?'-':'') + Math.abs(Math.round(totalProfitBaseline)).toLocaleString('en-IN');
+  if(elProfitBadge){
+    elProfitBadge.textContent = (profitDeltaPct>=0?'+':'') + profitDeltaPct.toFixed(2) + '%';
+    elProfitBadge.className = 'kpi-badge ' + (profitDeltaPct>=0 ? 'kpi-up' : 'kpi-down');
+  }
+  if(elProfitCard) elProfitCard.classList.toggle('kpi-tile-profit-negative', profitDeltaPct < 0);
+
+  // ---- Card 4: Profit Margin (%) — Simulated / Baseline / Margin Δ-points badge ----
   elMarginSimulated.textContent = marginSimulatedPct.toFixed(2) + '%';
+  if(elMarginBaseline) elMarginBaseline.textContent = marginBaselinePct.toFixed(2) + '%';
   if(elMarginBadge){
     elMarginBadge.textContent = (marginDeltaPts>=0?'+':'') + marginDeltaPts.toFixed(2) + ' pts';
     elMarginBadge.className = 'kpi-badge ' + (marginDeltaPts>=0 ? 'kpi-up' : 'kpi-down');
   }
-  // Negative-state coloring for the merged card now follows the Margin point-delta exclusively — the same
-  // formula that drives the visible badge, so the card's red/negative state and the number on it can never
-  // disagree with each other.
-  if(elProfitCard) elProfitCard.classList.toggle('kpi-tile-profit-negative', marginDeltaPts < 0);
+  // Negative-state coloring for Card 4 follows the Margin point-delta exclusively — the same formula that
+  // drives its visible badge, so the card's red/negative state and the number on it can never disagree.
+  if(elMarginCard) elMarginCard.classList.toggle('kpi-tile-margin-negative', marginDeltaPts < 0);
 }
 
 // ---------- EDA PANEL RENDERER ----------
@@ -1784,6 +1872,16 @@ function renderProfitabilityCurveChart(){
 
   const baselineProfitPct  = totalBaselineRevenue > 0 ? (totalBaselineProfit / totalBaselineRevenue) * 100 : 0;
   const simulatedProfitPct = totalSimRevenue      > 0 ? (totalSimProfit      / totalSimRevenue)      * 100 : 0;
+
+  // MANAGER REQUEST: "Portfolio Profit %" comparison panel now carries the same style of variance badge
+  // as the Units/Revenue panels beside it — Δ expressed in percentage POINTS (margin-point difference),
+  // exactly mirroring the Margin Δ-pts badge on the Card 4 KPI hero tile above.
+  const profitDeltaPts = simulatedProfitPct - baselineProfitPct;
+  const profitDeltaBadge = document.getElementById('compareProfitDeltaBadge');
+  if(profitDeltaBadge){
+    profitDeltaBadge.textContent = (profitDeltaPts>=0?'+':'') + profitDeltaPts.toFixed(2) + ' pts';
+    profitDeltaBadge.className = 'kpi-badge ' + (profitDeltaPts>=0 ? 'kpi-up' : 'kpi-down');
+  }
 
   const textStyle = { color:'#555555', font:{ size:11, weight:'700', family:'Inter, "Helvetica Neue", sans-serif' } };
 
