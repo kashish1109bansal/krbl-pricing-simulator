@@ -453,7 +453,7 @@
           { type: 'line', label: 'Competitor Ranking', data: rows.map(r => r.Comp_Ranking), borderColor: '#2E6F9E', backgroundColor: '#2E6F9E', yAxisID: 'y1', tension: 0.25 }
         ]
       },
-      options: dualAxisOptions('Qty Sold', 'Ranking (1 = Best)', true)
+      options: dualAxisOptions('Qty Sold', 'Ranking (1 = Best)', false)
     });
   }
 
