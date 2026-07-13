@@ -614,10 +614,10 @@
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
             <h3 class="section-title" style="margin:0;">Saved Scenarios</h3>
             <div>
-              <!-- No backend: Import reads a .json file (previously downloaded via Save Scenario) straight
-                   off the user's own machine via the File API — nothing is sent anywhere. -->
-              <input type="file" id="importScenarioInput" accept="application/json,.json" style="display:none" onchange="importScenario(event)">
-              <button type="button" class="btn btn-outline" onclick="document.getElementById('importScenarioInput').click()">&#128194; Import Scenario</button>
+              <!-- Replaces the old "Import Scenario" slot: resets every editable lever (PTC, Store
+                   Availability, Product Ranking) back to baseline, then jumps straight into the Pricing
+                   Simulator so the user can start a fresh simulation from here. -->
+              <button type="button" class="btn btn-outline" onclick="resetAll(); goToStep('simulator');">&#10227; New Scenario</button>
             </div>
           </div>
           <div id="libraryContent"></div>
@@ -645,7 +645,7 @@
               </div>
             </div>
             <div class="toolbar-actions">
-              <button class="btn btn-outline" onclick="resetAll()">&#10227; Reset to Base</button>
+              <button class="btn btn-outline" onclick="resetAll()">&#10227; New Scenario</button>
             </div>
           </div>
 
@@ -1191,8 +1191,7 @@ function handleLogin(evt){
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('appShell').classList.add('visible');
     // No backend to re-hydrate from anymore — the Scenario Library is populated purely by Save
-    // (downloads + keeps a card for this session) and Import Scenario (reads a previously
-    // downloaded .json file back in). Nothing to fetch on login.
+    // Scenario (downloads + keeps a card for this session). Nothing to fetch on login.
     renderLibrary();
   } else {
     errorBox.style.display = 'block';
@@ -1276,16 +1275,36 @@ const vtmMatrix = {
 // ---------- STATE ----------
 let selectedMonth = DEFAULT_MONTH;
 let priceRows = [];
-// ---------- SCENARIO LIBRARY — LOCAL JSON FILE IMPORT/EXPORT (no backend, no fetch, no localStorage) ----------
+// ---------- SCENARIO LIBRARY — BROWSER-LOCAL PERSISTENCE (no backend, no fetch, no file download) ----------
 // The Flask backend (app.py) has been removed entirely per explicit request — this is now a 100% static
-// frontend. "Save Scenario" downloads the scenario straight to the user's machine as a standalone .json
-// file (Blob + object URL, no server round-trip); "Import Scenario" reads a previously downloaded .json
-// file back in via the File API and re-hydrates both a Scenario Library card and the Pricing Simulator's
-// live inputs from it. savedScenarios is therefore a SESSION-ONLY cache of what's shown as cards in this
-// tab — it intentionally does not survive a refresh on its own, because the .json file on disk (something
-// the user can keep, back up, email, or hand to a teammate) is the actual persistence layer now, not the
-// browser. Re-importing a previously saved file brings it straight back.
-let savedScenarios = [];
+// frontend. "Save Scenario" no longer triggers any file download — it writes straight into this browser's
+// localStorage, so scenarios survive a refresh/tab close/browser restart on THIS SAME computer/browser.
+// IMPORTANT LIMITATION: localStorage is local to one browser on one device — it is NOT a shared/remote
+// store, so scenarios saved here are only visible on this machine, not to teammates on other computers.
+// True cross-device/cross-user sharing would require a real hosted backend + database (out of scope here
+// per explicit request to keep this a static, no-backend page).
+const SCENARIO_STORAGE_KEY = 'krbl_saved_scenarios_v1';
+
+function loadScenariosFromStorage(){
+  try{
+    const raw = localStorage.getItem(SCENARIO_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(e){
+    console.error('Could not read saved scenarios from local storage:', e);
+    return [];
+  }
+}
+
+function persistScenariosToStorage(){
+  try{
+    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(savedScenarios));
+  }catch(e){
+    console.error('Could not persist scenarios to local storage:', e);
+  }
+}
+
+let savedScenarios = loadScenariosFromStorage();
 
 function makeScenarioId(){
   return `${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
@@ -1655,6 +1674,7 @@ function resetAll(){
   initPriceRows(selectedMonth);
   renderInputsTable();
   if(typeof refreshRankingChartTitle === 'function') refreshRankingChartTitle();
+  if(document.getElementById('panel-output').classList.contains('active')) renderOutputTable();
 }
 
 // ---------- NULL-STATE DISPLAY OVERRIDE (rendering-layer only — never touches computeAll()/the locked
@@ -2683,31 +2703,22 @@ function saveScenario(event){
 
   const confirm = document.getElementById('saveConfirm');
   try{
-    // Trigger a plain browser download of this scenario as a standalone .json file — no server involved.
-    const blob = new Blob([JSON.stringify(scenario, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const safeName = name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'scenario';
-    link.download = `KRBL_Scenario_${safeName}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-
-    // Also keep it visible as a card in THIS session's Scenario Library, so it can be Loaded/Deleted
-    // right away without needing to re-import the file that was just downloaded.
+    // No file download here — saving only writes into this browser's local storage, so the
+    // scenario shows up as a card in the Scenario Library and survives a refresh/tab close/
+    // browser restart on this same computer/browser (see the persistence block near the top
+    // of this script for the localStorage read/write helpers and their limitations).
     savedScenarios.push(scenario);
+    persistScenariosToStorage();
     renderLibrary();
     nameInput.value = '';
     if(confirm){
-      confirm.textContent = 'Saved ✓ — downloaded as .json';
+      confirm.textContent = 'Saved ✓';
       confirm.style.color = '';
       confirm.style.display = 'inline';
       setTimeout(()=>{ confirm.style.display='none'; }, 2500);
     }
   }catch(e){
-    console.error('Could not save scenario file:', e);
+    console.error('Could not save scenario:', e);
     if(confirm){
       confirm.textContent = 'Save failed — please retry';
       confirm.style.color = '#c0392b';
@@ -2725,54 +2736,9 @@ function loadScenario(id){
   goToStep('simulator');
 }
 
-// "Import Scenario" — reads a .json file the user picks (typically one previously downloaded via Save
-// Scenario above) via the browser's File API, parses it, adds it to the in-session Scenario Library, and
-// immediately loads its values into the Pricing Simulator. Purely client-side: no fetch, no server.
-function importScenario(event){
-  const input = event.target;
-  const file = input.files && input.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try{
-      const parsed = JSON.parse(reader.result);
-      // Accept either a single exported scenario object or an array of them, so a hand-merged file
-      // bundling multiple exports together still imports correctly.
-      const candidates = Array.isArray(parsed) ? parsed : [parsed];
-      const imported = [];
-      candidates.forEach(s => {
-        if(!s || !Array.isArray(s.priceRowsSnapshot)) return; // not a real scenario export — skip it
-        const scenario = { ...s, id: s.id || makeScenarioId() };
-        savedScenarios.push(scenario);
-        imported.push(scenario);
-      });
-      if(imported.length === 0){
-        alert('That file does not look like a KRBL scenario export (missing priceRowsSnapshot).');
-        return;
-      }
-      renderLibrary();
-      // Load the last imported scenario's values straight into the Pricing Simulator.
-      const last = imported[imported.length-1];
-      selectedMonth = last.month;
-      priceRows = last.priceRowsSnapshot.map(r => ({...r}));
-      goToStep('simulator');
-    }catch(e){
-      console.error('Could not parse imported scenario file:', e);
-      alert('Could not read that file — make sure it is a .json scenario exported from this dashboard.');
-    }finally{
-      input.value = ''; // reset so re-importing the same filename later still fires the change event
-    }
-  };
-  reader.onerror = () => {
-    console.error('Could not read imported file:', reader.error);
-    alert('Could not read that file.');
-    input.value = '';
-  };
-  reader.readAsText(file);
-}
-
 function deleteScenario(id){
   savedScenarios = savedScenarios.filter(s => s.id !== id);
+  persistScenariosToStorage();
   renderLibrary();
 }
 
@@ -2795,7 +2761,7 @@ function renderLibrary(){
       <div class="scenario-meta">
         <h4>${s.name}</h4>
         <div class="sub">${s.month} &middot; saved ${s.timestamp}</div>
-        <div class="scenario-periods"><b>Baseline Period:</b> ${s.month} | <b>Simulation Period:</b> Next 30 Days</div>
+        <div class="scenario-periods"><b>Baseline Period:</b> ${s.month}</div>
       </div>
       <div class="scenario-stats">
         <div><div class="v">${Math.round(s.unitsSim).toLocaleString('en-IN')}</div><div class="l">Total Volume (Monthly)</div></div>
