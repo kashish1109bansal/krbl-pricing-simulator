@@ -1029,126 +1029,185 @@
     ranking:  [3.86,  3.86,  3.86, 0.00],
   };
 
-  function renderScenarioImpactChart(){
-    // MANAGER REQUEST: 4th bar added — "Margin" — to stay in sync with the 4 main KPI hero tiles
-    // (Qty, Revenue, Profit, Margin). Margin is a points-delta, not a %, but is plotted on the same
-    // axis alongside the 3 %-change bars per the finalized design (all 4 read as 0.00 for these
-    // baseline single-lever scenarios, since margin holds constant — see data arrays below).
-    const labels = ['Revenue', 'Units', 'Profit', 'Margin'];
-    const fmtPct = v => (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+  // MANAGER REQUEST: 4th bar added — "Margin" — to stay in sync with the 4 main KPI hero tiles
+  // (Qty, Revenue, Profit, Margin). Margin is a points-delta, not a %, but is plotted on the same
+  // axis alongside the 3 %-change bars per the finalized design.
+  //
+  // NOTE: these were promoted from renderScenarioImpactChart()'s local scope to module scope
+  // (HOD follow-up #2) so that renderRankingChart() can call buildScenarioChart() independently —
+  // on every ranking-input keystroke via window.refreshRankingChartTitle() — without re-running a
+  // full renderScenarioImpactChart() pass (which would also touch the untouched, static ptcChart
+  // and storeChart for no reason).
+  const SCENARIO_CHART_LABELS = ['Revenue', 'Units', 'Profit', 'Margin'];
+  const scenarioFmtPct = v => (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+  const SCENARIO_BAR_COLOR = '#2563eb';
+  function darkenHex(hex, amt){
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.max(0, (n >> 16) - amt), g = Math.max(0, ((n >> 8) & 0xff) - amt), b = Math.max(0, (n & 0xff) - amt);
+    return `rgb(${r},${g},${b})`;
+  }
+  const SCENARIO_BAR_BORDER_COLOR = darkenHex(SCENARIO_BAR_COLOR, 40);
 
-    // Same per-chart (local) datalabels pattern used elsewhere in this file (e.g. renderEdaanChart13):
-    // chartjs-plugin-datalabels is loaded via CDN but never globally registered, so every render checks
-    // availability and degrades to no datalabels (tooltip still works) if the CDN script hasn't loaded.
+  function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight){
+    const words = text.split(' ');
+    let line = '', lines = [];
+    words.forEach(w => {
+      const test = line ? line + ' ' + w : w;
+      if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = w; }
+      else line = test;
+    });
+    if(line) lines.push(line);
+    const startY = y - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+  }
+
+  // Draws a centered "⚠ <reason>" overlay instead of misleading bars whenever every value in the
+  // dataset is null (Requirement 3, "Visual Integrity" — invalid/unmodelable rank transitions must
+  // never render as if they were real data). Only ever activated on rankingChart in practice, but
+  // is a generic, self-contained Chart.js plugin so it's harmless if reused elsewhere.
+  const fallbackMessagePlugin = {
+    id: 'fallbackMessage',
+    afterDraw(chart){
+      const data = chart.data.datasets[0].data;
+      const allNull = data.every(v => v === null || v === undefined);
+      if(!allNull) return;
+      const { ctx, chartArea: { left, right, top, bottom } } = chart;
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillRect(left, top, right - left, bottom - top);
+      ctx.fillStyle = '#8A1F2D';
+      ctx.font = "600 13px Inter, sans-serif";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const msg = chart.$fallbackMessage || 'Unable to calculate this rank transition.';
+      wrapCanvasText(ctx, `⚠ ${msg}`, (left + right) / 2, (top + bottom) / 2, (right - left) - 24, 18);
+      ctx.restore();
+    }
+  };
+
+  // Reusable factory so all 3 mini charts share identical styling and only differ by canvas id,
+  // title, and data. `fallbackMessage` is optional — when passed alongside all-null `data`, the
+  // fallbackMessagePlugin overlay renders instead of bars.
+  function buildScenarioChart(canvasId, title, data, fallbackMessage){
     const hasDatalabels = typeof ChartDataLabels !== 'undefined';
-
-    // MANAGER REQUEST — single solid color for all bars across all 3 charts (no per-metric coloring).
-    const barColor = '#2563eb';
-    const darken = (hex, amt) => {
-      const n = parseInt(hex.slice(1), 16);
-      const r = Math.max(0, (n >> 16) - amt), g = Math.max(0, ((n >> 8) & 0xff) - amt), b = Math.max(0, (n & 0xff) - amt);
-      return `rgb(${r},${g},${b})`;
-    };
-    const barBorderColor = darken(barColor, 40);
-
-    // Reusable factory so all 3 mini charts share identical styling and only differ by canvas id,
-    // title, and data.
-    function buildScenarioChart(canvasId, title, data){
-      const chartConfig = {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            label: title,
-            data,
-            backgroundColor: barColor,
-            borderColor: barBorderColor,
-            borderWidth: 1,
-            borderRadius: 5,
-            categoryPercentage: 0.75,
-            barPercentage: 0.85,
-            maxBarThickness: 56
-          }]
+    const chartConfig = {
+      type: 'bar',
+      data: {
+        labels: SCENARIO_CHART_LABELS,
+        datasets: [{
+          label: title,
+          data,
+          backgroundColor: SCENARIO_BAR_COLOR,
+          borderColor: SCENARIO_BAR_BORDER_COLOR,
+          borderWidth: 1,
+          borderRadius: 5,
+          categoryPercentage: 0.75,
+          barPercentage: 0.85,
+          maxBarThickness: 56
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        // MANAGER REQUEST (clipping fix, strict re-apply) — heavy padding on all 4 sides so labels
+        // at the extreme top/bottom (or near the left/right canvas edges) never get cut off.
+        layout: {
+          padding: { top: 30, bottom: 30, left: 15, right: 15 }
         },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          // MANAGER REQUEST (clipping fix, strict re-apply) — heavy padding on all 4 sides so labels
-          // at the extreme top/bottom (or near the left/right canvas edges) never get cut off.
-          layout: {
-            padding: { top: 30, bottom: 30, left: 15, right: 15 }
+        plugins: {
+          title: {
+            display: true,
+            text: title,
+            font: { size: 12.5, weight: '700', family: 'Inter, sans-serif' },
+            color: '#2A1B1E',
+            padding: { bottom: 12 }
           },
-          plugins: {
-            title: {
-              display: true,
-              text: title,
-              font: { size: 12.5, weight: '700', family: 'Inter, sans-serif' },
-              color: '#2A1B1E',
-              padding: { bottom: 12 }
-            },
-            // MANAGER REQUEST (final decision) — on-bar data labels removed entirely; exact percentages
-            // are now surfaced only via the Y-axis ticks and the hover tooltip below. The 4th bar
-            // (Margin) is a points-delta rather than a %, so its tooltip suffix is "pts" to match the
-            // "pts" convention used everywhere else Margin Δ is shown (e.g. the top KPI hero tile).
-            tooltip: {
-              enabled: true,
-              callbacks: {
-                label(ctx){
-                  const isMargin = labels[ctx.dataIndex] === 'Margin';
-                  const v = Number(ctx.parsed.y);
-                  return isMargin
-                    ? `  ${(v>=0?'+':'')}${v.toFixed(2)} pts`
-                    : `  ${fmtPct(v)}`;
-                }
+          // MANAGER REQUEST (final decision) — on-bar data labels removed entirely; exact percentages
+          // are now surfaced only via the Y-axis ticks and the hover tooltip below. The 4th bar
+          // (Margin) is a points-delta rather than a %, so its tooltip suffix is "pts" to match the
+          // "pts" convention used everywhere else Margin Δ is shown (e.g. the top KPI hero tile).
+          tooltip: {
+            enabled: true,
+            callbacks: {
+              label(ctx){
+                const isMargin = SCENARIO_CHART_LABELS[ctx.dataIndex] === 'Margin';
+                const v = Number(ctx.parsed.y);
+                return isMargin
+                  ? `  ${(v>=0?'+':'')}${v.toFixed(2)} pts`
+                  : `  ${scenarioFmtPct(v)}`;
               }
-            },
-            // Explicitly disabled (rather than omitted) so this stays self-documenting and survives
-            // even if chartjs-plugin-datalabels is later re-registered globally elsewhere in the app.
-            datalabels: {
-              display: false
-            },
-            legend: { display: false }
+            }
           },
-          scales: {
-            x: {
-              ticks: { font: { size: 11 }, padding: 10 } // Push the x-axis text down so negative labels don't overlap it
-            },
-            y: {
-              type: 'linear',
-              // MANAGER REQUEST (final fix) — explicit Y-axis breathing room. Bars were hitting the
-              // absolute top/bottom of the chart area (grace alone wasn't reliably enough headroom
-              // once combined with per-bar top/bottom alignment), which pushed datalabels out of the
-              // chart area and triggered chartjs-plugin-datalabels' own auto-hide-on-overflow behavior
-              // — this is why chart 3's labels vanished entirely and chart 1's negative label got
-              // shoved down into the x-axis tick text. Hardcoded bounds guarantee the same fixed
-              // amount of space above/below the bars on all 3 charts regardless of their data range.
-              suggestedMin: -4,
-              suggestedMax: 3,
-              ticks: { callback: v => fmtPct(v) },
-              grid: {
-                // MANAGER REQUEST — prominent zero-baseline: the y=0 gridline (the x-axis bars
-                // actually sit on) is rendered much thicker and darker than every other gridline.
-                color: (ctx) => ctx.tick.value === 0 ? '#4b5563' : 'rgba(0,0,0,0.06)',
-                lineWidth: (ctx) => ctx.tick.value === 0 ? 2 : 1,
-                z: 1
-              }
+          // Explicitly disabled (rather than omitted) so this stays self-documenting and survives
+          // even if chartjs-plugin-datalabels is later re-registered globally elsewhere in the app.
+          datalabels: {
+            display: false
+          },
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            ticks: { font: { size: 11 }, padding: 10 } // Push the x-axis text down so negative labels don't overlap it
+          },
+          y: {
+            type: 'linear',
+            // MANAGER REQUEST (final fix) — explicit Y-axis breathing room. Bars were hitting the
+            // absolute top/bottom of the chart area (grace alone wasn't reliably enough headroom
+            // once combined with per-bar top/bottom alignment), which pushed datalabels out of the
+            // chart area and triggered chartjs-plugin-datalabels' own auto-hide-on-overflow behavior
+            // — this is why chart 3's labels vanished entirely and chart 1's negative label got
+            // shoved down into the x-axis tick text. Hardcoded bounds guarantee the same fixed
+            // amount of space above/below the bars on all 3 charts regardless of their data range.
+            suggestedMin: -4,
+            suggestedMax: 3,
+            ticks: { callback: v => scenarioFmtPct(v) },
+            grid: {
+              // MANAGER REQUEST — prominent zero-baseline: the y=0 gridline (the x-axis bars
+              // actually sit on) is rendered much thicker and darker than every other gridline.
+              color: (ctx) => ctx.tick.value === 0 ? '#4b5563' : 'rgba(0,0,0,0.06)',
+              lineWidth: (ctx) => ctx.tick.value === 0 ? 2 : 1,
+              z: 1
             }
           }
         }
-      };
-      // Per-chart (local) datalabels registration — must be attached to chartConfig BEFORE it's
-      // handed to makeChart(), since Chart.js only reads a config's local `plugins` array at
-      // `new Chart()` construction time.
-      if(hasDatalabels) chartConfig.plugins = [ChartDataLabels];
-      makeChart(canvasId, chartConfig);
-    }
+      }
+    };
+    // Per-chart (local) plugin registration — must be attached to chartConfig BEFORE it's handed
+    // to makeChart(), since Chart.js only reads a config's local `plugins` array at `new Chart()`
+    // construction time.
+    const localPlugins = [];
+    if(hasDatalabels) localPlugins.push(ChartDataLabels);
+    if(fallbackMessage !== undefined) localPlugins.push(fallbackMessagePlugin);
+    if(localPlugins.length) chartConfig.plugins = localPlugins;
+    const chart = makeChart(canvasId, chartConfig);
+    if(chart) chart.$fallbackMessage = fallbackMessage;
+  }
 
+  function renderScenarioImpactChart(){
     // STATIC (manager request, latest follow-up): titles restored to fixed, explicit magnitudes
-    // ("+5% PTC" / "+5% Store Availability" / "Ranking +1 Position") since these no longer track
-    // whatever is live in the simulator — they always describe the same 3 fixed scenarios below.
+    // ("+5% PTC" / "+5% Store Availability") since these no longer track whatever is live in the
+    // simulator — they always describe the same fixed scenario below.
     buildScenarioChart('ptcChart',     'Impact of +5% PTC Change (IG Everyday 5)',              STATIC_SCENARIO_DATA.ptc);
     buildScenarioChart('storeChart',   'Impact of +5% Store Availability (IG Everyday 5)',       STATIC_SCENARIO_DATA.storeAva);
-    buildScenarioChart('rankingChart', 'Impact of Ranking +1 Position (IG Everyday 5)',           STATIC_SCENARIO_DATA.ranking);
+    // STAKEHOLDER REQUEST (reverts HOD follow-up #2 — dynamic ranking engine removed): rankingChart
+    // is back to a single frozen illustrative scenario, Rank 8 -> Rank 7 for IG Everyday 5. Title and
+    // bar values are both hardcoded below and do NOT track the live Step 2 Product Ranking input.
+    // STATIC_SCENARIO_DATA.ranking was originally derived for exactly this 8->7 transition (verified:
+    // (7/8)^-0.283782 against May 2026 baseline reproduces [3.86, 3.86, 3.86, 0.00] to 2dp), so the
+    // existing constant is reused as-is rather than duplicated.
+    buildScenarioChart('rankingChart', 'Impact of Ranking Change: Rank 8 → Rank 7 (IG Everyday 5)', STATIC_SCENARIO_DATA.ranking);
   }
+
+  // Called from index.html's onRankingChange() on every keystroke in the "Simulated Product Ranking"
+  // input for IG Everyday 5, and from resetAll(). Kept as a no-op-safe stub (rather than deleted) so
+  // those existing call sites in index.html need zero changes. STAKEHOLDER REQUEST: no dynamic
+  // recalculation happens here anymore — rankingChart is intentionally static (see
+  // renderScenarioImpactChart above) and does not respond to this input.
+  window.refreshRankingChartTitle = function(){
+    // Intentionally does nothing — rankingChart's title and bars are fixed at "Rank 8 -> Rank 7"
+    // regardless of the live simulator state. Left as an explicit no-op (not deleted) so it's
+    // self-documenting for the next person who wonders why typing in the ranking input has no
+    // visible effect on this chart.
+  };
 
   // ---------- expose a resize hook so the existing sidebar-toggle resize sweep also catches these charts ----------
   window.edaanResizeAll = function(){

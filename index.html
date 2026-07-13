@@ -504,6 +504,38 @@
      Tabs were removed per stakeholder request — Simulation Table and EDA content now render
      simultaneously, stacked vertically. These sections are always visible (no display:none). */
   .output-sub-panel{ display:block; overflow:visible !important; margin-top:14px; }
+
+  /* ================= METHODOLOGY & GLOSSARY (Price Simulator page) =================
+     HOD-requested reference section explaining how Baseline Revenue/Profit and the simulated
+     price-change impact are actually calculated, plus a glossary of the input levers/terms.
+     Collapsed by default so it doesn't compete with the primary input workflow above it. */
+  .methodology-card{ padding:0; overflow:hidden; }
+  .methodology-header{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:16px 20px; cursor:pointer; user-select:none; }
+  .methodology-header:hover{ background: var(--maroon-tint); }
+  .methodology-header h3{ margin:0; font-size:13.5px; color:var(--maroon-dark); display:flex; align-items:center; gap:8px; }
+  .methodology-caret{ font-size:12px; color:var(--muted); transition: transform .2s ease; }
+  .methodology-card.open .methodology-caret{ transform: rotate(180deg); }
+  .methodology-body{ display:none; padding:4px 22px 22px; border-top:1px solid var(--border); }
+  .methodology-card.open .methodology-body{ display:block; }
+  .methodology-section{ margin-top:18px; }
+  .methodology-section:first-child{ margin-top:18px; }
+  .methodology-section h4{ margin:0 0 8px; font-size:12px; font-weight:800; color:var(--maroon-dark); text-transform:uppercase; letter-spacing:0.04em; }
+  .formula-block{ background:#fff; border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:8px; padding:11px 14px; margin-bottom:8px; font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace; font-size:12.5px; color:#2b2b33; line-height:1.6; overflow-x:auto; }
+  .formula-block .fname{ color:var(--maroon-dark); font-weight:700; }
+  .formula-note{ font-size:11.5px; color:var(--muted); margin:0 0 14px; line-height:1.55; }
+  .glossary-grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap:10px 22px; }
+  @media (max-width: 900px){ .glossary-grid{ grid-template-columns: 1fr; } }
+  .glossary-term{ padding:9px 0; border-bottom:1px dashed var(--border); }
+  .glossary-term dt{ font-size:12px; font-weight:800; color:var(--maroon-dark); margin-bottom:2px; }
+  .glossary-term dd{ margin:0; font-size:11.5px; color:#5a5158; line-height:1.5; }
+  /* STAKEHOLDER REQUEST: replaces the old formula-block equations with a plain-language
+     "Data Sources & Availability" reference table. */
+  .datasrc-table-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:8px; margin-bottom:14px; }
+  table.datasrc-table{ width:100%; border-collapse:collapse; font-size:11.5px; }
+  table.datasrc-table th{ text-align:left; background: var(--maroon-tint); color:var(--maroon-dark); font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; padding:9px 14px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  table.datasrc-table td{ padding:9px 14px; border-bottom:1px dashed var(--border); color:#3a333a; vertical-align:top; }
+  table.datasrc-table tr:last-child td{ border-bottom:none; }
+  table.datasrc-table td.dm-cell{ font-weight:700; color:#2b2b33; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
@@ -636,6 +668,99 @@
             <button class="btn btn-gold btn-lg" onclick="runSimulation()">Run Simulation &amp; View Outputs &#10148;</button>
           </div>
 
+        </div>
+
+        <!-- METHODOLOGY & GLOSSARY -->
+        <div class="glass-card methodology-card" id="methodologyCard">
+          <div class="methodology-header" onclick="toggleMethodologySection()">
+            <h3>&#128209; Methodology &amp; Glossary</h3>
+            <span class="methodology-caret">&#9660;</span>
+          </div>
+          <div class="methodology-body">
+
+            <div class="methodology-section">
+              <h4>Data Sources &amp; Availability</h4>
+              <p class="formula-note">Reference for what data powers this dashboard, at what granularity, and over what period — in place of the underlying math (available on request from the Analytics team).</p>
+              <div class="datasrc-table-wrap">
+                <table class="datasrc-table">
+                  <thead>
+                    <tr>
+                      <th>Data Metric</th>
+                      <th>Granularity</th>
+                      <th>Time Horizon</th>
+                      <th>Refresh Frequency</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="dm-cell">PTC (Price to Consumer)</td>
+                      <td>SKU-level, Monthly</td>
+                      <td>Dec 2025 &ndash; May 2026 (6 months historical)</td>
+                      <td>Monthly (Manual Upload)</td>
+                    </tr>
+                    <tr>
+                      <td class="dm-cell">Monthly Sales Volume</td>
+                      <td>SKU-level, Monthly</td>
+                      <td>Dec 2025 &ndash; May 2026 (6 months historical)</td>
+                      <td>Monthly (Manual Upload)</td>
+                    </tr>
+                    <tr>
+                      <td class="dm-cell">Store Availability</td>
+                      <td>SKU-level, Monthly</td>
+                      <td>Dec 2025 &ndash; May 2026 (6 months historical)</td>
+                      <td>Monthly (Manual Upload)</td>
+                    </tr>
+                    <tr>
+                      <td class="dm-cell">Product Ranking</td>
+                      <td>SKU-level, Monthly</td>
+                      <td>Dec 2025 &ndash; May 2026 (6 months historical)</td>
+                      <td>Monthly (Manual Upload)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="formula-note">Time Horizon reflects the full historical range currently loaded into the dashboard's dataset; the Baseline Month selector above draws from a subset of this range. Data is refreshed monthly via manual file upload.</p>
+            </div>
+
+            <div class="methodology-section">
+              <h4>Glossary</h4>
+              <dl class="glossary-grid">
+                <div class="glossary-term">
+                  <dt>PTC</dt>
+                  <dd>Price to Consumer — the retail selling price of the SKU, inclusive of 12% GST.</dd>
+                </div>
+                <div class="glossary-term">
+                  <dt>Store Availability</dt>
+                  <dd>Store Count &times; On-Shelf Availability (OSA) — a combined distribution/visibility metric for the SKU.</dd>
+                </div>
+                <div class="glossary-term">
+                  <dt>Product Ranking</dt>
+                  <dd>The SKU's shelf/search ranking versus competitors, where Rank 1 is best. Lower numbers are better, so ranking charts are plotted on a reversed axis.</dd>
+                </div>
+                <div class="glossary-term">
+                  <dt>VTM (Volume Transfer Matrix)</dt>
+                  <dd>Cross-elasticity logic that adds incremental volume gained from — or subtracts volume lost to — substitute SKUs when a simulated price/ranking/availability change shifts demand between products.</dd>
+                </div>
+                <div class="glossary-term">
+                  <dt>PTC Elasticity (&minus;0.605473)</dt>
+                  <dd>Regression coefficient: the % change in volume for each 1% change in PTC, holding other levers constant. Negative, as expected (price up &rarr; volume down).</dd>
+                </div>
+                <div class="glossary-term">
+                  <dt>Store Availability Elasticity (0.165892)</dt>
+                  <dd>Regression coefficient: the % change in volume for each 1% change in Store Availability. Positive (more availability &rarr; more volume).</dd>
+                </div>
+                <div class="glossary-term">
+                  <dt>Ranking Elasticity (&minus;0.283782)</dt>
+                  <dd>Regression coefficient: the % change in volume for each 1% change in Ranking. Negative, because a lower (better) rank number drives higher volume.</dd>
+                </div>
+                <div class="glossary-term">
+                  <dt>Structural Unit Cost</dt>
+                  <dd>A fixed per-unit cost held constant across baseline and simulated scenarios, derived from a 37.5% assumed baseline margin on ex-GST PTC.</dd>
+                </div>
+              </dl>
+            </div>
+
+          </div>
         </div>
       </div>
 
@@ -847,7 +972,7 @@
           <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Name this scenario and push it to the Scenario Library so it can be revisited later.</p>
           <div class="save-row">
             <input type="text" id="scenarioNameInput" placeholder="e.g. May 2026 &mdash; 5% PTC cut + OSA recovery">
-            <button class="btn btn-primary" onclick="saveScenario()">&#128190; Save Scenario</button>
+            <button type="button" class="btn btn-primary" id="saveScenarioBtn" onclick="saveScenario(event)">&#128190; Save Scenario</button>
             <span class="save-confirm" id="saveConfirm">&#10003; Saved to Scenario Library</span>
           </div>
         </div>
@@ -1047,11 +1172,10 @@ function handleLogin(evt){
     errorBox.style.display = 'none';
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('appShell').classList.add('visible');
-    // Re-hydrate the Scenario Library from localStorage on every successful login — guarantees scenarios
-    // saved in a PRIOR session (before logout / before the tab was closed) are visible again immediately,
+    // Re-hydrate the Scenario Library from the backend on every successful login — guarantees scenarios
+    // saved in a PRIOR session (or by a teammate, on another device) are visible again immediately,
     // not just whatever happened to still be in memory.
-    loadScenariosFromStorage();
-    renderLibrary();
+    loadScenariosFromServer();
   } else {
     errorBox.style.display = 'block';
   }
@@ -1142,69 +1266,42 @@ let priceRows = [];
 // load (and again whenever the app returns to the login-gated state) the array is rehydrated from
 // localStorage so the Scenario Library always reflects what was actually saved, not just this page-load's
 // in-memory session.
-const SCENARIO_STORAGE_KEY = 'krbl_pricing_simulator_saved_scenarios_v1';
-// Robust persistence model: every saved scenario is an INDEPENDENT object keyed by a unique `id`
-// (timestamp + random suffix), never by its array index. This means:
-//   - save = append a new independent record with its own unique id (never overwrites siblings)
-//   - delete = remove the one record whose id matches (never positional/index-based, so it can't
-//     accidentally remove the wrong row if the in-memory list and the stored list are momentarily
-//     out of order relative to each other)
-//   - persist = read whatever is CURRENTLY in localStorage first and MERGE the in-memory array into
-//     it by id (union, not blind overwrite), so a stale read in one tab/session, a login/logout
-//     teardown, or an interrupted write can never silently wipe out scenarios that another save
-//     already committed to the real database key. The core database key itself is NEVER cleared by
-//     login/logout — only readScenarioDatabase()/writeScenarioDatabase() ever touch it, and both are
-//     additive/merge-safe by construction.
-function readScenarioDatabase(){
+// ---------- SCENARIO LIBRARY — PERMANENT (BACKEND) STORAGE ----------
+// HOD feedback: saved simulations must no longer live only in the browser cache. All persistence now
+// goes through the backend API below instead of localStorage, so a scenario survives a cleared cache,
+// a different browser, or a different machine entirely.
+// Points at the local Flask backend (app.py) — run `python app.py` alongside this file
+// (see the project README / run instructions). Change this if the backend ever moves to
+// a different host/port (e.g. a shared server instead of localhost).
+const SIMULATIONS_API_URL = 'http://localhost:5000/api/simulations';
+
+// GET /api/simulations — expected to return a JSON array of previously saved scenario records
+// (each with at minimum: id, name, month, timestamp, priceRowsSnapshot, unitsSim, unitsCur,
+// volDeltaPct, revenueSim, revenueCur, revDeltaPct). Called on page load and again on every login so
+// the library always reflects what's actually persisted server-side, not just this browser's memory.
+async function loadScenariosFromServer(){
   try{
-    const raw = localStorage.getItem(SCENARIO_STORAGE_KEY);
-    if(!raw) return [];
-    const parsed = JSON.parse(raw);
-    if(!Array.isArray(parsed)) return [];
-    // Backfill a unique id for any legacy record saved before the id-based model existed, so old
-    // scenarios from earlier sessions remain loadable/deletable instead of being silently dropped.
-    return parsed.map(s => (s && !s.id) ? { ...s, id: makeScenarioId() } : s);
+    const res = await fetch(SIMULATIONS_API_URL, { method: 'GET' });
+    if(!res.ok) throw new Error(`Server responded ${res.status}`);
+    const data = await res.json();
+    savedScenarios = Array.isArray(data) ? data : [];
   }catch(e){
-    // Corrupted/partial JSON should never nuke the database key — just treat this read as empty
-    // and let the merge-on-write logic below reconcile things on the next persist.
-    console.warn('Could not read saved scenarios from localStorage (treating as empty for this read only):', e);
-    return [];
+    // Backend unreachable / not yet deployed — fail soft with an empty library rather than breaking
+    // the rest of the app, and log it so it's obvious in devtools why the library looks empty.
+    console.warn('Could not load saved scenarios from the backend (/api/simulations):', e);
+    savedScenarios = [];
+  }finally{
+    renderLibrary();
   }
 }
-function persistScenariosToStorage(){
-  try{
-    // Merge-by-id: union of whatever is already on disk + whatever is currently in memory. This way
-    // a concurrent tab, a previous session, or a delayed write can never be clobbered by this write.
-    const onDisk = readScenarioDatabase();
-    const merged = new Map();
-    onDisk.forEach(s => { if(s && s.id) merged.set(s.id, s); });
-    savedScenarios.forEach(s => { if(s && s.id) merged.set(s.id, s); });
-    const mergedArr = Array.from(merged.values());
-    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(mergedArr));
-    // Keep the in-memory copy in sync with the full merged database so nothing the user already
-    // saved (in this tab or another) ever disappears from the visible library.
-    savedScenarios = mergedArr;
-  }catch(e){
-    // localStorage can throw in rare cases (quota exceeded, privacy mode) — fail silently rather than
-    // breaking the simulation flow; the in-memory copy still works for the rest of this session.
-    console.warn('Could not persist scenarios to localStorage:', e);
-  }
-}
-function loadScenariosFromStorage(){
-  // Hydration strictly PULLS the complete stored array — it never clears or truncates older rows.
-  // If in-memory already holds unsaved-but-pushed records (shouldn't normally happen since save()
-  // persists immediately), merge rather than discard so nothing is lost on re-hydration either.
-  const onDisk = readScenarioDatabase();
-  const merged = new Map();
-  onDisk.forEach(s => { if(s && s.id) merged.set(s.id, s); });
-  (savedScenarios || []).forEach(s => { if(s && s.id) merged.set(s.id, s); });
-  savedScenarios = Array.from(merged.values());
-}
+// Only used as a client-side fallback id for optimistic UI updates before the server's real id comes
+// back (e.g. rendering the just-saved card while the POST is still in flight). The backend is the
+// source of truth for ids going forward.
 function makeScenarioId(){
   return `${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
 }
-let savedScenarios = []; // rehydrated immediately below from localStorage — never starts truly empty if a database already exists
-loadScenariosFromStorage();
+let savedScenarios = []; // rehydrated immediately below from the backend — never starts truly empty if a saved library already exists there
+loadScenariosFromServer();
 // ADVANCED SELECTION FILTERS — SKU multi-select: controls which of the 6 approved SKUs are shown in the
 // grids AND the charts (display-only filter; the calculation engine still runs on the FULL 6-SKU set so
 // VTM cross-elasticity transfers to/from hidden SKUs remain mathematically correct).
@@ -1335,6 +1432,11 @@ document.addEventListener('click', function(e){
     document.querySelectorAll('.sku-dropdown.open').forEach(d => d.classList.remove('open'));
   }
 });
+
+function toggleMethodologySection(){
+  const card = document.getElementById('methodologyCard');
+  if(card) card.classList.toggle('open');
+}
 
 // ---------- CALCULATION ENGINE ----------
 // Steps 1–5: simulated volume, volume lost, VTM gain, final simulated volume — for ALL SKUs at once.
@@ -1550,6 +1652,10 @@ function onRankingChange(el){
   const rawValue = String(el.value).trim();
   const val = parseFloat(rawValue);
   priceRows[i].simProductRanking = isNaN(val) ? priceRows[i].productRanking : val;
+  // HOD follow-up: keep the Scenario Impact "rankingChart" title (EDA tab) live — "Rank X → Rank Y"
+  // for IG Everyday 5 — without touching that chart's static illustrative bar data. Defined in
+  // eda_dashboard.js; guarded in case that script hasn't loaded yet for any reason.
+  if(typeof refreshRankingChartTitle === 'function') refreshRankingChartTitle();
 }
 
 // Global lever sliders have been permanently removed — all simulation inputs are now driven exclusively
@@ -1560,6 +1666,7 @@ function onRankingChange(el){
 function resetAll(){
   initPriceRows(selectedMonth);
   renderInputsTable();
+  if(typeof refreshRankingChartTitle === 'function') refreshRankingChartTitle();
 }
 
 // ---------- NULL-STATE DISPLAY OVERRIDE (rendering-layer only — never touches computeAll()/the locked
@@ -2551,7 +2658,16 @@ function exportToExcel(){
 window.downloadExcel = exportToExcel;
 
 // ---------- SCENARIO LIBRARY ----------
-function saveScenario(){
+// NOTE: the user's original function name for this was "saveSimulation" — the actual function in this
+// codebase has always been named saveScenario() (wired to the "Save This Scenario" button's onclick).
+// Behavior is unchanged aside from the storage target: it now POSTs to the backend instead of writing
+// to localStorage.
+async function saveScenario(event){
+  // Defensive guard: this button is not inside a <form> and has no default browser action
+  // to begin with, but stopping/preventing here costs nothing and protects against a future
+  // markup change (e.g. someone later wrapping this section in a <form>) silently reintroducing
+  // a page-reload-on-click bug.
+  if(event){ event.preventDefault(); event.stopPropagation(); }
   const nameInput = document.getElementById('scenarioNameInput');
   const name = nameInput.value.trim() || `Scenario ${savedScenarios.length+1}`;
   // Snapshot priceRows FIRST, then recompute from that exact snapshot — guarantees the KPI
@@ -2563,8 +2679,8 @@ function saveScenario(){
   const unitsCur = computed.reduce((s,x)=>s+x.monthlyCurrent,0);
   const grossRevenueSim = computed.reduce((s,x)=>s+x.revenueSimulated,0);
   const grossRevenueCur = computed.reduce((s,x)=>s+x.revenueCurrent,0);
-  savedScenarios.push({
-    id: makeScenarioId(), // unique independent identifier — this record is appended, never merged into/overwriting siblings
+
+  const scenario = {
     name,
     month: selectedMonth,
     timestamp: new Date().toLocaleString('en-IN', { dateStyle:'medium', timeStyle:'short' }),
@@ -2575,12 +2691,41 @@ function saveScenario(){
     revenueSim: grossRevenueSim,
     revenueCur: grossRevenueCur,
     revDeltaPct: grossRevenueCur ? ((grossRevenueSim-grossRevenueCur)/grossRevenueCur*100) : 0,
-  });
-  persistScenariosToStorage(); // write the full library straight to localStorage so this survives refresh/logout
-  nameInput.value = '';
+  };
+
   const confirm = document.getElementById('saveConfirm');
-  confirm.style.display = 'inline';
-  setTimeout(()=>{ confirm.style.display='none'; }, 2500);
+  const saveBtn = document.getElementById('saveScenarioBtn');
+  if(saveBtn) saveBtn.disabled = true;
+  try{
+    const res = await fetch(SIMULATIONS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(scenario),
+    });
+    if(!res.ok) throw new Error(`Server responded ${res.status}`);
+    // Backend is expected to return the persisted record, including its server-assigned id — fall back
+    // to a client-generated id only if the API doesn't echo one back, so the card still renders/loads.
+    const saved = await res.json().catch(() => ({}));
+    savedScenarios.push({ id: saved.id || makeScenarioId(), ...scenario, ...saved });
+    renderLibrary();
+    nameInput.value = '';
+    if(confirm){
+      confirm.textContent = 'Saved ✓';
+      confirm.style.color = '';
+      confirm.style.display = 'inline';
+      setTimeout(()=>{ confirm.style.display='none'; }, 2500);
+    }
+  }catch(e){
+    console.error('Could not save scenario to the backend (/api/simulations):', e);
+    if(confirm){
+      confirm.textContent = 'Save failed — please retry';
+      confirm.style.color = '#c0392b';
+      confirm.style.display = 'inline';
+      setTimeout(()=>{ confirm.style.display='none'; confirm.style.color=''; }, 3500);
+    }
+  }finally{
+    if(saveBtn) saveBtn.disabled = false;
+  }
 }
 
 function loadScenario(id){
@@ -2590,20 +2735,21 @@ function loadScenario(id){
   priceRows = s.priceRowsSnapshot.map(r => ({...r}));
   goToStep('simulator');
 }
-function deleteScenario(id){
-  // id-based removal (never positional/index-based) so this can never delete the wrong row even if
-  // the in-memory array and the on-disk database briefly disagree on ordering.
+
+// DELETE /api/simulations/:id — optimistic UI removal, rolled back automatically if the backend call
+// fails so the library never silently drifts from what's actually persisted server-side.
+async function deleteScenario(id){
+  const previous = savedScenarios;
   savedScenarios = savedScenarios.filter(s => s.id !== id);
-  try{
-    // Mirror the deletion straight onto whatever is on disk too, rather than relying purely on the
-    // merge-on-write in persistScenariosToStorage() (which is additive-by-design and would otherwise
-    // resurrect a deleted record if it's still sitting in localStorage from another tab/session).
-    const onDisk = readScenarioDatabase().filter(s => s.id !== id);
-    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(onDisk));
-  }catch(e){
-    console.warn('Could not finalize scenario deletion in localStorage:', e);
-  }
   renderLibrary();
+  try{
+    const res = await fetch(`${SIMULATIONS_API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if(!res.ok) throw new Error(`Server responded ${res.status}`);
+  }catch(e){
+    console.error('Could not delete scenario on the backend — restoring it in the library:', e);
+    savedScenarios = previous;
+    renderLibrary();
+  }
 }
 
 function renderLibrary(){
