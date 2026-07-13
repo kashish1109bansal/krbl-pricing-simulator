@@ -679,65 +679,46 @@
         </div>
 
         <!-- METHODOLOGY & GLOSSARY -->
-        <div class="glass-card methodology-card" id="methodologyCard">
-          <div class="methodology-header" onclick="toggleMethodologySection()">
+        <div class="glass-card methodology-card open" id="methodologyCard">
+          <div class="methodology-header" style="cursor:default;">
             <h3>&#128209; Methodology &amp; Glossary</h3>
-            <span class="methodology-caret">&#9660;</span>
           </div>
           <div class="methodology-body">
 
             <div class="methodology-section">
-              <h4>Data Sources &amp; Availability</h4>
-              <p class="formula-note">Reference for what data powers this dashboard, at what granularity, and over what period — in place of the underlying math (available on request from the Analytics team).</p>
+              <h4>Feature Data Coverage</h4>
+              <p class="formula-note">Reference for the features powering this dashboard — the data available, its granularity by date and SKU, whether it is an active simulation input, and how it is bucketed in the model.</p>
               <div class="datasrc-table-wrap">
                 <table class="datasrc-table">
                   <thead>
                     <tr>
-                      <th>Data Metric</th>
-                      <th>Granularity</th>
-                      <th>Geographical Granularity</th>
-                      <th>Time Horizon</th>
-                      <th>Refresh Frequency</th>
+                      <th>Feature</th>
+                      <th>Data Available</th>
+                      <th>Data Level (Date)</th>
+                      <th>Data Level (SKU)</th>
+                      <th>Simulation Input</th>
+                      <th>Bucketing</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td class="dm-cell">PTC (Price to Consumer)</td>
-                      <td>SKU-level, Monthly (aggregated from daily records)</td>
-                      <td>Overall (National)</td>
-                      <td>Dec 2025 &ndash; May 2026</td>
-                      <td>Monthly</td>
-                    </tr>
-                    <tr>
-                      <td class="dm-cell">Monthly Sales Volume</td>
-                      <td>SKU-level, Monthly (aggregated from daily records)</td>
-                      <td>Overall (National)</td>
-                      <td>Dec 2025 &ndash; May 2026</td>
-                      <td>Monthly</td>
-                    </tr>
-                    <tr>
-                      <td class="dm-cell">Store Availability</td>
-                      <td>SKU-level, Monthly (aggregated from daily records)</td>
-                      <td>Overall (National)</td>
-                      <td>Dec 2025 &ndash; May 2026</td>
-                      <td>Monthly</td>
-                    </tr>
-                    <tr>
-                      <td class="dm-cell">Product Ranking</td>
-                      <td>SKU-level, Monthly (aggregated from daily records)</td>
-                      <td>Overall (National)</td>
-                      <td>Dec 2025 &ndash; May 2026</td>
-                      <td>Monthly</td>
-                    </tr>
+                    <tr><td class="dm-cell">PTC</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>Yes</td><td>Price</td></tr>
+                    <tr><td class="dm-cell">Comp PTC</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                    <tr><td class="dm-cell">Budget</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>Yes</td><td>&ndash;</td></tr>
+                    <tr><td class="dm-cell">Product Ranking</td><td>Jan26&ndash;May26</td><td>Month</td><td>SKU</td><td>No</td><td>Ranking</td></tr>
+                    <tr><td class="dm-cell">OSA</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>Yes</td><td>Availability</td></tr>
+                    <tr><td class="dm-cell">Market Share</td><td>Dec25&ndash;May26</td><td>Daily</td><td>Cat/City</td><td>No</td><td>Baseline</td></tr>
+                    <tr><td class="dm-cell">Is_Festival</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                    <tr><td class="dm-cell">Is_First_Week</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                    <tr><td class="dm-cell">Is_Weekend</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                    <tr><td class="dm-cell">MRP</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                    <tr><td class="dm-cell">Comp Product Ranking</td><td>Jan26&ndash;May26</td><td>Month</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                    <tr><td class="dm-cell">Segment</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                    <tr><td class="dm-cell">MSI_Flag</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                    <tr><td class="dm-cell">Weight_variant</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
                   </tbody>
                 </table>
               </div>
-              <p class="formula-note">Time Horizon reflects the full historical range currently loaded into the dashboard's dataset (Dec 2025 &ndash; May 2026); the Baseline Month selector above draws from a subset of this range. Data is refreshed monthly.</p>
-            </div>
-
-            <div class="methodology-section">
-              <h4>Remarks</h4>
-              <p class="formula-note" style="margin-bottom:0;">The current phase of the simulation is conducted at an Overall (National) level. Geographical granularity (e.g., city-level) is currently identified as a scope for future enhancement.</p>
+              <p class="formula-note" style="margin-bottom:0;">Refresh Frequency: Monthly &mdash; all features are refreshed on a monthly cycle.</p>
             </div>
 
             <div class="methodology-section">
@@ -745,7 +726,7 @@
               <dl class="glossary-grid">
                 <div class="glossary-term">
                   <dt>PTC</dt>
-                  <dd>Price to Consumer — the retail selling price of the SKU, inclusive of an assumed 12% GST rate. <b>Assumed Input:</b> this tax component is a working assumption for the current phase, not a confirmed fixed value, and is subject to verification against the underlying SKU-level tax structure.</dd>
+                  <dd>Price to Consumer — the retail selling price of the SKU.</dd>
                 </div>
                 <div class="glossary-term">
                   <dt>Store Availability</dt>
@@ -773,7 +754,7 @@
                 </div>
                 <div class="glossary-term">
                   <dt>Structural Unit Cost</dt>
-                  <dd>A fixed per-unit cost held constant across baseline and simulated scenarios, derived from a 37.5% assumed baseline margin on ex-GST PTC.</dd>
+                  <dd>A fixed per-unit cost held constant across baseline and simulated scenarios (Cost = 70% of PTR).</dd>
                 </div>
               </dl>
             </div>
