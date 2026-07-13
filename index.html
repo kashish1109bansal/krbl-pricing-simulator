@@ -802,7 +802,7 @@
                 <div class="meth-fact"><div class="meth-fact-v">6</div><div class="meth-fact-l">SKUs in the modelled portfolio</div></div>
                 <div class="meth-fact"><div class="meth-fact-v">3</div><div class="meth-fact-l">Editable simulation levers</div></div>
                 <div class="meth-fact"><div class="meth-fact-v">6 mo</div><div class="meth-fact-l">Historical window (Dec 2025 &ndash; May 2026)</div></div>
-                <div class="meth-fact"><div class="meth-fact-v">Monthly</div><div class="meth-fact-l">Data refresh cadence</div></div>
+                <div class="meth-fact"><div class="meth-fact-v">Monthly</div><div class="meth-fact-l">Model refresh cadence</div></div>
               </div>
             </div>
 
@@ -837,6 +837,7 @@
             <!-- SIMULATION LEVERS & ELASTICITIES -->
             <div class="methodology-section">
               <div class="meth-sec-head"><span class="meth-sec-bar"></span><h4>Simulation Levers &amp; Demand Elasticities</h4></div>
+              <p class="formula-note"><b>Note:</b> Demand elasticities shown below apply only to IG Everyday 5. Other SKUs remain at baseline and their simulation levers are disabled.</p>
               <p class="formula-note">Each lever moves projected volume through an elasticity &mdash; the % change in volume for every 1% change in that lever, holding the others constant.</p>
               <div class="datasrc-table-wrap">
                 <table class="datasrc-table lever-table">
@@ -883,28 +884,27 @@
                     <tr>
                       <th>Feature</th>
                       <th>Data Available</th>
-                      <th>Data Level (Date)</th>
-                      <th>Data Level (SKU)</th>
+                      <th>Data Level</th>
                       <th>Simulation Input</th>
                       <th>Bucketing</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr><td class="dm-cell">PTC</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-yes">Yes</span></td><td><span class="bucket-tag">Price</span></td></tr>
-                    <tr><td class="dm-cell">Comp PTC</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
-                    <tr><td class="dm-cell">Budget</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-yes">Yes</span></td><td>&ndash;</td></tr>
-                    <tr><td class="dm-cell">Product Ranking</td><td>Jan26&ndash;May26</td><td>Month</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Ranking</span></td></tr>
-                    <tr><td class="dm-cell">OSA</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-yes">Yes</span></td><td><span class="bucket-tag">Availability</span></td></tr>
-                    <tr><td class="dm-cell">Market Share</td><td>Dec25&ndash;May26</td><td>Daily</td><td>Cat/City</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
-                    <tr><td class="dm-cell">Is_Festival</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
-                    <tr><td class="dm-cell">Is_First_Week</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
-                    <tr><td class="dm-cell">Is_Weekend</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
-                    <tr><td class="dm-cell">MRP</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
-                    <tr><td class="dm-cell">Comp Product Ranking</td><td>Jan26&ndash;May26</td><td>Month</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
-                    <tr><td class="dm-cell">Segment</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
-                    <tr><td class="dm-cell">MSI_Flag</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
-                    <tr><td class="dm-cell">Weight_variant</td><td>Dec25&ndash;May26</td><td>Daily</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
-                    <tr><td class="dm-cell">Store Count</td><td>Jan26&ndash;May26</td><td>Month</td><td>SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">PTC</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-yes">Yes</span></td><td><span class="bucket-tag">Price</span></td></tr>
+                    <tr><td class="dm-cell">Comp PTC</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">Budget</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-no">No</span></td><td>&ndash;</td></tr>
+                    <tr><td class="dm-cell">Product Ranking</td><td>Jan26&ndash;May26</td><td>Month / SKU</td><td><span class="sim-badge sim-yes">Yes</span></td><td><span class="bucket-tag">Ranking</span></td></tr>
+                    <tr><td class="dm-cell">Store Availability (Store Count &times; OSA)</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-yes">Yes</span></td><td><span class="bucket-tag">Availability</span></td></tr>
+                    <tr><td class="dm-cell">Market Share</td><td>Dec25&ndash;May26</td><td>Daily / Cat/City</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">Is_Festival</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">Is_First_Week</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">Is_Weekend</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">MRP</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">Comp Product Ranking</td><td>Jan26&ndash;May26</td><td>Month / SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">Segment</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">MSI_Flag</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">Weight_variant</td><td>Dec25&ndash;May26</td><td>Daily / SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
+                    <tr><td class="dm-cell">Store Count</td><td>Jan26&ndash;May26</td><td>Month / SKU</td><td><span class="sim-badge sim-no">No</span></td><td><span class="bucket-tag">Baseline</span></td></tr>
                   </tbody>
                 </table>
               </div>
@@ -932,7 +932,7 @@
                 </div>
                 <div class="glossary-term">
                   <dt>Store Availability</dt>
-                  <dd>Store Count &times; On-Shelf Availability (OSA) &mdash; a combined distribution and visibility metric for the SKU.</dd>
+                  <dd>Store Availability = Store Count &times; On Shelf Availability (OSA). This represents the effective availability of the product across retail stores.</dd>
                 </div>
                 <div class="glossary-term">
                   <dt>Product Ranking</dt>
@@ -948,7 +948,15 @@
                 </div>
                 <div class="glossary-term">
                   <dt>Structural Unit Cost</dt>
-                  <dd>A fixed per-unit cost held constant across the baseline and simulated scenarios (Cost = 70% of PTR).</dd>
+                  <dd>A fixed per-unit cost held constant across the baseline and simulated scenarios. Structural Unit Cost = 70% &times; PTR. This fixed unit cost is used throughout the simulation while profit varies with changes in predicted demand and price.</dd>
+                </div>
+                <div class="glossary-term">
+                  <dt>PTR (Price to Retailer)</dt>
+                  <dd>The selling price at which KRBL supplies products to retailers/distributors before retailer margins.</dd>
+                </div>
+                <div class="glossary-term">
+                  <dt>PTR Calculation</dt>
+                  <dd>Structural Unit Cost = 70% &times; PTR.</dd>
                 </div>
               </dl>
             </div>
