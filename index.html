@@ -695,6 +695,7 @@
                     <tr>
                       <th>Data Metric</th>
                       <th>Granularity</th>
+                      <th>Geographical Granularity</th>
                       <th>Time Horizon</th>
                       <th>Refresh Frequency</th>
                     </tr>
@@ -702,32 +703,41 @@
                   <tbody>
                     <tr>
                       <td class="dm-cell">PTC (Price to Consumer)</td>
-                      <td>SKU-level, Monthly</td>
-                      <td>Dec 2025 &ndash; May 2026 (6 months historical)</td>
-                      <td>Monthly (Manual Upload)</td>
+                      <td>SKU-level, Monthly (aggregated from daily records)</td>
+                      <td>Overall (National)</td>
+                      <td>Dec 2025 &ndash; May 2026</td>
+                      <td>Monthly</td>
                     </tr>
                     <tr>
                       <td class="dm-cell">Monthly Sales Volume</td>
-                      <td>SKU-level, Monthly</td>
-                      <td>Dec 2025 &ndash; May 2026 (6 months historical)</td>
-                      <td>Monthly (Manual Upload)</td>
+                      <td>SKU-level, Monthly (aggregated from daily records)</td>
+                      <td>Overall (National)</td>
+                      <td>Dec 2025 &ndash; May 2026</td>
+                      <td>Monthly</td>
                     </tr>
                     <tr>
                       <td class="dm-cell">Store Availability</td>
-                      <td>SKU-level, Monthly</td>
-                      <td>Dec 2025 &ndash; May 2026 (6 months historical)</td>
-                      <td>Monthly (Manual Upload)</td>
+                      <td>SKU-level, Monthly (aggregated from daily records)</td>
+                      <td>Overall (National)</td>
+                      <td>Dec 2025 &ndash; May 2026</td>
+                      <td>Monthly</td>
                     </tr>
                     <tr>
                       <td class="dm-cell">Product Ranking</td>
-                      <td>SKU-level, Monthly</td>
-                      <td>Dec 2025 &ndash; May 2026 (6 months historical)</td>
-                      <td>Monthly (Manual Upload)</td>
+                      <td>SKU-level, Monthly (aggregated from daily records)</td>
+                      <td>Overall (National)</td>
+                      <td>Dec 2025 &ndash; May 2026</td>
+                      <td>Monthly</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              <p class="formula-note">Time Horizon reflects the full historical range currently loaded into the dashboard's dataset; the Baseline Month selector above draws from a subset of this range. Data is refreshed monthly via manual file upload.</p>
+              <p class="formula-note">Time Horizon reflects the full historical range currently loaded into the dashboard's dataset (Dec 2025 &ndash; May 2026); the Baseline Month selector above draws from a subset of this range. Data is refreshed monthly.</p>
+            </div>
+
+            <div class="methodology-section">
+              <h4>Remarks</h4>
+              <p class="formula-note" style="margin-bottom:0;">The current phase of the simulation is conducted at an Overall (National) level. Geographical granularity (e.g., city-level) is currently identified as a scope for future enhancement.</p>
             </div>
 
             <div class="methodology-section">
@@ -735,7 +745,7 @@
               <dl class="glossary-grid">
                 <div class="glossary-term">
                   <dt>PTC</dt>
-                  <dd>Price to Consumer — the retail selling price of the SKU, inclusive of 12% GST.</dd>
+                  <dd>Price to Consumer — the retail selling price of the SKU, inclusive of an assumed 12% GST rate. <b>Assumed Input:</b> this tax component is a working assumption for the current phase, not a confirmed fixed value, and is subject to verification against the underlying SKU-level tax structure.</dd>
                 </div>
                 <div class="glossary-term">
                   <dt>Store Availability</dt>
