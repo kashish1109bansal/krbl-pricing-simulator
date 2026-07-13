@@ -611,7 +611,15 @@
       <!-- STEP 1: SCENARIO LIBRARY -->
       <div class="panel active" id="panel-library">
         <div class="glass-card">
-          <h3 class="section-title" style="margin-bottom:18px;">Saved Scenarios</h3>
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
+            <h3 class="section-title" style="margin:0;">Saved Scenarios</h3>
+            <div>
+              <!-- No backend: Import reads a .json file (previously downloaded via Save Scenario) straight
+                   off the user's own machine via the File API — nothing is sent anywhere. -->
+              <input type="file" id="importScenarioInput" accept="application/json,.json" style="display:none" onchange="importScenario(event)">
+              <button type="button" class="btn btn-outline" onclick="document.getElementById('importScenarioInput').click()">&#128194; Import Scenario</button>
+            </div>
+          </div>
           <div id="libraryContent"></div>
         </div>
       </div>
@@ -1172,10 +1180,10 @@ function handleLogin(evt){
     errorBox.style.display = 'none';
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('appShell').classList.add('visible');
-    // Re-hydrate the Scenario Library from the backend on every successful login — guarantees scenarios
-    // saved in a PRIOR session (or by a teammate, on another device) are visible again immediately,
-    // not just whatever happened to still be in memory.
-    loadScenariosFromServer();
+    // No backend to re-hydrate from anymore — the Scenario Library is populated purely by Save
+    // (downloads + keeps a card for this session) and Import Scenario (reads a previously
+    // downloaded .json file back in). Nothing to fetch on login.
+    renderLibrary();
   } else {
     errorBox.style.display = 'block';
   }
@@ -1258,50 +1266,20 @@ const vtmMatrix = {
 // ---------- STATE ----------
 let selectedMonth = DEFAULT_MONTH;
 let priceRows = [];
-// ---------- SCENARIO LIBRARY — PERSISTENT localStorage-BACKED DATABASE SIMULATION ----------
-// savedScenarios used to live ONLY in memory, so it silently reset to empty on every browser refresh,
-// re-login, or tab close. It is now backed by the browser's localStorage API under a fixed key, so saved
-// scenarios survive refresh/logout/re-login exactly like a real persisted database would. Every mutation
-// (save/delete) writes the full array straight back to localStorage as a JSON string; on initial script
-// load (and again whenever the app returns to the login-gated state) the array is rehydrated from
-// localStorage so the Scenario Library always reflects what was actually saved, not just this page-load's
-// in-memory session.
-// ---------- SCENARIO LIBRARY — PERMANENT (BACKEND) STORAGE ----------
-// HOD feedback: saved simulations must no longer live only in the browser cache. All persistence now
-// goes through the backend API below instead of localStorage, so a scenario survives a cleared cache,
-// a different browser, or a different machine entirely.
-// Points at the local Flask backend (app.py) — run `python app.py` alongside this file
-// (see the project README / run instructions). Change this if the backend ever moves to
-// a different host/port (e.g. a shared server instead of localhost).
-const SIMULATIONS_API_URL = 'http://localhost:5000/api/simulations';
+// ---------- SCENARIO LIBRARY — LOCAL JSON FILE IMPORT/EXPORT (no backend, no fetch, no localStorage) ----------
+// The Flask backend (app.py) has been removed entirely per explicit request — this is now a 100% static
+// frontend. "Save Scenario" downloads the scenario straight to the user's machine as a standalone .json
+// file (Blob + object URL, no server round-trip); "Import Scenario" reads a previously downloaded .json
+// file back in via the File API and re-hydrates both a Scenario Library card and the Pricing Simulator's
+// live inputs from it. savedScenarios is therefore a SESSION-ONLY cache of what's shown as cards in this
+// tab — it intentionally does not survive a refresh on its own, because the .json file on disk (something
+// the user can keep, back up, email, or hand to a teammate) is the actual persistence layer now, not the
+// browser. Re-importing a previously saved file brings it straight back.
+let savedScenarios = [];
 
-// GET /api/simulations — expected to return a JSON array of previously saved scenario records
-// (each with at minimum: id, name, month, timestamp, priceRowsSnapshot, unitsSim, unitsCur,
-// volDeltaPct, revenueSim, revenueCur, revDeltaPct). Called on page load and again on every login so
-// the library always reflects what's actually persisted server-side, not just this browser's memory.
-async function loadScenariosFromServer(){
-  try{
-    const res = await fetch(SIMULATIONS_API_URL, { method: 'GET' });
-    if(!res.ok) throw new Error(`Server responded ${res.status}`);
-    const data = await res.json();
-    savedScenarios = Array.isArray(data) ? data : [];
-  }catch(e){
-    // Backend unreachable / not yet deployed — fail soft with an empty library rather than breaking
-    // the rest of the app, and log it so it's obvious in devtools why the library looks empty.
-    console.warn('Could not load saved scenarios from the backend (/api/simulations):', e);
-    savedScenarios = [];
-  }finally{
-    renderLibrary();
-  }
-}
-// Only used as a client-side fallback id for optimistic UI updates before the server's real id comes
-// back (e.g. rendering the just-saved card while the POST is still in flight). The backend is the
-// source of truth for ids going forward.
 function makeScenarioId(){
   return `${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
 }
-let savedScenarios = []; // rehydrated immediately below from the backend — never starts truly empty if a saved library already exists there
-loadScenariosFromServer();
 // ADVANCED SELECTION FILTERS — SKU multi-select: controls which of the 6 approved SKUs are shown in the
 // grids AND the charts (display-only filter; the calculation engine still runs on the FULL 6-SKU set so
 // VTM cross-elasticity transfers to/from hidden SKUs remain mathematically correct).
@@ -2660,9 +2638,8 @@ window.downloadExcel = exportToExcel;
 // ---------- SCENARIO LIBRARY ----------
 // NOTE: the user's original function name for this was "saveSimulation" — the actual function in this
 // codebase has always been named saveScenario() (wired to the "Save This Scenario" button's onclick).
-// Behavior is unchanged aside from the storage target: it now POSTs to the backend instead of writing
-// to localStorage.
-async function saveScenario(event){
+// No backend, no fetch, no localStorage: saving downloads a .json file straight to the user's machine.
+function saveScenario(event){
   // Defensive guard: this button is not inside a <form> and has no default browser action
   // to begin with, but stopping/preventing here costs nothing and protects against a future
   // markup change (e.g. someone later wrapping this section in a <form>) silently reintroducing
@@ -2681,6 +2658,7 @@ async function saveScenario(event){
   const grossRevenueCur = computed.reduce((s,x)=>s+x.revenueCurrent,0);
 
   const scenario = {
+    id: makeScenarioId(),
     name,
     month: selectedMonth,
     timestamp: new Date().toLocaleString('en-IN', { dateStyle:'medium', timeStyle:'short' }),
@@ -2694,37 +2672,38 @@ async function saveScenario(event){
   };
 
   const confirm = document.getElementById('saveConfirm');
-  const saveBtn = document.getElementById('saveScenarioBtn');
-  if(saveBtn) saveBtn.disabled = true;
   try{
-    const res = await fetch(SIMULATIONS_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(scenario),
-    });
-    if(!res.ok) throw new Error(`Server responded ${res.status}`);
-    // Backend is expected to return the persisted record, including its server-assigned id — fall back
-    // to a client-generated id only if the API doesn't echo one back, so the card still renders/loads.
-    const saved = await res.json().catch(() => ({}));
-    savedScenarios.push({ id: saved.id || makeScenarioId(), ...scenario, ...saved });
+    // Trigger a plain browser download of this scenario as a standalone .json file — no server involved.
+    const blob = new Blob([JSON.stringify(scenario, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const safeName = name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'scenario';
+    link.download = `KRBL_Scenario_${safeName}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    // Also keep it visible as a card in THIS session's Scenario Library, so it can be Loaded/Deleted
+    // right away without needing to re-import the file that was just downloaded.
+    savedScenarios.push(scenario);
     renderLibrary();
     nameInput.value = '';
     if(confirm){
-      confirm.textContent = 'Saved ✓';
+      confirm.textContent = 'Saved ✓ — downloaded as .json';
       confirm.style.color = '';
       confirm.style.display = 'inline';
       setTimeout(()=>{ confirm.style.display='none'; }, 2500);
     }
   }catch(e){
-    console.error('Could not save scenario to the backend (/api/simulations):', e);
+    console.error('Could not save scenario file:', e);
     if(confirm){
       confirm.textContent = 'Save failed — please retry';
       confirm.style.color = '#c0392b';
       confirm.style.display = 'inline';
       setTimeout(()=>{ confirm.style.display='none'; confirm.style.color=''; }, 3500);
     }
-  }finally{
-    if(saveBtn) saveBtn.disabled = false;
   }
 }
 
@@ -2736,20 +2715,55 @@ function loadScenario(id){
   goToStep('simulator');
 }
 
-// DELETE /api/simulations/:id — optimistic UI removal, rolled back automatically if the backend call
-// fails so the library never silently drifts from what's actually persisted server-side.
-async function deleteScenario(id){
-  const previous = savedScenarios;
+// "Import Scenario" — reads a .json file the user picks (typically one previously downloaded via Save
+// Scenario above) via the browser's File API, parses it, adds it to the in-session Scenario Library, and
+// immediately loads its values into the Pricing Simulator. Purely client-side: no fetch, no server.
+function importScenario(event){
+  const input = event.target;
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      // Accept either a single exported scenario object or an array of them, so a hand-merged file
+      // bundling multiple exports together still imports correctly.
+      const candidates = Array.isArray(parsed) ? parsed : [parsed];
+      const imported = [];
+      candidates.forEach(s => {
+        if(!s || !Array.isArray(s.priceRowsSnapshot)) return; // not a real scenario export — skip it
+        const scenario = { ...s, id: s.id || makeScenarioId() };
+        savedScenarios.push(scenario);
+        imported.push(scenario);
+      });
+      if(imported.length === 0){
+        alert('That file does not look like a KRBL scenario export (missing priceRowsSnapshot).');
+        return;
+      }
+      renderLibrary();
+      // Load the last imported scenario's values straight into the Pricing Simulator.
+      const last = imported[imported.length-1];
+      selectedMonth = last.month;
+      priceRows = last.priceRowsSnapshot.map(r => ({...r}));
+      goToStep('simulator');
+    }catch(e){
+      console.error('Could not parse imported scenario file:', e);
+      alert('Could not read that file — make sure it is a .json scenario exported from this dashboard.');
+    }finally{
+      input.value = ''; // reset so re-importing the same filename later still fires the change event
+    }
+  };
+  reader.onerror = () => {
+    console.error('Could not read imported file:', reader.error);
+    alert('Could not read that file.');
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function deleteScenario(id){
   savedScenarios = savedScenarios.filter(s => s.id !== id);
   renderLibrary();
-  try{
-    const res = await fetch(`${SIMULATIONS_API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
-    if(!res.ok) throw new Error(`Server responded ${res.status}`);
-  }catch(e){
-    console.error('Could not delete scenario on the backend — restoring it in the library:', e);
-    savedScenarios = previous;
-    renderLibrary();
-  }
 }
 
 function renderLibrary(){
