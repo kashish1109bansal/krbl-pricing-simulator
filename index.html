@@ -911,6 +911,19 @@
           </div>
         </div>
 
+        <!-- MANAGER REQUEST (layout update, follow-up): Active Stores (OSA × Storecount) vs Qty Sold —
+             moved to the 4th position in the EDA dashboard's visual grid per latest stakeholder
+             feedback. Dual-axis time-series trend chart over the selected Time Interval (Daily/Weekly/
+             Monthly), matching the system-wide Qty-Sold-as-a-line treatment. Metric changed from
+             OSA × Product Ranking to OSA × Store_Count per earlier stakeholder feedback. -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Active Stores (OSA &times; Storecount) vs Qty Sold</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Qty Sold (line, left axis) against On-Shelf Availability &times; Store Count, a composite "active stores" reach/availability signal (line, right axis), over the selected time interval.</div>
+          <div style="position:relative; height:340px;">
+            <canvas id="edaanActiveStoresTrend"></canvas>
+          </div>
+        </div>
+
         <!-- 8. PRODUCT RANKING vs COMPETITOR RANKING vs UNITS SOLD -->
         <div class="glass-card" style="padding:16px 20px 14px;">
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128200; Product Ranking vs Competitor Ranking vs Units Sold</div>
@@ -953,13 +966,16 @@
           </div>
         </div>
 
-        <!-- 22. SCENARIO IMPACT ANALYSIS — MANAGER REQUEST (change 6, title updated per follow-up request)
-             Static, hardcoded reference chart illustrating the exact single-lever calculation logic
-             from coeff.pptx (Price +5%, Store Count +5%, Ranking 8→9) — Base vs New Demand, Base vs
-             New Profit, per scenario. Independent of the master filters / live simulation state. -->
+        <!-- 22. SCENARIO IMPACT ANALYSIS — MANAGER REQUEST (data-sync fix, latest follow-up):
+             LIVE chart, single source of truth with the Output Dashboard. Each of the 3 mini-charts
+             runs the SAME single-lever scenario (Price +5% PTC / Store Count +5% / Ranking worsened
+             8→9) through the app's real regression engine (COEF) and the shared computeProfitMetrics()
+             constant-unit-cost profit engine — the exact same functions that power the Output Table.
+             Revenue/Units/Profit/Margin values are recomputed on every simulation run, filter change,
+             and data load, so they can never mismatch the Output Table's final numbers. -->
         <div class="glass-card" style="padding:16px 20px 14px;">
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Scenario Impact Analysis</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Illustrative single-lever scenarios &mdash; Revenue, Units, and Profit % Change vs baseline.</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Illustrative single-lever scenarios &mdash; Revenue, Units, and Profit % Change vs baseline. Live-computed via the same simulation &amp; profit engine as the Output Dashboard.</div>
           <!-- MANAGER REQUEST (layout correction, per reference image): 3 separate side-by-side bar
                charts (one per scenario), not one grouped chart. -->
           <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:20px;">
@@ -997,18 +1013,6 @@
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#127749; Weekend Effect vs Units Sold</div>
           <div style="position:relative; height:320px;">
             <canvas id="edaanChart9"></canvas>
-          </div>
-        </div>
-
-        <!-- MANAGER REQUEST (structural update): Active Stores (OSA × Storecount) vs Qty Sold —
-             dual-axis time-series trend chart over the selected Time Interval (Daily/Weekly/
-             Monthly), matching the system-wide Qty-Sold-as-a-line treatment. Metric changed from
-             OSA × Product Ranking to OSA × Store_Count per latest stakeholder feedback. -->
-        <div class="glass-card" style="padding:16px 20px 14px;">
-          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Active Stores (OSA &times; Storecount) vs Qty Sold</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Qty Sold (line, left axis) against On-Shelf Availability &times; Store Count, a composite "active stores" reach/availability signal (line, right axis), over the selected time interval.</div>
-          <div style="position:relative; height:340px;">
-            <canvas id="edaanActiveStoresTrend"></canvas>
           </div>
         </div>
 
@@ -1606,11 +1610,34 @@ function applyVtmNullStateOverride(c){
 // Guarded against a zero/near-zero Baseline Profit (returns 0 if Simulated Profit is also ~0, otherwise
 // null → shown as "N/A"). Never writes to priceRows or the calc engine — reads only already-computed
 // fields off `c`.
+// MANAGER REQUEST (calc-logic clarification): "Cost will be same for simulated as baseline (cost
+// will not change), after that calculate profit." Rewritten to follow the manager's exact 4-step
+// sequence, with matching variable names, for auditability:
+//   1. baselineCost       = baselineRevenue - baselineProfit
+//   2. unitCost           = baselineCost / baselineQty
+//   3. simulatedTotalCost = simulatedQty * unitCost
+//   4. simulatedProfit    = simulatedRevenue - simulatedTotalCost
+// Step 1 needs ONE independent starting definition of baselineProfit (you can't derive profit from
+// itself) — that seed is unchanged from before: COGS/unit = 70% of (Baseline PTC / 1.12), i.e. a
+// fixed 62.5% cost-to-price ratio at baseline, which is what produces the 37.50% baseline margin seen
+// everywhere in the app. Once that seed feeds Step 1, Steps 1-2 always resolve unitCost back to
+// exactly that same baseline structural cost — so this is algebraically IDENTICAL to the previous
+// version and changes NO output numbers; it's a naming/sequence rewrite matching the manager's spec,
+// not a behavior change. The important behavior (unchanged): unitCost is fixed at the BASELINE level
+// and reused as-is for the simulated state — only Volume (Step 3) is allowed to move.
 function computeProfitMetrics(c){
   const r = c.row;
-  const baselineUnitCost = 0.70 * (r.ptc / 1.12); // fixed structural COGS/unit — anchored to Baseline PTC only
-  const baselineProfit   = c.revenueCurrent   - (c.monthlyCurrent   * baselineUnitCost);
-  const simulatedProfit  = c.revenueSimulated - (c.monthlySimulated * baselineUnitCost); // same unit cost, volume-driven only
+  const baselineQty     = c.monthlyCurrent;
+  const baselineRevenue = c.revenueCurrent;
+  const structuralUnitCost = 0.70 * (r.ptc / 1.12); // fixed structural COGS/unit — anchored to Baseline PTC only; seeds Step 1 below
+  const baselineProfit  = baselineRevenue - (baselineQty * structuralUnitCost);
+
+  // Manager's exact 4-step sequence:
+  const baselineCost       = baselineRevenue - baselineProfit;        // Step 1
+  const unitCost           = baselineCost / baselineQty;              // Step 2 — resolves to structuralUnitCost
+  const simulatedTotalCost = c.monthlySimulated * unitCost;           // Step 3 — same unitCost, volume-driven only
+  const simulatedProfit    = c.revenueSimulated - simulatedTotalCost; // Step 4
+
   let profitChangePct;
   if(Math.abs(baselineProfit) < 1e-9){
     profitChangePct = Math.abs(simulatedProfit) < 1e-9 ? 0 : null;

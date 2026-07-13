@@ -1001,12 +1001,83 @@
 
   // ================================================================================
   // SCENARIO IMPACT ANALYSIS (canvases: ptcChart, storeChart, rankingChart)
-  // MANAGER REQUEST (layout correction, per reference image): this is NOT one grouped bar chart with
-  // 3 scenarios on the x-axis — it is 3 SEPARATE single-series bar charts side-by-side, one per
-  // scenario, each plotting Revenue / Units / Profit % Change on its own x-axis. Still a STATIC,
-  // hardcoded reference (coeff.pptx single-lever scenario math: Price +5%, Store Count +5%,
-  // Ranking 8→9) — unaffected by master filters / live simulation state.
+  // MANAGER REQUEST (data-sync fix, latest follow-up — "single source of truth"): this is NOT one
+  // grouped bar chart with 3 scenarios on the x-axis — it is 3 SEPARATE single-series bar charts
+  // side-by-side, one per lever (PTC / Store Count / Ranking), each plotting Revenue / Units /
+  // Profit / Margin Change on its own x-axis. These are NO LONGER static/hardcoded. Each chart now
+  // isolates ONE lever's LIVE, actual current simulated value (exactly what's typed into the
+  // Pricing Simulator's PTC / Store Availability / Ranking inputs for the editable SKU right now —
+  // not a fixed "+5%" assumption), holds the other two levers at baseline, and replays it through
+  // the EXACT SAME functions the Output Dashboard uses: computeAllVolumes()/computeAll() (the real
+  // regression engine, index.html) and computeProfitMetrics() (the constant-unit-cost profit engine,
+  // index.html). The portfolio-level Revenue/Units/Profit/Margin aggregation below is the identical
+  // sum-then-derive-margin logic used by the Output Dashboard's own KPI hero tiles
+  // (renderKpiTiles() in index.html), so there is exactly ONE calculation path for these numbers —
+  // if the user runs a single-lever simulation (e.g. +5% PTC on the editable SKU) and then opens
+  // this tab, the corresponding chart here will show the SAME Revenue/Units/Profit/Margin change as
+  // the Output Table for that SKU/lever. Charts are recomputed fresh every time this function runs
+  // (i.e. every EDA tab visit / filter change, via renderAllEdaanCharts()), so they always reflect
+  // whatever is CURRENTLY in the live simulation state — never a stale/independent snapshot.
   // ================================================================================
+
+  // Reads the actual live simulated value for ONE lever on the editable SKU ("Everyday 5" — the only
+  // row whose sim* fields can differ from baseline anywhere in the app, per the locked-input design
+  // in index.html's renderInputsTable()), while forcing every other lever (on every row, including
+  // the editable one) back to its OWN baseline value. This isolates that single lever's live impact
+  // exactly the way the 3-chart layout is meant to read, while still being driven by whatever the
+  // user actually typed into the simulator — not a hardcoded percentage.
+  function buildIsolatedLeverRows(lever, baselineRows){
+    return baselineRows.map(r => {
+      const isTarget = /everyday 5/i.test(r.name);
+      const row = { ...r, simPtc: r.ptc, simStoreAva: r.storeAva, simProductRanking: r.productRanking };
+      if(!isTarget) return row; // every other SKU always stays at its own baseline (matches the real sim engine)
+      if(lever === 'ptc') row.simPtc = r.simPtc !== undefined ? r.simPtc : r.ptc;
+      else if(lever === 'storeAva') row.simStoreAva = r.simStoreAva !== undefined ? r.simStoreAva : r.storeAva;
+      else if(lever === 'ranking') row.simProductRanking = r.simProductRanking !== undefined ? r.simProductRanking : r.productRanking;
+      return row;
+    });
+  }
+
+  // Runs one isolated-lever scenario through the SAME shared engine the Output Dashboard uses
+  // (computeAll() -> computeProfitMetrics() per row), then aggregates to portfolio totals using the
+  // IDENTICAL sum-then-derive formula as renderKpiTiles() in index.html:
+  //   marginPct = totalProfit / totalRevenue * 100;  marginDeltaPts = simMarginPct - baseMarginPct
+  // Temporarily swaps the shared global `priceRows` so the real computeAll()/computeAllVolumes()
+  // functions (which read `priceRows` directly) run unmodified — then restores it in a `finally`
+  // block so this never leaks into the Output Table, KPI tiles, or any other chart.
+  function computeIsolatedLeverImpact(lever){
+    if(typeof priceRows === 'undefined' || typeof computeAll !== 'function' || typeof computeProfitMetrics !== 'function'){
+      console.warn('Scenario Impact Analysis: index.html simulation globals not available yet — skipping live compute for', lever);
+      return [0, 0, 0, 0];
+    }
+    const snapshot = priceRows;
+    try{
+      priceRows = buildIsolatedLeverRows(lever, snapshot);
+      const computed = computeAll();
+      let totalQtyBaseline = 0, totalQtySimulated = 0;
+      let totalRevBaseline = 0, totalRevSimulated = 0;
+      let totalProfitBaseline = 0, totalProfitSimulated = 0;
+      computed.forEach(c => {
+        const pm = computeProfitMetrics(c);
+        totalQtyBaseline    += c.monthlyCurrent;
+        totalQtySimulated   += c.monthlySimulated;
+        totalRevBaseline    += c.revenueCurrent;
+        totalRevSimulated   += c.revenueSimulated;
+        totalProfitBaseline += pm.baselineProfit;
+        totalProfitSimulated+= pm.simulatedProfit;
+      });
+      const marginBaselinePct  = totalRevBaseline  !== 0 ? (totalProfitBaseline  / totalRevBaseline)  * 100 : 0;
+      const marginSimulatedPct = totalRevSimulated !== 0 ? (totalProfitSimulated / totalRevSimulated) * 100 : 0;
+      const revDeltaPct    = totalRevBaseline    ? ((totalRevSimulated - totalRevBaseline) / totalRevBaseline) * 100 : 0;
+      const qtyDeltaPct    = totalQtyBaseline    ? ((totalQtySimulated - totalQtyBaseline) / totalQtyBaseline) * 100 : 0;
+      const profitDeltaPct = totalProfitBaseline ? ((totalProfitSimulated - totalProfitBaseline) / totalProfitBaseline) * 100 : 0;
+      const marginDeltaPts = marginSimulatedPct - marginBaselinePct;
+      return [revDeltaPct, qtyDeltaPct, profitDeltaPct, marginDeltaPts]; // matches labels = ['Revenue','Units','Profit','Margin']
+    } finally {
+      priceRows = snapshot; // always restore the real live state, even if computeAll() throws
+    }
+  }
+
   function renderScenarioImpactChart(){
     // MANAGER REQUEST: 4th bar added — "Margin" — to stay in sync with the 4 main KPI hero tiles
     // (Qty, Revenue, Profit, Margin). Margin is a points-delta, not a %, but is plotted on the same
@@ -1120,14 +1191,15 @@
       makeChart(canvasId, chartConfig);
     }
 
-    // MANAGER REQUEST (finalized universal Profit % formula): Profit % = (Profit * 100) / Revenue;
-    // Profit % Change = Simulated Profit % - Baseline Profit %. Per the PPT, profit margin holds
-    // ~constant at ~26.40% across all 3 single-lever scenarios, so the 3rd value (Profit, absolute
-    // ₹ % change) tracks Revenue exactly, and the 4th value (Margin, in points) is 0.00 in every
-    // chart since margin itself doesn't move — Revenue and Units values are unchanged.
-    buildScenarioChart('ptcChart',     'Impact of 5% Increase in PTC',         [1.94, -2.91, 1.94, 0.00]);
-    buildScenarioChart('storeChart',   'Impact of 5% Increase in Store Count', [0.81, 0.81, 0.81, 0.00]);
-    buildScenarioChart('rankingChart', 'Impact of Ranking Drop (8 to 9)',      [-2.51, -2.51, -2.51, 0.00]);
+    // LIVE (data-sync fix): Profit % = (Profit * 100) / Revenue; Profit % Change = Simulated Profit %
+    // - Baseline Profit %, computed via the SAME constant-unit-cost engine as the Output Table
+    // (computeProfitMetrics() in index.html) — no more fixed ~26.40%-margin assumption. Margin (pts)
+    // now genuinely moves with whatever the live simulation actually does to cost/revenue, exactly
+    // matching the Output Table's Margin Δ. Titles no longer claim a fixed "+5%"/"8→9" magnitude
+    // since these now track whatever value is actually live in the simulator, not a hardcoded one.
+    buildScenarioChart('ptcChart',     'Impact of Live PTC Change',         computeIsolatedLeverImpact('ptc'));
+    buildScenarioChart('storeChart',   'Impact of Live Store Count Change', computeIsolatedLeverImpact('storeAva'));
+    buildScenarioChart('rankingChart', 'Impact of Live Ranking Change',     computeIsolatedLeverImpact('ranking'));
   }
 
   // ---------- expose a resize hook so the existing sidebar-toggle resize sweep also catches these charts ----------
