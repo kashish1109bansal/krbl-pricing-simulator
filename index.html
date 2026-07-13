@@ -219,6 +219,7 @@
   .field{ display:flex; flex-direction:column; gap:6px; overflow:visible !important; }
   .field label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:700; }
   select.month-select{ font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; min-width:170px; cursor:pointer; }
+  input.gst-input{ font-family:inherit; font-size:13px; font-weight:700; color:var(--maroon-dark); padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); background:#fff; width:90px; }
   .toolbar-actions{ display:flex; gap:10px; }
 
   /* ===== EDA Analysis — premium master filters bar ===== */
@@ -586,9 +587,8 @@
     </div>
     <div class="side-nav">
       <button class="side-link" id="navEda" onclick="goToStep('eda')"><span class="num">1</span> EDA Analysis</button>
-      <button class="side-link active" id="navLibrary" onclick="goToStep('library')"><span class="num">2</span> Scenario Library</button>
-      <button class="side-link" id="navSimulator" onclick="goToStep('simulator')"><span class="num">3</span> Pricing Simulator</button>
-      <button class="side-link" id="navOutput" onclick="goToStep('output')" disabled><span class="num">4</span> Output Dashboard</button>
+      <button class="side-link active" id="navSimulator" onclick="goToStep('simulator')"><span class="num">2</span> Pricing Simulator</button>
+      <button class="side-link" id="navOutput" onclick="goToStep('output')" disabled><span class="num">3</span> Output Dashboard</button>
     </div>
     <div class="sidebar-footer">
       <button class="logout-btn" onclick="handleLogout()">&#8634; Log Out</button>
@@ -608,24 +608,8 @@
         </div>
       </div>
 
-      <!-- STEP 1: SCENARIO LIBRARY -->
-      <div class="panel active" id="panel-library">
-        <div class="glass-card">
-          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
-            <h3 class="section-title" style="margin:0;">Saved Scenarios</h3>
-            <div>
-              <!-- No backend: Import reads a .json file (previously downloaded via Save Scenario) straight
-                   off the user's own machine via the File API — nothing is sent anywhere. -->
-              <input type="file" id="importScenarioInput" accept="application/json,.json" style="display:none" onchange="importScenario(event)">
-              <button type="button" class="btn btn-outline" onclick="document.getElementById('importScenarioInput').click()">&#128194; Import Scenario</button>
-            </div>
-          </div>
-          <div id="libraryContent"></div>
-        </div>
-      </div>
-
-      <!-- STEP 2: PRICING SIMULATOR (INPUTS ONLY) -->
-      <div class="panel" id="panel-simulator">
+      <!-- STEP 1: PRICING SIMULATOR (INPUTS ONLY) -->
+      <div class="panel active" id="panel-simulator">
         <div class="glass-card">
           <div class="period-banner">
             <div class="period-chip baseline"><span class="dot"></span><span class="lbl">Baseline Period:</span> <b id="periodBaselineLabel2">May 2026</b> <span class="lbl">(Historical Actuals)</span></div>
@@ -643,9 +627,13 @@
                   <div class="sku-dropdown-panel sku-filter-bar"></div>
                 </div>
               </div>
+              <div class="field">
+                <label for="gstInput">GST (%)</label>
+                <input type="number" id="gstInput" class="gst-input" value="12" min="0" max="100" step="0.1" onchange="onGstChange(this.value)" oninput="onGstChange(this.value)">
+              </div>
             </div>
             <div class="toolbar-actions">
-              <button class="btn btn-outline" onclick="resetAll()">&#10227; Reset to Base</button>
+              <button class="btn btn-outline" onclick="resetAll()">&#10227; New Scenario</button>
             </div>
           </div>
 
@@ -678,108 +666,41 @@
 
         </div>
 
-        <!-- METHODOLOGY & GLOSSARY -->
-        <div class="glass-card methodology-card" id="methodologyCard">
-          <div class="methodology-header" onclick="toggleMethodologySection()">
-            <h3>&#128209; Methodology &amp; Glossary</h3>
-            <span class="methodology-caret">&#9660;</span>
-          </div>
-          <div class="methodology-body">
-
-            <div class="methodology-section">
-              <h4>Data Sources &amp; Availability</h4>
-              <p class="formula-note">Reference for what data powers this dashboard, at what granularity, and over what period — in place of the underlying math (available on request from the Analytics team).</p>
-              <div class="datasrc-table-wrap">
-                <table class="datasrc-table">
-                  <thead>
-                    <tr>
-                      <th>Data Metric</th>
-                      <th>Granularity</th>
-                      <th>Geographical Granularity</th>
-                      <th>Time Horizon</th>
-                      <th>Refresh Frequency</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td class="dm-cell">PTC (Price to Consumer)</td>
-                      <td>SKU-level, Monthly (aggregated from daily records)</td>
-                      <td>Overall (National)</td>
-                      <td>Dec 2025 &ndash; May 2026</td>
-                      <td>Monthly</td>
-                    </tr>
-                    <tr>
-                      <td class="dm-cell">Monthly Sales Volume</td>
-                      <td>SKU-level, Monthly (aggregated from daily records)</td>
-                      <td>Overall (National)</td>
-                      <td>Dec 2025 &ndash; May 2026</td>
-                      <td>Monthly</td>
-                    </tr>
-                    <tr>
-                      <td class="dm-cell">Store Availability</td>
-                      <td>SKU-level, Monthly (aggregated from daily records)</td>
-                      <td>Overall (National)</td>
-                      <td>Dec 2025 &ndash; May 2026</td>
-                      <td>Monthly</td>
-                    </tr>
-                    <tr>
-                      <td class="dm-cell">Product Ranking</td>
-                      <td>SKU-level, Monthly (aggregated from daily records)</td>
-                      <td>Overall (National)</td>
-                      <td>Dec 2025 &ndash; May 2026</td>
-                      <td>Monthly</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p class="formula-note">Time Horizon reflects the full historical range currently loaded into the dashboard's dataset (Dec 2025 &ndash; May 2026); the Baseline Month selector above draws from a subset of this range. Data is refreshed monthly.</p>
-            </div>
-
-            <div class="methodology-section">
-              <h4>Remarks</h4>
-              <p class="formula-note" style="margin-bottom:0;">The current phase of the simulation is conducted at an Overall (National) level. Geographical granularity (e.g., city-level) is currently identified as a scope for future enhancement.</p>
-            </div>
-
-            <div class="methodology-section">
-              <h4>Glossary</h4>
-              <dl class="glossary-grid">
-                <div class="glossary-term">
-                  <dt>PTC</dt>
-                  <dd>Price to Consumer — the retail selling price of the SKU, inclusive of an assumed 12% GST rate. <b>Assumed Input:</b> this tax component is a working assumption for the current phase, not a confirmed fixed value, and is subject to verification against the underlying SKU-level tax structure.</dd>
-                </div>
-                <div class="glossary-term">
-                  <dt>Store Availability</dt>
-                  <dd>Store Count &times; On-Shelf Availability (OSA) — a combined distribution/visibility metric for the SKU.</dd>
-                </div>
-                <div class="glossary-term">
-                  <dt>Product Ranking</dt>
-                  <dd>The SKU's shelf/search ranking versus competitors, where Rank 1 is best. Lower numbers are better, so ranking charts are plotted on a reversed axis.</dd>
-                </div>
-                <div class="glossary-term">
-                  <dt>VTM (Volume Transfer Matrix)</dt>
-                  <dd>Cross-elasticity logic that adds incremental volume gained from — or subtracts volume lost to — substitute SKUs when a simulated price/ranking/availability change shifts demand between products.</dd>
-                </div>
-                <div class="glossary-term">
-                  <dt>PTC Elasticity (&minus;0.605473)</dt>
-                  <dd>Regression coefficient: the % change in volume for each 1% change in PTC, holding other levers constant. Negative, as expected (price up &rarr; volume down).</dd>
-                </div>
-                <div class="glossary-term">
-                  <dt>Store Availability Elasticity (0.165892)</dt>
-                  <dd>Regression coefficient: the % change in volume for each 1% change in Store Availability. Positive (more availability &rarr; more volume).</dd>
-                </div>
-                <div class="glossary-term">
-                  <dt>Ranking Elasticity (&minus;0.283782)</dt>
-                  <dd>Regression coefficient: the % change in volume for each 1% change in Ranking. Negative, because a lower (better) rank number drives higher volume.</dd>
-                </div>
-                <div class="glossary-term">
-                  <dt>Structural Unit Cost</dt>
-                  <dd>A fixed per-unit cost held constant across baseline and simulated scenarios, derived from a 37.5% assumed baseline margin on ex-GST PTC.</dd>
-                </div>
-              </dl>
-            </div>
-
+        <!-- METHODOLOGY — static, always-visible table (no dropdown/collapsible wrapper) -->
+        <div class="glass-card">
+          <h3 class="section-title">Methodology</h3>
+          <div class="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Data Available</th>
+                  <th>Data Level (Date)</th>
+                  <th>Data Level (SKU)</th>
+                  <th>Simulation Input</th>
+                  <th>Bucketing</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>PTC</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>Yes</td><td>Price</td></tr>
+                <tr><td>Comp PTC</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                <tr><td>Budget</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>Yes</td><td>-</td></tr>
+                <tr><td>Product Ranking</td><td>Jan26-May26</td><td>Month</td><td>SKU</td><td>No</td><td>Ranking</td></tr>
+                <tr><td>OSA</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>Yes</td><td>Availability</td></tr>
+                <tr><td>Market Share</td><td>Dec25-May26</td><td>Daily</td><td>Cat/City</td><td>No</td><td>Baseline</td></tr>
+                <tr><td>Is_Festival</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                <tr><td>Is_First_Week</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                <tr><td>Is_Weekend</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                <tr><td>MRP</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                <tr><td>Comp Product Ranking</td><td>Jan26-May26</td><td>Month</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                <tr><td>Segment</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                <tr><td>MSI_Flag</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+                <tr><td>Weight_variant</td><td>Dec25-May26</td><td>Daily</td><td>SKU</td><td>No</td><td>Baseline</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
+
       </div>
 
       <!-- STEP 3: OUTPUT DASHBOARD (2-tab: Simulation Table | EDA) -->
@@ -983,18 +904,6 @@
 
         </div>
 
-        <!-- SAVE SCENARIO — moved to the very bottom of the Output Dashboard, after all charts,
-             graphs, and analysis sections above, per stakeholder layout request. -->
-        <div class="glass-card">
-          <h3 class="section-title">Save This Scenario</h3>
-          <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted);">Name this scenario and push it to the Scenario Library so it can be revisited later.</p>
-          <div class="save-row">
-            <input type="text" id="scenarioNameInput" placeholder="e.g. May 2026 &mdash; 5% PTC cut + OSA recovery">
-            <button type="button" class="btn btn-primary" id="saveScenarioBtn" onclick="saveScenario(event)">&#128190; Save Scenario</button>
-            <span class="save-confirm" id="saveConfirm">&#10003; Saved to Scenario Library</span>
-          </div>
-        </div>
-
       </div>
 
       <!-- STEP 4: EDA ANALYSIS — fully client-side (PapaParse + Chart.js), reads Pricing_Features.csv
@@ -1190,10 +1099,6 @@ function handleLogin(evt){
     errorBox.style.display = 'none';
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('appShell').classList.add('visible');
-    // No backend to re-hydrate from anymore — the Scenario Library is populated purely by Save
-    // (downloads + keeps a card for this session) and Import Scenario (reads a previously
-    // downloaded .json file back in). Nothing to fetch on login.
-    renderLibrary();
   } else {
     errorBox.style.display = 'block';
   }
@@ -1276,20 +1181,10 @@ const vtmMatrix = {
 // ---------- STATE ----------
 let selectedMonth = DEFAULT_MONTH;
 let priceRows = [];
-// ---------- SCENARIO LIBRARY — LOCAL JSON FILE IMPORT/EXPORT (no backend, no fetch, no localStorage) ----------
-// The Flask backend (app.py) has been removed entirely per explicit request — this is now a 100% static
-// frontend. "Save Scenario" downloads the scenario straight to the user's machine as a standalone .json
-// file (Blob + object URL, no server round-trip); "Import Scenario" reads a previously downloaded .json
-// file back in via the File API and re-hydrates both a Scenario Library card and the Pricing Simulator's
-// live inputs from it. savedScenarios is therefore a SESSION-ONLY cache of what's shown as cards in this
-// tab — it intentionally does not survive a refresh on its own, because the .json file on disk (something
-// the user can keep, back up, email, or hand to a teammate) is the actual persistence layer now, not the
-// browser. Re-importing a previously saved file brings it straight back.
-let savedScenarios = [];
-
-function makeScenarioId(){
-  return `${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
-}
+// GST is a live, user-editable input (no hardcoded rate) — read by computeProfitMetrics() below to
+// back out ex-GST PTC when seeding the structural unit cost. Default 12% only pre-fills the field;
+// changing it in the UI (see #gstInput / onGstChange()) immediately updates this value and re-renders.
+let gstPercent = 12;
 // ADVANCED SELECTION FILTERS — SKU multi-select: controls which of the 6 approved SKUs are shown in the
 // grids AND the charts (display-only filter; the calculation engine still runs on the FULL 6-SKU set so
 // VTM cross-elasticity transfers to/from hidden SKUs remain mathematically correct).
@@ -1333,11 +1228,10 @@ function resizeAllDashboardCharts(){
 
 // ---------- NAVIGATION (permanent left sidebar) ----------
 function goToStep(step){
-  ['library','simulator','output','eda'].forEach(s => {
+  ['simulator','output','eda'].forEach(s => {
     document.getElementById('panel-'+s).classList.toggle('active', s===step);
     document.getElementById('nav'+s.charAt(0).toUpperCase()+s.slice(1)).classList.toggle('active', s===step);
   });
-  if(step==='library') renderLibrary();
   if(step==='simulator') renderInputsTable();
   if(step==='output') renderOutputTable();
   if(step==='eda' && typeof initEdaAnalysisTab === 'function') initEdaAnalysisTab();
@@ -1420,11 +1314,6 @@ document.addEventListener('click', function(e){
     document.querySelectorAll('.sku-dropdown.open').forEach(d => d.classList.remove('open'));
   }
 });
-
-function toggleMethodologySection(){
-  const card = document.getElementById('methodologyCard');
-  if(card) card.classList.toggle('open');
-}
 
 // ---------- CALCULATION ENGINE ----------
 // Steps 1–5: simulated volume, volume lost, VTM gain, final simulated volume — for ALL SKUs at once.
@@ -1653,8 +1542,23 @@ function onRankingChange(el){
 // the grid.
 function resetAll(){
   initPriceRows(selectedMonth);
+  gstPercent = 12;
+  const gstEl = document.getElementById('gstInput');
+  if(gstEl) gstEl.value = 12;
   renderInputsTable();
   if(typeof refreshRankingChartTitle === 'function') refreshRankingChartTitle();
+  if(document.getElementById('panel-output').classList.contains('active')) renderOutputTable();
+}
+
+// ---------- GST — LIVE EDITABLE INPUT (no hardcoded assumption) ----------
+// GST has no default the calculation engine silently assumes — the field always reflects whatever
+// value is typed into #gstInput (12% only pre-fills the box on first load / New Scenario). Every
+// change immediately updates gstPercent and re-renders whichever table is currently on screen so the
+// Output Dashboard's Profit figures always reflect the live GST rate.
+function onGstChange(val){
+  const parsed = parseFloat(val);
+  gstPercent = isNaN(parsed) ? 0 : parsed;
+  if(document.getElementById('panel-output').classList.contains('active')) renderOutputTable();
 }
 
 // ---------- NULL-STATE DISPLAY OVERRIDE (rendering-layer only — never touches computeAll()/the locked
@@ -1692,14 +1596,17 @@ function applyVtmNullStateOverride(c){
 // just because a hypothetical Simulated PTC is being tested. It is anchored to BASELINE PTC and reused
 // for BOTH the Baseline and Simulated cost lines below; only VOLUME (which responds to elasticity) is
 // allowed to differ between the two states.
-//   Baseline Unit Cost   = 0.70 × (Baseline PTC / 1.12)                          [fixed structural cost]
+//   Baseline Unit Cost   = 0.70 × (Baseline PTC / (1 + GST%))                    [fixed structural cost]
 //   Baseline Total Cost  = Baseline Monthly Volume  × Baseline Unit Cost
 //   Baseline Profit (₹)  = Baseline Monthly Revenue − Baseline Total Cost
 //   Simulated Total Cost = Simulated Monthly Volume × Baseline Unit Cost         [same fixed unit cost]
 //   Simulated Profit (₹) = Simulated Monthly Revenue − Simulated Total Cost
 //   Profit % Change      = ((Simulated Profit − Baseline Profit) / Baseline Profit) × 100
+// GST is READ LIVE off the gstPercent global (set by the editable #gstInput field, no hardcoded/assumed
+// rate) at the moment this function runs, so every recompute uses whatever GST% the user currently has
+// entered — see onGstChange() above.
 // Why this matters: Revenue = Volume × PTC in both states. If Unit Cost were instead recomputed off the
-// SIMULATED PTC (0.70 × SimPTC/1.12), Total Cost would always equal exactly 0.625 × Revenue in every
+// SIMULATED PTC (0.70 × SimPTC/(1+GST%)), Total Cost would always equal exactly 0.625 × Revenue in every
 // state, forcing Profit to always equal exactly 0.375 × Revenue — which makes Profit % Lift mathematically
 // IDENTICAL to Revenue % Lift on every simulation, regardless of elasticity. Anchoring Unit Cost to Baseline
 // PTC removes that false identity: Cost now moves only with Volume, so Profit % Lift correctly diverges
@@ -1715,18 +1622,20 @@ function applyVtmNullStateOverride(c){
 //   3. simulatedTotalCost = simulatedQty * unitCost
 //   4. simulatedProfit    = simulatedRevenue - simulatedTotalCost
 // Step 1 needs ONE independent starting definition of baselineProfit (you can't derive profit from
-// itself) — that seed is unchanged from before: COGS/unit = 70% of (Baseline PTC / 1.12), i.e. a
-// fixed 62.5% cost-to-price ratio at baseline, which is what produces the 37.50% baseline margin seen
-// everywhere in the app. Once that seed feeds Step 1, Steps 1-2 always resolve unitCost back to
-// exactly that same baseline structural cost — so this is algebraically IDENTICAL to the previous
-// version and changes NO output numbers; it's a naming/sequence rewrite matching the manager's spec,
-// not a behavior change. The important behavior (unchanged): unitCost is fixed at the BASELINE level
-// and reused as-is for the simulated state — only Volume (Step 3) is allowed to move.
+// itself) — that seed is unchanged from before: COGS/unit = 70% of (Baseline PTC / (1 + GST%)), i.e. a
+// cost-to-price ratio at baseline that flexes with whatever GST% is live in the UI (no hardcoded 12%
+// assumption). Once that seed feeds Step 1, Steps 1-2 always resolve unitCost back to exactly that same
+// baseline structural cost — so this is algebraically IDENTICAL to the previous version's logic, just
+// driven by the live gstPercent input instead of a fixed rate; it's a naming/sequence rewrite matching
+// the manager's spec, not a behavior change beyond making GST editable. The important behavior
+// (unchanged): unitCost is fixed at the BASELINE level and reused as-is for the simulated state — only
+// Volume (Step 3) is allowed to move.
 function computeProfitMetrics(c){
   const r = c.row;
   const baselineQty     = c.monthlyCurrent;
   const baselineRevenue = c.revenueCurrent;
-  const structuralUnitCost = 0.70 * (r.ptc / 1.12); // fixed structural COGS/unit — anchored to Baseline PTC only; seeds Step 1 below
+  const gstMultiplier = 1 + (gstPercent / 100); // live GST — no hardcoded assumption; read straight off the #gstInput field
+  const structuralUnitCost = 0.70 * (r.ptc / gstMultiplier); // fixed structural COGS/unit — anchored to Baseline PTC only; seeds Step 1 below
   const baselineProfit  = baselineRevenue - (baselineQty * structuralUnitCost);
 
   // Manager's exact 4-step sequence:
@@ -2645,171 +2554,6 @@ function exportToExcel(){
 // below now calls exportToExcel() directly), but kept in case it's referenced elsewhere.
 window.downloadExcel = exportToExcel;
 
-// ---------- SCENARIO LIBRARY ----------
-// NOTE: the user's original function name for this was "saveSimulation" — the actual function in this
-// codebase has always been named saveScenario() (wired to the "Save This Scenario" button's onclick).
-// No backend, no fetch, no localStorage: saving downloads a .json file straight to the user's machine.
-function saveScenario(event){
-  // Defensive guard: this button is not inside a <form> and has no default browser action
-  // to begin with, but stopping/preventing here costs nothing and protects against a future
-  // markup change (e.g. someone later wrapping this section in a <form>) silently reintroducing
-  // a page-reload-on-click bug.
-  if(event){ event.preventDefault(); event.stopPropagation(); }
-  const nameInput = document.getElementById('scenarioNameInput');
-  const name = nameInput.value.trim() || `Scenario ${savedScenarios.length+1}`;
-  // Snapshot priceRows FIRST, then recompute from that exact snapshot — guarantees the KPI
-  // tags saved into the library card always reflect the state that was actually saved, even if
-  // priceRows or selectedMonth are mutated elsewhere before this entry is rendered later.
-  const priceRowsSnapshot = priceRows.map(r => ({...r}));
-  const computed = computeAll().map(applyVtmNullStateOverride);
-  const unitsSim = computed.reduce((s,x)=>s+x.monthlySimulated,0);
-  const unitsCur = computed.reduce((s,x)=>s+x.monthlyCurrent,0);
-  const grossRevenueSim = computed.reduce((s,x)=>s+x.revenueSimulated,0);
-  const grossRevenueCur = computed.reduce((s,x)=>s+x.revenueCurrent,0);
-
-  const scenario = {
-    id: makeScenarioId(),
-    name,
-    month: selectedMonth,
-    timestamp: new Date().toLocaleString('en-IN', { dateStyle:'medium', timeStyle:'short' }),
-    priceRowsSnapshot,
-    unitsSim,
-    unitsCur,
-    volDeltaPct: unitsCur ? ((unitsSim-unitsCur)/unitsCur*100) : 0,
-    revenueSim: grossRevenueSim,
-    revenueCur: grossRevenueCur,
-    revDeltaPct: grossRevenueCur ? ((grossRevenueSim-grossRevenueCur)/grossRevenueCur*100) : 0,
-  };
-
-  const confirm = document.getElementById('saveConfirm');
-  try{
-    // Trigger a plain browser download of this scenario as a standalone .json file — no server involved.
-    const blob = new Blob([JSON.stringify(scenario, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const safeName = name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'scenario';
-    link.download = `KRBL_Scenario_${safeName}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-
-    // Also keep it visible as a card in THIS session's Scenario Library, so it can be Loaded/Deleted
-    // right away without needing to re-import the file that was just downloaded.
-    savedScenarios.push(scenario);
-    renderLibrary();
-    nameInput.value = '';
-    if(confirm){
-      confirm.textContent = 'Saved ✓ — downloaded as .json';
-      confirm.style.color = '';
-      confirm.style.display = 'inline';
-      setTimeout(()=>{ confirm.style.display='none'; }, 2500);
-    }
-  }catch(e){
-    console.error('Could not save scenario file:', e);
-    if(confirm){
-      confirm.textContent = 'Save failed — please retry';
-      confirm.style.color = '#c0392b';
-      confirm.style.display = 'inline';
-      setTimeout(()=>{ confirm.style.display='none'; confirm.style.color=''; }, 3500);
-    }
-  }
-}
-
-function loadScenario(id){
-  const s = savedScenarios.find(x => x.id === id);
-  if(!s) return;
-  selectedMonth = s.month;
-  priceRows = s.priceRowsSnapshot.map(r => ({...r}));
-  goToStep('simulator');
-}
-
-// "Import Scenario" — reads a .json file the user picks (typically one previously downloaded via Save
-// Scenario above) via the browser's File API, parses it, adds it to the in-session Scenario Library, and
-// immediately loads its values into the Pricing Simulator. Purely client-side: no fetch, no server.
-function importScenario(event){
-  const input = event.target;
-  const file = input.files && input.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try{
-      const parsed = JSON.parse(reader.result);
-      // Accept either a single exported scenario object or an array of them, so a hand-merged file
-      // bundling multiple exports together still imports correctly.
-      const candidates = Array.isArray(parsed) ? parsed : [parsed];
-      const imported = [];
-      candidates.forEach(s => {
-        if(!s || !Array.isArray(s.priceRowsSnapshot)) return; // not a real scenario export — skip it
-        const scenario = { ...s, id: s.id || makeScenarioId() };
-        savedScenarios.push(scenario);
-        imported.push(scenario);
-      });
-      if(imported.length === 0){
-        alert('That file does not look like a KRBL scenario export (missing priceRowsSnapshot).');
-        return;
-      }
-      renderLibrary();
-      // Load the last imported scenario's values straight into the Pricing Simulator.
-      const last = imported[imported.length-1];
-      selectedMonth = last.month;
-      priceRows = last.priceRowsSnapshot.map(r => ({...r}));
-      goToStep('simulator');
-    }catch(e){
-      console.error('Could not parse imported scenario file:', e);
-      alert('Could not read that file — make sure it is a .json scenario exported from this dashboard.');
-    }finally{
-      input.value = ''; // reset so re-importing the same filename later still fires the change event
-    }
-  };
-  reader.onerror = () => {
-    console.error('Could not read imported file:', reader.error);
-    alert('Could not read that file.');
-    input.value = '';
-  };
-  reader.readAsText(file);
-}
-
-function deleteScenario(id){
-  savedScenarios = savedScenarios.filter(s => s.id !== id);
-  renderLibrary();
-}
-
-function renderLibrary(){
-  const container = document.getElementById('libraryContent');
-  if(savedScenarios.length === 0){
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">&#128203;</div>
-        <h3>No scenarios saved yet</h3>
-        <p>Head to the Pricing Simulator, adjust your PTC, Store Availability, and Product Ranking levers, run the simulation, and save it here to build out your scenario library.</p>
-        <div style="margin-top:18px;">
-          <button class="btn btn-primary" onclick="goToStep('simulator')">Go to Pricing Simulator &#10148;</button>
-        </div>
-      </div>`;
-    return;
-  }
-  container.innerHTML = savedScenarios.map((s,i) => `
-    <div class="scenario-card">
-      <div class="scenario-meta">
-        <h4>${s.name}</h4>
-        <div class="sub">${s.month} &middot; saved ${s.timestamp}</div>
-        <div class="scenario-periods"><b>Baseline Period:</b> ${s.month} | <b>Simulation Period:</b> Next 30 Days</div>
-      </div>
-      <div class="scenario-stats">
-        <div><div class="v">${Math.round(s.unitsSim).toLocaleString('en-IN')}</div><div class="l">Total Volume (Monthly)</div></div>
-        <div><div class="v">₹${Math.round(s.revenueSim).toLocaleString('en-IN')}</div><div class="l">Revenue</div></div>
-        <div><div class="v ${s.volDeltaPct>=0?'pos':'neg'}">${s.volDeltaPct>=0?'+':''}${s.volDeltaPct.toFixed(2)}%</div><div class="l">Volume &Delta;</div></div>
-        <div><div class="v ${s.revDeltaPct>=0?'pos':'neg'}">${s.revDeltaPct>=0?'+':''}${s.revDeltaPct.toFixed(2)}%</div><div class="l">Revenue &Delta;</div></div>
-      </div>
-      <div class="scenario-actions">
-        <button class="btn btn-outline" onclick="loadScenario('${s.id}')">Load</button>
-        <button class="btn btn-danger" onclick="deleteScenario('${s.id}')">Delete</button>
-      </div>
-    </div>`).join('');
-}
-
 // ---------- INIT ----------
 // selectedMonth is forced to DEFAULT_MONTH ('May 2026') above, and initPriceRows(selectedMonth) has
 // already populated priceRows from baseData['May 2026'] before this script block runs further — so the
@@ -2818,7 +2562,6 @@ function renderLibrary(){
 // is gated entirely by handleLogin()/handleLogout() toggling the .visible / .hidden classes above.
 populateMonthDropdown();
 renderInputsTable();
-renderLibrary();
 updatePeriodLabels();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
