@@ -651,6 +651,16 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <!-- MANAGER REQUEST: real Microsoft Excel (.xlsx) export for the Output Dashboard, via SheetJS. -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- ============================================================================
+     FIREBASE / FIRESTORE — shared, permanent Scenario Library persistence.
+     Compat SDK (global `firebase` object) so the whole app stays plain scripts.
+     Load order matters: the two SDK bundles first, then firebase.js (which reads
+     the global `firebase`), all BEFORE the app's inline script block further down
+     the page, so window.KRBLFirestore exists by the time the app code runs.
+     ============================================================================ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
 </head>
 <body>
 
@@ -1373,9 +1383,9 @@ function handleLogin(evt){
     errorBox.style.display = 'none';
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('appShell').classList.add('visible');
-    // No backend to re-hydrate from anymore — the Scenario Library is populated purely by Save
-    // Scenario (downloads + keeps a card for this session). Nothing to fetch on login.
-    renderLibrary();
+    // Re-hydrate the Scenario Library from Firestore on every login, so a user always sees the
+    // latest shared scenarios (including any saved by other users on other devices).
+    refreshScenarioLibrary();
   } else {
     errorBox.style.display = 'block';
   }
@@ -1458,36 +1468,34 @@ const vtmMatrix = {
 // ---------- STATE ----------
 let selectedMonth = DEFAULT_MONTH;
 let priceRows = [];
-// ---------- SCENARIO LIBRARY — BROWSER-LOCAL PERSISTENCE (no backend, no fetch, no file download) ----------
-// The Flask backend (app.py) has been removed entirely per explicit request — this is now a 100% static
-// frontend. "Save Scenario" no longer triggers any file download — it writes straight into this browser's
-// localStorage, so scenarios survive a refresh/tab close/browser restart on THIS SAME computer/browser.
-// IMPORTANT LIMITATION: localStorage is local to one browser on one device — it is NOT a shared/remote
-// store, so scenarios saved here are only visible on this machine, not to teammates on other computers.
-// True cross-device/cross-user sharing would require a real hosted backend + database (out of scope here
-// per explicit request to keep this a static, no-backend page).
-const SCENARIO_STORAGE_KEY = 'krbl_saved_scenarios_v1';
+// ---------- SCENARIO LIBRARY — FIRESTORE PERSISTENCE (shared, permanent, cross-device) ----------
+// The Scenario Library is now backed by Google Cloud Firestore (see firebase.js). Firestore is the
+// SINGLE SOURCE OF TRUTH — localStorage is no longer used at all. Every user/device/browser reads and
+// writes the same "scenarios" collection, so:
+//   ✓ Refresh / logout / login / browser restart → scenarios remain
+//   ✓ Different browser / different laptop / different user → SAME Scenario Library
+// All Firestore access goes through the window.KRBLFirestore helper object defined in firebase.js.
+//
+// `savedScenarios` starts empty and is always (re)populated from Firestore via refreshScenarioLibrary();
+// it therefore always reflects the live Firestore documents.
+let savedScenarios = [];
 
-function loadScenariosFromStorage(){
+// Pull the full library from Firestore into `savedScenarios`, then re-render. Any failure (offline,
+// permission error, SDK missing) is logged and swallowed so the dashboard never crashes — the library
+// simply shows whatever is currently cached/empty.
+async function refreshScenarioLibrary(){
   try{
-    const raw = localStorage.getItem(SCENARIO_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    if(window.KRBLFirestore && KRBLFirestore.isReady()){
+      const rows = await KRBLFirestore.loadScenariosFromFirestore();
+      savedScenarios = Array.isArray(rows) ? rows : [];
+    }
   }catch(e){
-    console.error('Could not read saved scenarios from local storage:', e);
-    return [];
+    console.error('Could not load scenarios from Firestore:', e);
   }
+  renderLibrary();
 }
-
-function persistScenariosToStorage(){
-  try{
-    localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(savedScenarios));
-  }catch(e){
-    console.error('Could not persist scenarios to local storage:', e);
-  }
-}
-
-let savedScenarios = loadScenariosFromStorage();
+// Backward-compatible alias (kept in case anything else ever calls the old name).
+window.refreshScenarioLibrary = refreshScenarioLibrary;
 
 function makeScenarioId(){
   return `${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
@@ -2851,8 +2859,9 @@ window.downloadExcel = exportToExcel;
 // ---------- SCENARIO LIBRARY ----------
 // NOTE: the user's original function name for this was "saveSimulation" — the actual function in this
 // codebase has always been named saveScenario() (wired to the "Save This Scenario" button's onclick).
-// No backend, no fetch, no localStorage: saving downloads a .json file straight to the user's machine.
-function saveScenario(event){
+// Persistence is now Firestore (see firebase.js): saving writes a document to the shared "scenarios"
+// collection, so the scenario is instantly visible to every user/device, permanently.
+async function saveScenario(event){
   // Defensive guard: this button is not inside a <form> and has no default browser action
   // to begin with, but stopping/preventing here costs nothing and protects against a future
   // markup change (e.g. someone later wrapping this section in a <form>) silently reintroducing
@@ -2875,6 +2884,7 @@ function saveScenario(event){
     name,
     month: selectedMonth,
     timestamp: new Date().toLocaleString('en-IN', { dateStyle:'medium', timeStyle:'short' }),
+    createdAtMs: Date.now(), // stable numeric sort key for deterministic library ordering across devices
     priceRowsSnapshot,
     unitsSim,
     unitsCur,
@@ -2885,14 +2895,18 @@ function saveScenario(event){
   };
 
   const confirm = document.getElementById('saveConfirm');
+  const saveBtn = document.getElementById('saveScenarioBtn');
+  // Guard against duplicate saves from an impatient double-click while the write is in flight.
+  if(saveBtn) saveBtn.disabled = true;
   try{
-    // No file download here — saving only writes into this browser's local storage, so the
-    // scenario shows up as a card in the Scenario Library and survives a refresh/tab close/
-    // browser restart on this same computer/browser (see the persistence block near the top
-    // of this script for the localStorage read/write helpers and their limitations).
-    savedScenarios.push(scenario);
-    persistScenariosToStorage();
-    renderLibrary();
+    if(!window.KRBLFirestore || !KRBLFirestore.isReady()){
+      throw new Error('Scenario Library is offline (Firestore not available).');
+    }
+    // Write the COMPLETE scenario object to the shared Firestore "scenarios" collection, then
+    // re-read the collection so the newly saved scenario appears instantly for this (and every
+    // other) user. Firestore is the single source of truth — no localStorage involved.
+    await KRBLFirestore.saveScenarioToFirestore(scenario);
+    await refreshScenarioLibrary();
     nameInput.value = '';
     if(confirm){
       confirm.textContent = 'Saved ✓';
@@ -2901,13 +2915,15 @@ function saveScenario(event){
       setTimeout(()=>{ confirm.style.display='none'; }, 2500);
     }
   }catch(e){
-    console.error('Could not save scenario:', e);
+    console.error('Could not save scenario to Firestore:', e);
     if(confirm){
-      confirm.textContent = 'Save failed — please retry';
+      confirm.textContent = 'Save failed — check your connection and retry';
       confirm.style.color = '#c0392b';
       confirm.style.display = 'inline';
       setTimeout(()=>{ confirm.style.display='none'; confirm.style.color=''; }, 3500);
     }
+  }finally{
+    if(saveBtn) saveBtn.disabled = false;
   }
 }
 
@@ -2919,10 +2935,20 @@ function loadScenario(id){
   goToStep('simulator');
 }
 
-function deleteScenario(id){
+async function deleteScenario(id){
+  // Optimistic UI: remove the card immediately so the UI updates instantly...
   savedScenarios = savedScenarios.filter(s => s.id !== id);
-  persistScenariosToStorage();
   renderLibrary();
+  try{
+    if(window.KRBLFirestore && KRBLFirestore.isReady()){
+      await KRBLFirestore.deleteScenarioFromFirestore(id);
+    }
+  }catch(e){
+    console.error('Could not delete scenario from Firestore:', e);
+  }
+  // ...then reconcile against the authoritative Firestore state (restores the card if the
+  // server delete failed, and picks up any other users' concurrent changes).
+  await refreshScenarioLibrary();
 }
 
 function renderLibrary(){
@@ -2967,7 +2993,8 @@ function renderLibrary(){
 // is gated entirely by handleLogin()/handleLogout() toggling the .visible / .hidden classes above.
 populateMonthDropdown();
 renderInputsTable();
-renderLibrary();
+renderLibrary();               // paint immediately (empty state) so there is never a blank panel
+refreshScenarioLibrary();      // then hydrate the Scenario Library from Firestore (async)
 updatePeriodLabels();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
