@@ -17,14 +17,14 @@
     --cream:#F9F8F6;
     --ink:#2A1B1E;
     --muted:#8d7f78;
-    --border: rgba(197,160,89,0.15);
+    --border: #E8E3DC;
     --green:#0E7A4E;
     --red:#C75A45;
     --glass: rgba(255,255,255,0.70);
     --glass-strong: rgba(255,255,255,0.88);
-    --shadow-sm: 0 4px 14px rgba(74,14,23,0.05);
-    --shadow-md: 0 10px 30px rgba(74,14,23,0.04);
-    --shadow-lg: 0 24px 60px rgba(74,14,23,0.12);
+    --shadow-sm: 0 1px 2px rgba(16,24,40,0.05), 0 1px 3px rgba(16,24,40,0.06);
+    --shadow-md: 0 4px 12px rgba(16,24,40,0.06), 0 2px 6px rgba(16,24,40,0.05);
+    --shadow-lg: 0 18px 44px rgba(16,24,40,0.13);
     --sidebar-w: 264px;
   }
   *{ box-sizing:border-box; }
@@ -536,6 +536,78 @@
   table.datasrc-table td{ padding:9px 14px; border-bottom:1px dashed var(--border); color:#3a333a; vertical-align:top; }
   table.datasrc-table tr:last-child td{ border-bottom:none; }
   table.datasrc-table td.dm-cell{ font-weight:700; color:#2b2b33; }
+
+  /* ==================== EXECUTIVE POLISH LAYER (visual-only — no logic, content, or flow changes) ====================
+     Additive enterprise design-system refinements layered ON TOP of the base KRBL maroon/gold theme: refined
+     typography & spacing, unified card radii, neutral enterprise shadows, zebra-striped high-contrast data
+     tables, modern inputs/buttons with clear hover + keyboard-focus states, and responsive safeguards.
+     Intentionally does NOT alter any overflow / z-index / dropdown-positioning rules declared above. */
+
+  /* -- Typography -- */
+  body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; line-height:1.5; }
+  .brand-text h1{ letter-spacing:0.1px; }
+
+  /* -- Generous page whitespace -- */
+  .app{ padding:30px 34px 64px; }
+  .glass-card:not(.methodology-card){ padding:22px 26px; }
+
+  /* -- Unified surface radii + clean neutral borders -- */
+  .glass-card, .kpi-tile, .scenario-card, .compare-panel, .datasrc-table-wrap, .scroll-x, .ai-suite-card{
+    border-radius:16px;
+  }
+  .glass-card, .kpi-tile, .scenario-card{ border-color:#EAE5DE; }
+
+  /* -- KPI tiles: uniform sizing + clear hover elevation -- */
+  .kpi-hero-row{ gap:16px; }
+  .kpi-tile{ padding:18px 20px; }
+  .kpi-tile:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(16,24,40,0.10); }
+
+  /* -- Data grids: high-contrast header, zebra striping, clean light-grey gridlines -- */
+  .scroll-x{ border-color:#E5E0D9; }
+  thead th{ background:linear-gradient(180deg, var(--maroon), var(--maroon-dark)); border-bottom:2px solid var(--gold); }
+  tbody td{ border-bottom:1px solid #EFEBE5; }
+  tbody tr:nth-child(even){ background:#FAF8F4; }
+  tbody tr:hover{ background:#F3EEE4; }
+
+  /* -- Methodology / reference table: zebra + polished high-contrast header -- */
+  table.datasrc-table th{ background:#F4EFEA; color:var(--maroon-dark); border-bottom:1px solid #E5E0D9; }
+  table.datasrc-table td{ border-bottom:1px solid #EFEBE5; }
+  table.datasrc-table tbody tr:nth-child(even) td{ background:#FAF8F4; }
+  table.datasrc-table tbody tr:hover td{ background:#F3EEE4; }
+
+  /* -- Inputs: modern, clickable, consistent -- */
+  .login-field input, .save-row input[type=text], select.month-select, .sku-dropdown-btn, select.comparison-view-select{
+    border-color:#DED8D0;
+  }
+  select.month-select:hover, .sku-dropdown-btn:hover, select.comparison-view-select:hover{
+    border-color:var(--gold); box-shadow:0 2px 8px rgba(16,24,40,0.06);
+  }
+
+  /* -- Buttons: crisper feedback + accessible keyboard focus -- */
+  .btn{ border-radius:10px; }
+  .btn:hover{ box-shadow:0 6px 16px rgba(16,24,40,0.10); }
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, .btn:focus-visible{
+    outline:2px solid var(--gold); outline-offset:2px;
+  }
+
+  /* -- Responsive safeguards: prevent layout breaks on tablet / mobile -- */
+  @media (max-width:768px){
+    .app{ padding:20px 16px 48px; }
+    .kpi-tile-value{ font-size:20px; }
+    /* Mobile drawer: the fixed 264px rail is hidden off-canvas by default and slides in as an overlay
+       when the toggle button flips `.sidebar-collapsed` (the JS only toggles that class — this simply
+       inverts which state is visible on small screens; no JS, flow, or navigation change). This frees
+       the content to use full width and removes the horizontal scroll the rail otherwise caused. */
+    .main-content{ margin-left:0 !important; width:100% !important; max-width:100% !important; }
+    .sidebar{ transform:translateX(-100%); box-shadow:0 0 40px rgba(0,0,0,0.35); }
+    .app-shell.sidebar-collapsed .sidebar{ transform:translateX(0); opacity:1; overflow:visible; }
+    .sidebar-toggle-btn{ left:14px; }
+    .app-shell.sidebar-collapsed .sidebar-toggle-btn{ left: calc(var(--sidebar-w) - 15px); }
+  }
+  @media (max-width:520px){
+    .app{ padding:14px 12px 40px; }
+    .btn{ padding:10px 14px; }
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
