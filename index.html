@@ -882,6 +882,18 @@
           </div>
         </div>
 
+        <!-- MANAGER REQUEST (structural update): RPI vs Qty Sold moved to the top of the EDA
+             dashboard so it is the first chart the user sees, right after the master filters
+             bar. Dual-axis time-series trend chart over the selected Time Interval (Daily/
+             Weekly/Monthly), matching the system-wide Qty-Sold-as-a-line treatment. -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; RPI (Relative Price Index) vs Qty Sold</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Qty Sold (line, left axis) against RPI = PTC &divide; Competitor PTC (line, right axis) over the selected time interval. RPI above 1 means we're priced above the competitor; below 1 means we're priced below.</div>
+          <div style="position:relative; height:340px;">
+            <canvas id="edaanRpiTrend"></canvas>
+          </div>
+        </div>
+
         <!-- 5. QUANTITY vs PTC vs COMPETITOR PTC vs MRP vs DISCOUNT -->
         <div class="glass-card" style="padding:16px 20px 14px;">
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Quantity vs PTC vs Competitor PTC vs MRP vs Discount %</div>
@@ -988,24 +1000,15 @@
           </div>
         </div>
 
-        <!-- NEW: RPI vs Qty and (OSA x Product Ranking) vs Qty — dual-axis time-series trend
-             charts over the selected Time Interval (Daily/Weekly/Monthly), matching the
-             system-wide Qty-Sold-as-a-line treatment. (Per latest stakeholder feedback, the
-             (PTC-Competitor PTC) vs Qty chart has been removed, and these two are no longer
-             per-row scatter plots.) -->
+        <!-- MANAGER REQUEST (structural update): Active Stores (OSA × Storecount) vs Qty Sold —
+             dual-axis time-series trend chart over the selected Time Interval (Daily/Weekly/
+             Monthly), matching the system-wide Qty-Sold-as-a-line treatment. Metric changed from
+             OSA × Product Ranking to OSA × Store_Count per latest stakeholder feedback. -->
         <div class="glass-card" style="padding:16px 20px 14px;">
-          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; RPI (Relative Price Index) vs Qty Sold</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Qty Sold (line, left axis) against RPI = PTC &divide; Competitor PTC (line, right axis) over the selected time interval. RPI above 1 means we're priced above the competitor; below 1 means we're priced below.</div>
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Active Stores (OSA &times; Storecount) vs Qty Sold</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Qty Sold (line, left axis) against On-Shelf Availability &times; Store Count, a composite "active stores" reach/availability signal (line, right axis), over the selected time interval.</div>
           <div style="position:relative; height:340px;">
-            <canvas id="edaanRpiTrend"></canvas>
-          </div>
-        </div>
-
-        <div class="glass-card" style="padding:16px 20px 14px;">
-          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; (OSA &times; Product Ranking) vs Qty Sold</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Qty Sold (line, left axis) against On-Shelf Availability &times; Product Ranking, a composite availability/visibility signal (line, right axis), over the selected time interval.</div>
-          <div style="position:relative; height:340px;">
-            <canvas id="edaanOsaRankTrend"></canvas>
+            <canvas id="edaanActiveStoresTrend"></canvas>
           </div>
         </div>
 
@@ -1082,13 +1085,21 @@ const baseData = {
     { name:'IG Mogra 5',           ptc:358.70, dailyVolume:977.70,  storeCount:2056, osa:0.780000, productRanking:7 },
     { name:'IG Super 5',           ptc:745.30, dailyVolume:742.33,  storeCount:2056, osa:0.780000, productRanking:8 },
   ],
+  // MANAGER REQUEST (urgent data-accuracy fix): re-extracted from the latest May 2026 dataset
+  // (Pricing_Features.xlsx). dailyVolume below = the manager's monthly `qty` total / 31 days in
+  // May, so it reconciles exactly back to the given monthly qty once multiplied by the current
+  // month's day count elsewhere in the app. Two real errors were caught and fixed here: (1) IG
+  // Everyday 5's dailyVolume was 2469.65 — almost exactly HALF the correct value (153118 / 31 =
+  // 4939.29); (2) every SKU's productRanking was stale/wrong (e.g. IG Everyday 5 was recorded as
+  // rank 2, should be rank 8). ptc, storeCount, and osa already matched the newly extracted data
+  // to within rounding and are unchanged.
   'May 2026': [
-    { name:'IG Everyday 5',        ptc:366.56, dailyVolume:2469.65, storeCount:2091, osa:0.795852, productRanking:2 },
-    { name:'IG Feast Rozzana 1',   ptc:100.78, dailyVolume:1784.77, storeCount:2091, osa:0.801013, productRanking:4 },
-    { name:'IG Feast Rozzana 5',   ptc:459.72, dailyVolume:876.55,  storeCount:2091, osa:0.804229, productRanking:5 },
-    { name:'IG Mini Mogra 10',     ptc:612.43, dailyVolume:257.23,  storeCount:2091, osa:0.786468, productRanking:8 },
-    { name:'IG Mogra 5',           ptc:374.69, dailyVolume:963.61,  storeCount:2091, osa:0.799613, productRanking:6 },
-    { name:'IG Super 5',           ptc:793.35, dailyVolume:744.06,  storeCount:2091, osa:0.802323, productRanking:7 },
+    { name:'IG Everyday 5',        ptc:366.56, dailyVolume:4939.29, storeCount:2091, osa:0.795852, productRanking:8 },
+    { name:'IG Feast Rozzana 1',   ptc:100.78, dailyVolume:1784.77, storeCount:2091, osa:0.801013, productRanking:11 },
+    { name:'IG Feast Rozzana 5',   ptc:459.72, dailyVolume:876.55,  storeCount:2091, osa:0.804229, productRanking:12 },
+    { name:'IG Mini Mogra 10',     ptc:612.43, dailyVolume:257.23,  storeCount:2091, osa:0.786468, productRanking:15 },
+    { name:'IG Mogra 5',           ptc:374.69, dailyVolume:963.61,  storeCount:2091, osa:0.799613, productRanking:12 },
+    { name:'IG Super 5',           ptc:793.35, dailyVolume:744.06,  storeCount:2091, osa:0.802323, productRanking:9 },
   ]
 };
 // Canonical SKU name list — replaces the old SKU_COEFFICIENTS-derived key list now that per-SKU

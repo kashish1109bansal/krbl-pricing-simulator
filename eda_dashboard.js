@@ -124,12 +124,12 @@
       // competitor's PTC (RPI = PTC / Comp_ptc). Powers the "RPI vs Qty" trend chart;
       // RPI > 1 means we're priced above the competitor, < 1 means below.
       const rpi = safeDiv(PTC, Comp_ptc);
-      // NEW (production feedback, action item #3; converted to a time-series trend per
-      // latest stakeholder feedback): OSA × Product Ranking composite — powers the
-      // "(OSA × Product Ranking) vs Qty" trend chart.
+      // MANAGER REQUEST (structural update): OSA × Store_Count composite — "Active Stores"
+      // proxy (replaces the old OSA × Product Ranking composite) — powers the
+      // "Active Stores (OSA × Storecount) vs Qty Sold" trend chart. Store_Count is already
+      // computed above.
       const OSA_SKU_val = num(r['OSA_SKU']);
-      const Sku_Ranking_val = num(r['Sku_Ranking']);
-      const osa_rank_product = (OSA_SKU_val != null && Sku_Ranking_val != null) ? (OSA_SKU_val * Sku_Ranking_val) : null;
+      const osa_store_product = (OSA_SKU_val != null && Store_Count != null) ? (OSA_SKU_val * Store_Count) : null;
       const budget_per_store = safeDiv(overall_marketing_budget, Store_Count);
       const qty_per_store = safeDiv(total_qty_sold, Store_Count);
       const qty_per_city = safeDiv(total_qty_sold, unique_cities);
@@ -161,7 +161,7 @@
         OSA_SKU: num(r['OSA_SKU']), OSA_Comp: num(r['OSA_Comp']),
         Segment_Units, Segment_Sku_Count: num(r['Segment_Sku_Count']),
         Is_Fest, Pre_Fest, Post_Fest, festival_phase,
-        discount_pct, rpi, osa_rank_product,
+        discount_pct, rpi, osa_store_product,
         budget_per_store, qty_per_store, qty_per_city, budget_per_unit,
         category_share_proxy, segment_share_proxy
       });
@@ -237,9 +237,10 @@
 
   // ---------- 7/8/9. DAILY / WEEKLY / MONTHLY AGGREGATION DICTS (mirror the Python dicts exactly) ----------
   // NEW (stakeholder feedback — RPI/OSA×Ranking converted from per-row scatter to time-series
-  // trend lines): `rpi` and `osa_rank_product` are now aggregated (mean) at every interval so
-  // renderEdaanRpiTrend()/renderEdaanOsaRankTrend() can plot them as a proper right-axis line
-  // alongside Qty Sold, exactly like the other dual-axis time-series charts.
+  // trend lines; MANAGER REQUEST — OSA×Ranking composite replaced with OSA×Storecount "Active
+  // Stores" composite): `rpi` and `osa_store_product` are now aggregated (mean) at every
+  // interval so renderEdaanRpiTrend()/renderEdaanActiveStoresTrend() can plot them as a proper
+  // right-axis line alongside Qty Sold, exactly like the other dual-axis time-series charts.
   const DAILY_AGG = {
     total_qty_sold:'sum', PTC:'mean', Comp_ptc:'mean', MRP:'mean', discount_pct:'mean',
     overall_marketing_budget:'mean', Sku_Ranking:'mean', Comp_Ranking:'mean', OSA_SKU:'mean', OSA_Comp:'mean',
@@ -247,7 +248,7 @@
     is_weekend:'max', is_first_week:'max', Is_Fest:'max', Pre_Fest:'max', Post_Fest:'max',
     budget_per_store:'mean', budget_per_unit:'mean', qty_per_store:'mean',
     category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean',
-    rpi:'mean', osa_rank_product:'mean'
+    rpi:'mean', osa_store_product:'mean'
   };
   const WEEKLY_AGG = {
     total_qty_sold:'sum', PTC:'mean', Comp_ptc:'mean', MRP:'mean', discount_pct:'mean',
@@ -256,7 +257,7 @@
     Is_Fest:'max', Pre_Fest:'max', Post_Fest:'max',
     budget_per_store:'mean', budget_per_unit:'mean', qty_per_store:'mean',
     category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean',
-    rpi:'mean', osa_rank_product:'mean'
+    rpi:'mean', osa_store_product:'mean'
   };
   const MONTHLY_AGG = {
     total_qty_sold:'sum', PTC:'mean', Comp_ptc:'mean', MRP:'mean', discount_pct:'mean',
@@ -264,7 +265,7 @@
     Market_Share:'mean', Category_Units:'sum', Segment_Units:'sum', Segment_Sku_Count:'mean', Store_Count:'mean',
     budget_per_store:'mean', budget_per_unit:'mean', qty_per_store:'mean',
     category_share_proxy:'mean', segment_share_proxy:'mean', unique_cities:'mean', qty_per_city:'mean',
-    rpi:'mean', osa_rank_product:'mean'
+    rpi:'mean', osa_store_product:'mean'
   };
 
   function buildAggregates(){
@@ -326,7 +327,7 @@
     // NEW (production feedback, action item #3 — converted from scatter to time-series
     // trend charts per latest stakeholder feedback; the (PTC - Competitor PTC) vs Qty
     // chart was removed entirely at the same time).
-    renderEdaanRpiTrend(); renderEdaanOsaRankTrend();
+    renderEdaanRpiTrend(); renderEdaanActiveStoresTrend();
     // NEW (MANAGER REQUEST, change 6) — static hardcoded scenario chart from coeff.pptx; cheap to
     // re-render alongside everything else, and keeps it in the same edaanCharts registry (so it also
     // gets destroyed/recreated cleanly and picked up by window.edaanResizeAll()).
@@ -943,15 +944,19 @@
   }
 
   // ================================================================================
-  // NEW (production feedback, action item #3 — RPI vs Qty & (OSA × Product Ranking) vs
-  // Qty) — LATEST STAKEHOLDER FEEDBACK: converted from per-row scatter plots into
-  // standard time-series trend charts, exactly matching the dual-axis pattern used by
-  // charts 3/4/5/15/16 (Qty Sold as a LINE on the left axis, the driver metric as a LINE
-  // on the right axis), fully driven by the global Time Interval filter via
+  // NEW (production feedback, action item #3 — RPI vs Qty & Active Stores vs Qty) —
+  // LATEST STAKEHOLDER FEEDBACK: converted from per-row scatter plots into standard
+  // time-series trend charts, exactly matching the dual-axis pattern used by charts
+  // 3/4/5/15/16 (Qty Sold as a LINE on the left axis, the driver metric as a LINE on the
+  // right axis), fully driven by the global Time Interval filter via
   // pickDataset()/aggregate(). The third scatter plot, (PTC − Competitor PTC) vs Qty,
   // has been removed entirely per this feedback round — see the deleted
   // ptc_gap_vs_comp/ptc_gap_pct_vs_comp fields (no longer computed in engineerFeatures)
   // and the deleted edaanScatterPtcGap canvas card in index.html.
+  // MANAGER REQUEST (structural update): the second trend chart's composite metric was
+  // changed from OSA × Product Ranking to OSA × Store_Count ("Active Stores" — an
+  // availability/reach signal), and the chart was renamed accordingly. See
+  // osa_store_product in engineerFeatures() above.
   // ================================================================================
 
   // Trend Chart 1: RPI (Relative Price Index = PTC / Comp_ptc) vs Qty, over time
@@ -974,23 +979,23 @@
     });
   }
 
-  // Trend Chart 2: (OSA × Product Ranking) vs Qty, over time — dynamic composite metric
-  function renderEdaanOsaRankTrend(){
+  // Trend Chart 2: Active Stores (OSA × Store_Count) vs Qty, over time — dynamic composite metric
+  function renderEdaanActiveStoresTrend(){
     const interval = getInterval();
     const { dataset, xField, qtyIsLine } = pickDataset(interval);
     let rows = applyMasterFilters(dataset);
-    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', osa_rank_product: 'mean' });
+    rows = aggregate(rows, [xField], { total_qty_sold: 'sum', osa_store_product: 'mean' });
     rows.sort(sortByX(xField));
-    makeChart('edaanOsaRankTrend', {
+    makeChart('edaanActiveStoresTrend', {
       type: qtyIsLine ? 'line' : 'bar',
       data: {
         labels: rows.map(r => r[xField]),
         datasets: [
           { type: qtyIsLine ? 'line' : 'bar', label: 'Qty Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(74,14,23,0.55)', borderColor: '#4A0E17', yAxisID: 'y', tension: 0.25 },
-          { type: 'line', label: 'OSA × Product Ranking', data: rows.map(r => r.osa_rank_product), borderColor: '#2E6F9E', backgroundColor: '#2E6F9E', yAxisID: 'y1', tension: 0.25, pointRadius: 3, pointHoverRadius: 5 }
+          { type: 'line', label: 'Active Stores (OSA × Storecount)', data: rows.map(r => r.osa_store_product), borderColor: '#2E6F9E', backgroundColor: '#2E6F9E', yAxisID: 'y1', tension: 0.25, pointRadius: 3, pointHoverRadius: 5 }
         ]
       },
-      options: dualAxisOptions('Qty Sold', 'OSA × Product Ranking')
+      options: dualAxisOptions('Qty Sold', 'Active Stores (OSA × Storecount)')
     });
   }
 
