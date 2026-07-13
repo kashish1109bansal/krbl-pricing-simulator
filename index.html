@@ -508,6 +508,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<!-- MANAGER REQUEST: real Microsoft Excel (.xlsx) export for the Output Dashboard, via SheetJS. -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -648,7 +650,7 @@
           <div class="toolbar">
             <h3 class="section-title" style="margin:0;">Output Dashboard</h3>
             <div class="toolbar-actions">
-              <button class="btn btn-outline" onclick="downloadExcel()">&#11015; Download Excel</button>
+              <button class="btn btn-outline" onclick="exportToExcel()">&#11015; Download Excel</button>
               <button class="btn btn-ghost" onclick="goToStep('simulator')">&#8592; Back to Simulator</button>
             </div>
           </div>
@@ -882,6 +884,31 @@
           </div>
         </div>
 
+        <!-- 22. SCENARIO IMPACT ANALYSIS — MANAGER REQUEST (latest follow-up, layout + static-data fix):
+             moved to the 1st position in the EDA dashboard's visual grid (right after the master filters
+             bar, before every other chart). Now STATIC — fully disconnected from the live Pricing
+             Simulator sliders/state; the 3 mini-charts always show the same 3 fixed, pre-computed
+             single-lever scenarios (see STATIC_SCENARIO_DATA in eda_dashboard.js). Scope is strictly
+             "IG Everyday 5" — called out explicitly in the note line below. -->
+        <div class="glass-card" style="padding:16px 20px 14px;">
+          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Scenario Impact Analysis</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:2px;">Illustrative single-lever scenarios &mdash; Revenue, Units, Profit, and Margin % Change vs baseline. Static reference values (not tied to the live simulator).</div>
+          <div style="font-size:11.5px; font-weight:700; color:#8a1f2d; margin-bottom:10px;">Note: This analysis is strictly for IG Everyday 5.</div>
+          <!-- MANAGER REQUEST (layout correction, per reference image): 3 separate side-by-side bar
+               charts (one per scenario), not one grouped chart. -->
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:20px;">
+            <div style="position:relative; height:300px;">
+              <canvas id="ptcChart"></canvas>
+            </div>
+            <div style="position:relative; height:300px;">
+              <canvas id="storeChart"></canvas>
+            </div>
+            <div style="position:relative; height:300px;">
+              <canvas id="rankingChart"></canvas>
+            </div>
+          </div>
+        </div>
+
         <!-- MANAGER REQUEST (structural update): RPI vs Qty Sold moved to the top of the EDA
              dashboard so it is the first chart the user sees, right after the master filters
              bar. Dual-axis time-series trend chart over the selected Time Interval (Daily/
@@ -966,31 +993,6 @@
           </div>
         </div>
 
-        <!-- 22. SCENARIO IMPACT ANALYSIS — MANAGER REQUEST (data-sync fix, latest follow-up):
-             LIVE chart, single source of truth with the Output Dashboard. Each of the 3 mini-charts
-             runs the SAME single-lever scenario (Price +5% PTC / Store Count +5% / Ranking worsened
-             8→9) through the app's real regression engine (COEF) and the shared computeProfitMetrics()
-             constant-unit-cost profit engine — the exact same functions that power the Output Table.
-             Revenue/Units/Profit/Margin values are recomputed on every simulation run, filter change,
-             and data load, so they can never mismatch the Output Table's final numbers. -->
-        <div class="glass-card" style="padding:16px 20px 14px;">
-          <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128202; Scenario Impact Analysis</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Illustrative single-lever scenarios &mdash; Revenue, Units, and Profit % Change vs baseline. Live-computed via the same simulation &amp; profit engine as the Output Dashboard.</div>
-          <!-- MANAGER REQUEST (layout correction, per reference image): 3 separate side-by-side bar
-               charts (one per scenario), not one grouped chart. -->
-          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:20px;">
-            <div style="position:relative; height:300px;">
-              <canvas id="ptcChart"></canvas>
-            </div>
-            <div style="position:relative; height:300px;">
-              <canvas id="storeChart"></canvas>
-            </div>
-            <div style="position:relative; height:300px;">
-              <canvas id="rankingChart"></canvas>
-            </div>
-          </div>
-        </div>
-
         <!-- 11. FESTIVAL IMPACT ANALYSIS -->
         <div class="glass-card" style="padding:16px 20px 14px;">
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#127881; Festival Impact Analysis</div>
@@ -1019,7 +1021,7 @@
         <!-- 17. FEATURE CORRELATION MATRIX (HEATMAP) -->
         <div class="glass-card" style="padding:16px 20px 14px;">
           <div class="section-title" style="margin:0 0 4px; font-size:13px;">&#128421;&#65039; Feature Correlation Matrix</div>
-          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Pearson correlation across qty and all available pricing/ranking/availability/calendar features in the filtered dataset (no engineered features added). Rendered as a lower-triangular Seaborn-style tile heatmap using Chart.js + chartjs-plugin-datalabels.</div>
+          <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Pearson correlation across qty and all available pricing/ranking/availability/calendar features in the filtered dataset (no engineered features added).</div>
           <div style="position:relative; height:800px; min-height:800px; overflow-x:auto;">
             <canvas id="edaanChart13"></canvas>
           </div>
@@ -2433,22 +2435,120 @@ function renderComparisonCharts(computedFull){
   });
 }
 
-// ---------- DOWNLOAD CSV ----------
-function downloadExcel(){
+// ---------- DOWNLOAD EXCEL (.xlsx) — MANAGER REQUEST: real Microsoft Excel workbook (via SheetJS), ----------
+// not a CSV renamed to .xlsx, so every calculation column can be reviewed and re-used in Excel formulas,
+// especially for "IG Everyday 5". Pulls from the SAME shared engine as the Output Table / KPI hero tiles
+// (computeAll() + computeProfitMetrics()) — single source of truth, so this export can never drift from
+// what's on screen.
+function round2(n){ return Math.round((Number(n) + Number.EPSILON) * 100) / 100; } // 2-decimal precision, stays a raw Number
+
+// Builds the exact row-object shape SheetJS's json_to_sheet() turns straight into a worksheet: object keys
+// become the header row, object values become the cell values below them, IN INSERTION ORDER.
+function buildExcelExportRows(){
   const computed = computeAll().map(applyVtmNullStateOverride);
-  const headers = ['SKU','Period','Scenario','Current PTC (Rs)','Simulated PTC (Rs)','Current Store Availability (Store Count x OSA)','Simulated Store Availability (Store Count x OSA)','Current Product Ranking','Simulated Product Ranking','Avg_Daily_Volume (Current)','Avg_Daily_Volume (Simulated)','Volume lost Delta','VTM Gain','Final Avg_Daily_Volume (Simulated)','Baseline Monthly Volume','Simulated Monthly Volume','Volume Delta %','Baseline Monthly Revenue (Rs)','Simulated Monthly Revenue (Rs)','Revenue Delta (Rs)','Revenue Delta %','Baseline Profit (Rs)','Simulated Profit (Rs)','Profit Delta %'];
-  const csvEscape = v => { const s=String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const rows = computed.map(c => {
-    const pm = computeProfitMetrics(c);
-    return [c.row.name, selectedMonth, scenarioLabel(c), c.row.ptc.toFixed(2), c.row.simPtc.toFixed(2), c.row.storeAva.toFixed(2), c.row.simStoreAva.toFixed(2), c.row.productRanking, c.row.simProductRanking, Math.round(c.row.dailyVolume), Math.round(c.simVolume), Math.round(c.volumeLostDelta), Math.round(c.vtmGain), Math.round(c.finalSimVolume), Math.round(c.monthlyCurrent), Math.round(c.monthlySimulated), c.volDeltaPct.toFixed(2), Math.round(c.revenueCurrent), Math.round(c.revenueSimulated), Math.round(c.revenueDelta), c.revDeltaPct.toFixed(2), Math.round(pm.baselineProfit), Math.round(pm.simulatedProfit), pm.profitChangePct === null ? 'N/A' : pm.profitChangePct.toFixed(2)];
+  // "IG Everyday 5" pinned to the top per the manager's review priority; every other SKU keeps its
+  // existing relative order.
+  const ordered = [...computed].sort((a, b) => {
+    const aTop = /everyday 5/i.test(a.row.name) ? 0 : 1;
+    const bTop = /everyday 5/i.test(b.row.name) ? 0 : 1;
+    return aTop - bTop;
   });
-  const csvLines = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))];
-  const csvContent = csvLines.join('\r\n');
-  const blob = new Blob(['﻿'+csvContent], { type:'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download = 'KRBL_PTC_Simulated_Output.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  return ordered.map(c => {
+    const pm = computeProfitMetrics(c); // Steps 1-4, manager's constant-unit-cost logic — identical function the Output Table calls
+    const baselineQty      = c.monthlyCurrent;
+    const simulatedQty     = c.monthlySimulated;
+    const baselineRevenue  = c.revenueCurrent;
+    const simulatedRevenue = c.revenueSimulated;
+    const baselineProfit   = pm.baselineProfit;
+    const simulatedProfit  = pm.simulatedProfit; // = simulatedRevenue - (simulatedQty * baselineUnitCost) — see computeProfitMetrics() Steps 3-4
+
+    // MANAGER'S EXACT RULE: Baseline Unit Cost = (Baseline Revenue - Baseline Profit) / Baseline Qty.
+    // This is recomputed here explicitly (not just copied) so the exported column is self-evidently
+    // traceable to the manager's own formula — it is algebraically the SAME value as unitCost inside
+    // computeProfitMetrics(), so it can never disagree with how Simulated Profit was actually derived.
+    const baselineUnitCost = baselineQty ? (baselineRevenue - baselineProfit) / baselineQty : 0;
+
+    const qtyDeltaPct     = baselineQty     ? ((simulatedQty - baselineQty) / baselineQty) * 100 : 0;
+    const revenueDeltaPct = baselineRevenue ? ((simulatedRevenue - baselineRevenue) / baselineRevenue) * 100 : 0;
+    const profitDeltaPct  = pm.profitChangePct; // null only in the (baselineProfit == 0 and simulatedProfit != 0) edge case
+
+    const baselineMarginPct  = baselineRevenue  ? (baselineProfit  / baselineRevenue)  * 100 : 0;
+    const simulatedMarginPct = simulatedRevenue ? (simulatedProfit / simulatedRevenue) * 100 : 0;
+    const marginDeltaPts     = simulatedMarginPct - baselineMarginPct;
+
+    // Every value below is a raw JS Number (never a "₹"/"%%"-suffixed string) so Excel formulas/SUM()
+    // work directly on these cells — display formatting is applied separately via cell.z below.
+    return {
+      'SKU Name':                 c.row.name,
+      'Baseline Qty':              round2(baselineQty),
+      'Simulated Qty':             round2(simulatedQty),
+      'Qty Δ %':              round2(qtyDeltaPct),
+      'Baseline Unit Cost (₹)': round2(baselineUnitCost),
+      'Baseline Revenue (₹)':   round2(baselineRevenue),
+      'Simulated Revenue (₹)':  round2(simulatedRevenue),
+      'Revenue Δ %':          round2(revenueDeltaPct),
+      'Baseline Profit (₹)':    round2(baselineProfit),
+      'Simulated Profit (₹)':   round2(simulatedProfit),
+      'Profit Δ %':           profitDeltaPct === null ? null : round2(profitDeltaPct),
+      'Baseline Margin (%)':      round2(baselineMarginPct),
+      'Simulated Margin (%)':     round2(simulatedMarginPct),
+      'Margin Δ (pts)':       round2(marginDeltaPts),
+    };
+  });
 }
+
+function exportToExcel(){
+  if(typeof XLSX === 'undefined'){
+    alert('The Excel export library failed to load (check your internet connection) — please try again.');
+    return;
+  }
+  const rows = buildExcelExportRows();
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+
+  // Column widths tuned to the header text (character-width units, SheetJS convention) so nothing is
+  // truncated on open.
+  worksheet['!cols'] = [
+    { wch: 24 }, // SKU Name
+    { wch: 14 }, // Baseline Qty
+    { wch: 14 }, // Simulated Qty
+    { wch: 10 }, // Qty Δ %
+    { wch: 20 }, // Baseline Unit Cost (₹)
+    { wch: 20 }, // Baseline Revenue (₹)
+    { wch: 20 }, // Simulated Revenue (₹)
+    { wch: 12 }, // Revenue Δ %
+    { wch: 18 }, // Baseline Profit (₹)
+    { wch: 18 }, // Simulated Profit (₹)
+    { wch: 12 }, // Profit Δ %
+    { wch: 18 }, // Baseline Margin (%)
+    { wch: 18 }, // Simulated Margin (%)
+    { wch: 14 }, // Margin Δ (pts)
+  ];
+
+  // Apply Excel display number-formats to the data cells WITHOUT touching cell.v (the underlying value
+  // stays a plain JS Number) — this is purely cosmetic (2-decimal ₹/%% display), so SUM()/formulas keep
+  // working natively on every column in Excel.
+  const range = XLSX.utils.decode_range(worksheet['!ref']);
+  const currencyCols = [4, 5, 6, 8, 9];          // Baseline Unit Cost, Baseline/Simulated Revenue, Baseline/Simulated Profit
+  const percentPtsCols = [3, 7, 10, 11, 12, 13]; // Qty/Revenue/Profit Δ%, Baseline/Simulated Margin %, Margin Δ pts
+  for(let R = range.s.r + 1; R <= range.e.r; R++){
+    currencyCols.forEach(C => {
+      const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
+      if(cell && typeof cell.v === 'number') cell.z = '#,##0.00';
+    });
+    percentPtsCols.forEach(C => {
+      const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
+      if(cell && typeof cell.v === 'number') cell.z = '0.00';
+    });
+  }
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Simulation Output');
+  const filename = `KRBL_Simulation_Output_${String(selectedMonth).replace(/\s+/g, '_')}.xlsx`;
+  XLSX.writeFile(workbook, filename); // triggers the browser download directly — no Blob/URL.createObjectURL plumbing needed
+}
+// Backward-compat alias — nothing else in this file calls downloadExcel() anymore (the toolbar button
+// below now calls exportToExcel() directly), but kept in case it's referenced elsewhere.
+window.downloadExcel = exportToExcel;
 
 // ---------- SCENARIO LIBRARY ----------
 function saveScenario(){
