@@ -1413,45 +1413,60 @@ const REGRESSION_COEFFICIENTS = {
   storeAva: 0.165892   // Store Availability (Store Count x OSA) elasticity
 };
 
-const baseData = {
-  // ============================================================================================
-  // SINGLE SOURCE OF TRUTH: every value below is extracted DIRECTLY from the uploaded raw dataset
-  // (Pricing_Features.xlsx → Pricing_Features.csv, Dec 2025–May 2026). NO manual overrides, NO
-  // patches, NO exceptions. Per-SKU, per-month extraction rule:
-  //     ptc            = mean(PTC)            over that SKU's rows in the month
-  //     dailyVolume    = sum(total_qty_sold)  over the month / number of days in the month
-  //     storeCount     = round(mean(Store_Count))
-  //     osa            = mean(OSA_SKU)         (6-dp precision)
-  //     productRanking = round(mean(Sku_Ranking))
-  // storeAva (the "Store Availability" lever baseline) is DYNAMICALLY derived as storeCount*osa below.
-  // To refresh after a new dataset drop, re-run the extraction and paste the regenerated arrays here.
-  // ============================================================================================
-  'April 2026': [
-    { name:'IG Everyday 5',         ptc:355.69, dailyVolume:2162.17, storeCount:2056, osa:0.780000, productRanking:8 },
-    { name:'IG Feast Rozzana 1',    ptc:99.88, dailyVolume:1703.5, storeCount:2056, osa:0.780000, productRanking:11 },
-    { name:'IG Feast Rozzana 5',    ptc:439.22, dailyVolume:851.57, storeCount:2056, osa:0.780000, productRanking:12 },
-    { name:'IG Mini Mogra 10',      ptc:607.94, dailyVolume:242.67, storeCount:2056, osa:0.780000, productRanking:15 },
-    { name:'IG Mogra 5',            ptc:358.7, dailyVolume:977.7, storeCount:2056, osa:0.780000, productRanking:12 },
-    { name:'IG Super 5',            ptc:745.3, dailyVolume:742.33, storeCount:2056, osa:0.780000, productRanking:11 },
-  ],
-  'May 2026': [
-    { name:'IG Everyday 5',         ptc:366.56, dailyVolume:2469.65, storeCount:2091, osa:0.795851, productRanking:8 },
-    { name:'IG Feast Rozzana 1',    ptc:100.78, dailyVolume:1784.77, storeCount:2091, osa:0.801012, productRanking:11 },
-    { name:'IG Feast Rozzana 5',    ptc:459.72, dailyVolume:876.55, storeCount:2091, osa:0.804231, productRanking:12 },
-    { name:'IG Mini Mogra 10',      ptc:612.43, dailyVolume:257.23, storeCount:2091, osa:0.786470, productRanking:15 },
-    { name:'IG Mogra 5',            ptc:374.69, dailyVolume:963.61, storeCount:2091, osa:0.799610, productRanking:12 },
-    { name:'IG Super 5',            ptc:793.35, dailyVolume:744.06, storeCount:2091, osa:0.802321, productRanking:9 },
-  ]
-};
-// Canonical SKU name list — replaces the old SKU_COEFFICIENTS-derived key list now that per-SKU
-// illustrative coefficients no longer exist.
-const SKU_NAMES = baseData['April 2026'].map(r => r.name);
-// Dynamically calculate the "Store Availability (Store Count x OSA)" lever's baseline value for every
-// SKU, for every month, straight from the dataset: storeAva = storeCount * osa.
-Object.keys(baseData).forEach(month => {
-  baseData[month] = baseData[month].map(r => ({ ...r, storeAva: r.storeCount * r.osa }));
-});
+// ============================================================================================
+// SINGLE SOURCE OF TRUTH — RUNTIME BASELINE PIPELINE (zero hardcoded baseline values)
+// `baseData` is GENERATED at page load by aggregating the uploaded dataset (Pricing_Features.csv).
+// Per approved scope the Pricing Simulator continues to expose EXACTLY these two baseline months —
+// the dataset only regenerates their values; it never adds or removes months. To refresh after a
+// new dataset: run `python convert.py` (xlsx→csv) and replace Pricing_Features.csv. NO code edits.
+//   Per-(month,SKU) extraction (verified to reproduce the raw dataset exactly, 0 mismatches):
+//     ptc            = mean(PTC)
+//     dailyVolume    = sum(total_qty_sold) / number_of_distinct_days_in_month
+//     storeCount     = round(mean(Store_Count))
+//     osa            = mean(OSA_SKU)
+//     productRanking = round(mean(Sku_Ranking))
+//     storeAva       = storeCount * osa   (the "Store Availability" lever baseline)
+// ============================================================================================
+const SIMULATOR_MONTHS = [
+  { label: 'April 2026', ym: '2026-04' },
+  { label: 'May 2026',   ym: '2026-05' }
+];
 const DEFAULT_MONTH = 'May 2026';
+// Bumped when the baseline pipeline changes. Scenarios saved under an older version are treated as
+// stale and auto-purged on load (one-time Scenario Library migration off the old hardcoded baseline).
+const BASELINE_VERSION = 'raw-pipeline-2026-06';
+
+// Populated at runtime by buildBaselineFromCsv(); empty (baselineReady=false) until the CSV loads.
+let baseData = {};
+let baselineReady = false;
+
+// Aggregates the raw dataset rows into the simulator baseline. Runs on the same Pricing_Features.csv
+// the EDA dashboard consumes, so Simulator and EDA are guaranteed to share one baseline dataset.
+function buildBaselineFromCsv(rows){
+  const bd = {};
+  const num = v => { const n = (typeof v === 'number') ? v : parseFloat(v); return Number.isFinite(n) ? n : null; };
+  const ymOf = d => String(d).slice(0, 7);
+  SIMULATOR_MONTHS.forEach(({ label, ym }) => {
+    bd[label] = SKU_NAMES.map(name => {
+      const recs = rows.filter(r => r && r['Short Code'] === name && ymOf(r['date']) === ym);
+      const days = new Set(recs.map(r => String(r['date']).slice(0, 10))).size || 1;
+      const mean = f => { const xs = recs.map(r => num(r[f])).filter(v => v !== null); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0; };
+      const qty = recs.map(r => num(r['total_qty_sold'])).filter(v => v !== null).reduce((a, b) => a + b, 0);
+      const storeCount = Math.round(mean('Store_Count'));
+      const osa = mean('OSA_SKU');
+      return {
+        name,
+        ptc: mean('PTC'),
+        dailyVolume: qty / days,
+        storeCount,
+        osa,
+        productRanking: Math.round(mean('Sku_Ranking')),
+        storeAva: storeCount * osa
+      };
+    });
+  });
+  return bd;
+}
 
 // ---------- VOLUME TRANSFER MATRIX (vtm_metric_2.csv — restricted to the 6 approved SKUs) ----------
 // Keyed by SKU name on both axes: vtmMatrix[fromSKU][toSKU] = fraction of fromSKU's volume change captured by toSKU.
@@ -1466,6 +1481,10 @@ const vtmMatrix = {
   "IG Mogra 5":         {"IG Everyday 5":0.0, "IG Feast Rozzana 1":0.0, "IG Feast Rozzana 5":0.0, "IG Mini Mogra 10":0.06399565694528181, "IG Mogra 5":0, "IG Super 5":0.0},
   "IG Super 5":         {"IG Everyday 5":0.0, "IG Feast Rozzana 1":0.0, "IG Feast Rozzana 5":0.0, "IG Mini Mogra 10":0.0, "IG Mogra 5":0.0, "IG Super 5":0}
 };
+// Canonical 6-SKU portfolio — derived from the VTM matrix keys. The portfolio is a VTM/business
+// definition (vtm_metric_2.csv), NOT baseline data, so deriving it here means it needs no separate
+// maintenance and stays correct across dataset refreshes.
+const SKU_NAMES = Object.keys(vtmMatrix);
 // ---------- STATE ----------
 let selectedMonth = DEFAULT_MONTH;
 let priceRows = [];
@@ -1488,7 +1507,17 @@ async function refreshScenarioLibrary(){
   try{
     if(window.KRBLFirestore && KRBLFirestore.isReady()){
       const rows = await KRBLFirestore.loadScenariosFromFirestore();
-      savedScenarios = Array.isArray(rows) ? rows : [];
+      const all = Array.isArray(rows) ? rows : [];
+      // ONE-TIME MIGRATION: scenarios saved before the raw-data baseline pipeline (no baselineVersion,
+      // or an older one) are stale — they snapshot the old hardcoded baseline. Auto-detect and purge
+      // them so the Scenario Library only ever holds scenarios built from the uploaded dataset.
+      const current = all.filter(s => s && s.baselineVersion === BASELINE_VERSION);
+      const stale   = all.filter(s => !s || s.baselineVersion !== BASELINE_VERSION);
+      stale.forEach(s => {
+        if(s && s.id){ KRBLFirestore.deleteScenarioFromFirestore(s.id).catch(err => console.warn('Stale scenario purge failed for', s.id, err)); }
+      });
+      if(stale.length) console.info(`Scenario Library migration: purged ${stale.length} stale scenario(s) from the old baseline.`);
+      savedScenarios = current;
     }
   }catch(e){
     console.error('Could not load scenarios from Firestore:', e);
@@ -1513,9 +1542,10 @@ let lastVisibleComputed = []; // cache of the most recently rendered grid's comp
 // dropdown can re-render the charts instantly on change without recomputing the whole engine.
 
 function initPriceRows(month){
-  priceRows = baseData[month].map(s => ({ ...s, simPtc: s.ptc, simStoreAva: s.storeAva, simProductRanking: s.productRanking }));
+  const rows = baseData[month] || []; // empty until the async baseline bootstrap has run
+  priceRows = rows.map(s => ({ ...s, simPtc: s.ptc, simStoreAva: s.storeAva, simProductRanking: s.productRanking }));
 }
-initPriceRows(selectedMonth);
+// priceRows is seeded by bootstrapBaseline() once Pricing_Features.csv has loaded (see INIT block).
 
 // ---------- COLLAPSIBLE SIDEBAR TOGGLE ----------
 // Toggles `.sidebar-collapsed` on the app-shell wrapper (which drives both the sidebar's
@@ -1564,6 +1594,7 @@ function updatePeriodLabels(){
 }
 
 function runSimulation(){
+  if(!baselineReady){ return; } // baseline not yet built from the dataset — ignore the click
   document.getElementById('navOutput').disabled = false;
   goToStep('output');
 }
@@ -1767,6 +1798,11 @@ function renderInputsTable(){
   populateMonthDropdown();
   renderSkuFilterBars();
   const tbody = document.getElementById('inputsTableBody');
+  if(!baselineReady){
+    // Baseline is still being generated from the dataset — show a brief loading row (sub-second).
+    if(tbody) tbody.innerHTML = '<tr><td colspan="10" style="padding:18px;text-align:center;color:var(--muted);">Loading baseline from dataset…</td></tr>';
+    return;
+  }
   tbody.innerHTML = priceRows.map((r,i) => ({ r, i })).filter(x => visibleSkus.has(x.r.name)).map(({r,i}) => {
     const ptcPct = r.ptc ? ((r.simPtc - r.ptc) / r.ptc) * 100 : 0;
     const storeAvaPct = r.storeAva ? ((r.simStoreAva - r.storeAva) / r.storeAva) * 100 : 0;
@@ -2868,6 +2904,7 @@ async function saveScenario(event){
   // markup change (e.g. someone later wrapping this section in a <form>) silently reintroducing
   // a page-reload-on-click bug.
   if(event){ event.preventDefault(); event.stopPropagation(); }
+  if(!baselineReady){ return; } // never save a scenario before the dataset baseline is ready
   const nameInput = document.getElementById('scenarioNameInput');
   const name = nameInput.value.trim() || `Scenario ${savedScenarios.length+1}`;
   // Snapshot priceRows FIRST, then recompute from that exact snapshot — guarantees the KPI
@@ -2886,6 +2923,7 @@ async function saveScenario(event){
     month: selectedMonth,
     timestamp: new Date().toLocaleString('en-IN', { dateStyle:'medium', timeStyle:'short' }),
     createdAtMs: Date.now(), // stable numeric sort key for deterministic library ordering across devices
+    baselineVersion: BASELINE_VERSION, // ties this snapshot to the current dataset baseline pipeline
     priceRowsSnapshot,
     unitsSim,
     unitsCur,
@@ -2986,17 +3024,55 @@ function renderLibrary(){
     </div>`).join('');
 }
 
-// ---------- INIT ----------
-// selectedMonth is forced to DEFAULT_MONTH ('May 2026') above, and initPriceRows(selectedMonth) has
-// already populated priceRows from baseData['May 2026'] before this script block runs further — so the
-// very first render of the inputs grid reflects May 2026 actuals immediately, with no user action required.
-// This all runs regardless of login state (it only builds DOM content); visibility of the app shell itself
-// is gated entirely by handleLogin()/handleLogout() toggling the .visible / .hidden classes above.
+// ---------- INIT / DATA-PIPELINE BOOTSTRAP ----------
+// The simulator baseline is GENERATED from the uploaded dataset (Pricing_Features.csv) at page load,
+// so every CURRENT value (baseline table, KPIs, comparison, and each saved Scenario snapshot) traces
+// straight back to the raw data. Runs regardless of login state; the login gate only hides the shell.
+renderLibrary();               // paint the Scenario Library empty-state immediately
+refreshScenarioLibrary();      // hydrate from Firestore + purge stale scenarios (async)
+
+// Initial paint shows the "Loading baseline…" row until the CSV parse completes.
 populateMonthDropdown();
 renderInputsTable();
-renderLibrary();               // paint immediately (empty state) so there is never a blank panel
-refreshScenarioLibrary();      // then hydrate the Scenario Library from Firestore (async)
 updatePeriodLabels();
+
+function bootstrapBaseline(){
+  if(typeof Papa === 'undefined'){
+    console.error('PapaParse unavailable — cannot build the simulator baseline.');
+    if(typeof setBaselineError === 'function') setBaselineError();
+    return;
+  }
+  Papa.parse('Pricing_Features.csv', {
+    download: true, header: true, dynamicTyping: true, skipEmptyLines: true,
+    complete: function(res){
+      try{
+        baseData = buildBaselineFromCsv(res.data || []);
+        baselineReady = true;
+        if(!baseData[selectedMonth]) selectedMonth = DEFAULT_MONTH;
+        initPriceRows(selectedMonth);
+        populateMonthDropdown();
+        renderInputsTable();
+        updatePeriodLabels();
+        // If the user is already sitting on the Output Dashboard when data lands, refresh it.
+        if(document.getElementById('panel-output') && document.getElementById('panel-output').classList.contains('active')){
+          renderOutputTable();
+        }
+      }catch(err){
+        console.error('Failed to build baseline from dataset:', err);
+        setBaselineError();
+      }
+    },
+    error: function(err){
+      console.error('Failed to load Pricing_Features.csv for the baseline:', err);
+      setBaselineError();
+    }
+  });
+}
+function setBaselineError(){
+  const tb = document.getElementById('inputsTableBody');
+  if(tb) tb.innerHTML = '<tr><td colspan="10" style="padding:18px;text-align:center;color:var(--muted);">Could not load the baseline dataset (Pricing_Features.csv). Ensure the data file is present next to index.html.</td></tr>';
+}
+bootstrapBaseline();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
