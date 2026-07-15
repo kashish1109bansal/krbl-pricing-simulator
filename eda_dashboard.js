@@ -423,10 +423,10 @@
         labels: rows.map(r => r[xField]),
         datasets: [
           { type: qtyIsLine ? 'line' : 'bar', label: 'Qty Sold', data: rows.map(r => r.total_qty_sold), backgroundColor: 'rgba(74,14,23,0.55)', borderColor: '#4A0E17', yAxisID: 'y', tension: 0.25 },
-          { type: 'line', label: 'Marketing Budget', data: rows.map(r => r.overall_marketing_budget), borderColor: '#C5A059', backgroundColor: '#C5A059', yAxisID: 'y1', tension: 0.25 }
+          { type: 'line', label: 'Overall Marketing Budget', data: rows.map(r => r.overall_marketing_budget), borderColor: '#C5A059', backgroundColor: '#C5A059', yAxisID: 'y1', tension: 0.25 }
         ]
       },
-      options: dualAxisOptions('Qty Sold', 'Marketing Budget (₹)')
+      options: dualAxisOptions('Qty Sold', 'Overall Marketing Budget (₹)')
     });
   }
 
