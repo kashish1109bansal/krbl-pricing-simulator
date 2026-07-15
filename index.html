@@ -1433,13 +1433,18 @@ const baseData = {
   // 4939.29); (2) every SKU's productRanking was stale/wrong (e.g. IG Everyday 5 was recorded as
   // rank 2, should be rank 8). ptc, storeCount, and osa already matched the newly extracted data
   // to within rounding and are unchanged.
+  // DATA REFRESH (new Pricing_Features.xlsx, Dec 2025–May 2026): ptc/storeCount/dailyVolume re-extracted
+  // and confirmed identical to the prior values; OSA_SKU means refreshed to the new dataset's full
+  // precision (6th-decimal changes only). Two manual overrides are PRESERVED intentionally: IG Everyday
+  // 5's dailyVolume stays doubled (153118/31 = 4939.29, the manager's data-accuracy fix), and the April
+  // 2026 product rankings above stay hand-set. May rankings already match the raw data.
   'May 2026': [
-    { name:'IG Everyday 5',        ptc:366.56, dailyVolume:4939.29, storeCount:2091, osa:0.795852, productRanking:8 },
-    { name:'IG Feast Rozzana 1',   ptc:100.78, dailyVolume:1784.77, storeCount:2091, osa:0.801013, productRanking:11 },
-    { name:'IG Feast Rozzana 5',   ptc:459.72, dailyVolume:876.55,  storeCount:2091, osa:0.804229, productRanking:12 },
-    { name:'IG Mini Mogra 10',     ptc:612.43, dailyVolume:257.23,  storeCount:2091, osa:0.786468, productRanking:15 },
-    { name:'IG Mogra 5',           ptc:374.69, dailyVolume:963.61,  storeCount:2091, osa:0.799613, productRanking:12 },
-    { name:'IG Super 5',           ptc:793.35, dailyVolume:744.06,  storeCount:2091, osa:0.802323, productRanking:9 },
+    { name:'IG Everyday 5',        ptc:366.56, dailyVolume:4939.29, storeCount:2091, osa:0.795851, productRanking:8 },
+    { name:'IG Feast Rozzana 1',   ptc:100.78, dailyVolume:1784.77, storeCount:2091, osa:0.801012, productRanking:11 },
+    { name:'IG Feast Rozzana 5',   ptc:459.72, dailyVolume:876.55,  storeCount:2091, osa:0.804231, productRanking:12 },
+    { name:'IG Mini Mogra 10',     ptc:612.43, dailyVolume:257.23,  storeCount:2091, osa:0.786470, productRanking:15 },
+    { name:'IG Mogra 5',           ptc:374.69, dailyVolume:963.61,  storeCount:2091, osa:0.799610, productRanking:12 },
+    { name:'IG Super 5',           ptc:793.35, dailyVolume:744.06,  storeCount:2091, osa:0.802321, productRanking:9 },
   ]
 };
 // Canonical SKU name list — replaces the old SKU_COEFFICIENTS-derived key list now that per-SKU
