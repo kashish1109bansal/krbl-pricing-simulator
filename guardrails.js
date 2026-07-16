@@ -16,7 +16,7 @@
        GT price map
             │  CompetitionPriceProvider (returns Competition Price if/when the column exists)
             ▼
-       GuardrailValidator              (lower = per-SKU GT Price; upper = max(PTC, Comp) × 1.20)
+       GuardrailValidator              (lower = GT Price × LOWER_GT_FACTOR; upper = max(PTC, Comp) × 1.20)
             ▼  verdict → UI tooltip
 
    FUTURE-PROOF: guardrail updates require replacing ONLY GT_Guardrails.csv. New city
@@ -30,9 +30,16 @@
   // CONFIG — the ONLY place data-shape assumptions live. Editing this is configuration,
   // not application logic.
   // ------------------------------------------------------------------------------------
+  // Lower guardrail relaxation factor. Minimum Allowed Price = GT Price × LOWER_GT_FACTOR.
+  // Change ONLY this value to relax/tighten the floor (e.g. 0.80 = allow the simulated price to sit up
+  // to 20% below GT Price). It does NOT change the GT Price itself — only the validation threshold.
+  var LOWER_GT_FACTOR = 0.90;
+
   var CONFIG = {
     csvPath: 'GT_Guardrails.csv',
     keyColumn: 'SKU Short Code',
+    // Minimum Allowed Price = GT Price × lowerGtFactor (the only knob for the lower guardrail).
+    lowerGtFactor: LOWER_GT_FACTOR,
     // Columns that are NOT per-city price points. EVERY other column is treated as a
     // city/region price and averaged into GT Price. Pre-listing likely future metadata
     // columns here keeps them out of the GT average with zero code changes; any genuinely
@@ -133,13 +140,16 @@
   };
 
   // ====================================================================================
-  // 4) GuardrailValidator — pure rule. Lower = per-SKU GT Price; Upper = max(PTC, Comp?) × 1.20.
+  // 4) GuardrailValidator — pure rule. Lower = GT Price × LOWER_GT_FACTOR; Upper = max(PTC, Comp?) × 1.20.
   // ====================================================================================
   var GuardrailValidator = {
     evaluate: function (ctx) {
       // ctx: { gtPrice, currentPtc, competitionPrice, simulatedPtc }
       var sim = toNum(ctx.simulatedPtc);
-      var lower = (ctx.gtPrice === undefined) ? null : ctx.gtPrice;   // SKU-level GT Price
+      // GT Price is UNCHANGED. The lower validation threshold (Minimum Allowed Price) is GT Price scaled
+      // by the configurable LOWER_GT_FACTOR — only the threshold changes, not the GT Price.
+      var gtPrice = (ctx.gtPrice === undefined) ? null : ctx.gtPrice;   // SKU-level GT Price (as-is)
+      var lower = (gtPrice === null) ? null : gtPrice * CONFIG.lowerGtFactor; // Minimum Allowed Price
       var cur = toNum(ctx.currentPtc);
       var comp = toNum(ctx.competitionPrice);
 
