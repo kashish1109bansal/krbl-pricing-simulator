@@ -737,13 +737,24 @@
 
   <!-- COLLAPSIBLE LEFT SIDEBAR -->
   <div class="sidebar">
-    <div class="sidebar-brand">
-      <div class="mark"><img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img"></div>
-      <div class="txt">
-        <h1>KRBL Limited</h1>
-        <div class="sidebar-subbrand">By IQlytics Solutions Pvt. Ltd.</div>
-        <p>Pricing Simulator</p>
+    <div class="sidebar-brand" style="display: flex; flex-direction: column; gap: 12px; align-items: flex-start;">
+      
+      <!-- TOP ROW: Logo on left, Titles on right -->
+      <div style="display: flex; flex-direction: row; align-items: center; gap: 12px;">
+        <div class="mark">
+          <img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img">
+        </div>
+        <div class="txt" style="display: flex; flex-direction: column; justify-content: center;">
+          <h1>KRBL Limited</h1>
+          <p style="margin-top: 4px;">Pricing Simulator</p>
+        </div>
       </div>
+
+      <!-- BOTTOM ROW: Iqlytics Line starts below the logo -->
+      <div class="sidebar-subbrand" style="margin: 0; width: 100%; text-align: center;">
+        BY IQLYTICS SOLUTIONS PVT. LTD.
+      </div>
+      
     </div>
     <div class="side-nav">
       <button class="side-link" id="navEda" onclick="goToStep('eda')"><span class="num">1</span> EDA Analysis</button>
