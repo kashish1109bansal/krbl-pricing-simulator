@@ -280,6 +280,22 @@
   .neg{ color:var(--red); font-weight:700; }
   td input[type=number]{ width:62px; padding:4px 6px; border-radius:7px; border:1.5px solid var(--gold); background: var(--gold-soft); font-family:inherit; font-size:11px; font-weight:700; color:var(--maroon-dark); text-align:right; }
   td input[type=number]:focus{ outline:none; border-color:var(--maroon); box-shadow:0 0 0 3px rgba(122,6,36,0.12); }
+  /* Price Guardrail — a Simulated PTC outside the guardrail band is flagged with the app's warning red;
+     the reason ("below GT Price" / "above RPI Limit") is carried in the input's native title tooltip
+     (same tooltip style used elsewhere in the table). No layout/UI redesign. */
+  td input.ptc-sim-input.guardrail-flag[type=number]{ border-color:#D9383A; background:rgba(217,56,58,0.10); color:#b3261e; }
+  td input.ptc-sim-input.guardrail-flag[type=number]:focus{ border-color:#D9383A; box-shadow:0 0 0 3px rgba(217,56,58,0.15); }
+  /* Guardrail tooltip bubble — shows the reason on hover OR while the flagged input is focused (so the
+     message is visible during editing, when the native title tooltip would be suppressed). */
+  td.guardrail-cell{ position:relative; }
+  td.guardrail-cell::after{
+    content: attr(data-guardrail-msg);
+    position:absolute; left:50%; top:calc(100% + 6px); transform:translateX(-50%);
+    background:#D9383A; color:#fff; font-size:10.5px; font-weight:700; text-transform:none; letter-spacing:normal;
+    white-space:nowrap; padding:5px 9px; border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,0.22);
+    opacity:0; visibility:hidden; transition:opacity .12s ease; pointer-events:none; z-index:1000;
+  }
+  td.guardrail-cell:hover::after, td.guardrail-cell:focus-within::after{ opacity:1; visibility:visible; }
   /* Simulated Budget figures (e.g. ₹29,796.67) overflow the generic 62px numeric input width and clip —
      give this column a dedicated, wider class so large rupee values always render in full. */
   td input.budget-input[type=number]{ min-width:140px !important; width:100% !important; padding:6px 8px !important; box-sizing:border-box !important; text-align:right; }
@@ -674,6 +690,13 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
+<!-- ============================================================================
+     PRICE GUARDRAILS — independent validation module (reads its OWN GT_Guardrails.csv).
+     Loaded in <head> (after PapaParse above) so window.PriceGuardrails exists before the
+     app's inline script wires the Simulated PTC validation. Separate from the simulation
+     engine and the Pricing_Features pipeline. See guardrails.js.
+     ============================================================================ -->
+<script src="guardrails.js"></script>
 </head>
 <body>
 
@@ -1862,6 +1885,7 @@ function onPtcPctChange(el){
   const row = el.closest('tr');
   const simInput = row && row.querySelector('.ptc-sim-input');
   if(simInput) simInput.value = priceRows[i].simPtc.toFixed(2);
+  validatePtcGuardrail(i, row); // Price Guardrail check (UI feedback only)
 }
 function onPtcSimChange(el){
   const i = +el.dataset.idx;
@@ -1873,6 +1897,30 @@ function onPtcSimChange(el){
   const row = el.closest('tr');
   const pctInput = row && row.querySelector('.ptc-pct-input');
   if(pctInput) pctInput.value = pct.toFixed(2);
+  validatePtcGuardrail(i, row); // Price Guardrail check (UI feedback only)
+}
+// ---------- PRICE GUARDRAIL — UI HOOK ONLY ----------
+// Thin bridge between the Simulated PTC inputs and the INDEPENDENT guardrail module (guardrails.js).
+// Contains NO guardrail logic: it asks window.PriceGuardrails for a verdict and reflects it via the
+// input's warning class + native title tooltip. Touches no simulation/business logic whatsoever.
+function validatePtcGuardrail(i, tr){
+  if(!tr || !window.PriceGuardrails || !PriceGuardrails.isReady()) return;
+  const simInput = tr.querySelector('.ptc-sim-input');
+  const rowData = priceRows[i];
+  if(!simInput || !rowData) return;
+  const res = PriceGuardrails.validate({ sku: rowData.name, currentPtc: rowData.ptc, simulatedPtc: parseFloat(simInput.value) });
+  const flagged = (res.status === 'below' || res.status === 'above');
+  const cell = simInput.closest('td');
+  simInput.classList.toggle('guardrail-flag', flagged);
+  if(flagged){
+    // Native title (existing tooltip mechanism) + a cell-level bubble that also shows while the input
+    // is focused/being edited — so the message is visible, not just the red border.
+    simInput.setAttribute('title', res.message);
+    if(cell){ cell.classList.add('guardrail-cell'); cell.setAttribute('data-guardrail-msg', res.message); }
+  } else {
+    simInput.removeAttribute('title');
+    if(cell){ cell.classList.remove('guardrail-cell'); cell.removeAttribute('data-guardrail-msg'); }
+  }
 }
 function onStoreAvaPctChange(el){
   const i = +el.dataset.idx;
@@ -3044,6 +3092,11 @@ function renderLibrary(){
 // straight back to the raw data. Runs regardless of login state; the login gate only hides the shell.
 renderLibrary();               // paint the Scenario Library empty-state immediately
 refreshScenarioLibrary();      // hydrate from Firestore + purge stale scenarios (async)
+
+// PRICE GUARDRAILS (independent module, guardrails.js) — register the simulator's SKU set so the module
+// computes the Overall GT Price lower guardrail (average of those SKUs' GT Prices). The module loads
+// GT_Guardrails.csv on its own; this is the only wiring needed and it never changes when the data changes.
+if(window.PriceGuardrails){ PriceGuardrails.onReady(function(){ PriceGuardrails.setSimulatorSkus(SKU_NAMES); }); }
 
 // Initial paint shows the "Loading baseline…" row until the CSV parse completes.
 populateMonthDropdown();
