@@ -101,18 +101,8 @@
   .app-shell.sidebar-collapsed .sidebar-toggle-btn{ left:14px; }
   .app-shell.sidebar-collapsed .main-content{ margin-left:0; width:100%; max-width:100%; }
   .main-content{ transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out; }
-  /* Branding container: logo + KRBL/IQlytics text. Top-aligned so the multi-line text defines the block
-     height cleanly, with a bottom border + margin that the navigation starts strictly below (no overlap). */
-  .sidebar-brand{ display:flex; align-items:flex-start; gap:12px; padding:6px 8px 20px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:20px; }
-  .sidebar-brand .txt{ min-width:0; }
-  .sidebar-brand .mark{ width:auto; height:42px; border-radius:9px; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:3px 6px; overflow:hidden; }
-  .sidebar-brand .mark .logo-img{ height:100%; width:auto; max-width:110px; object-fit:contain; display:block; border-radius:5px; }
-  .sidebar-brand .mark .logo-text{ color:#fff; font-weight:800; font-size:11px; letter-spacing:0.01em; }
-  .sidebar-brand .txt h1{ margin:0; font-size:14.5px; color:#fff; font-weight:800; line-height:1.25; }
-  .sidebar-brand .txt p{ margin:2px 0 0; font-size:9.5px; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:0.07em; font-weight:600; }
-  /* Small partner-branding line sitting directly under the KRBL Limited name inside the brand block
-     (gold accent to distinguish it from the white "Pricing Simulator" sub-line beneath it). */
-  .sidebar-subbrand{ font-size:9px; color:var(--gold); letter-spacing:0.05em; font-weight:700; margin:2px 0 1px; line-height:1.3; text-transform:uppercase; }
+  /* ===== SIDEBAR BRANDING — styled entirely with INLINE styles in the markup (see .branding-wrapper
+     in the sidebar) so no stylesheet rule can conflict with the two-row layout. No class CSS here. ===== */
 
   /* Navigation begins immediately BELOW the branding container (margin-top adds clear separation on top
      of the brand block's own bottom margin, guaranteeing no overlap/crowding). */
@@ -737,24 +727,27 @@
 
   <!-- COLLAPSIBLE LEFT SIDEBAR -->
   <div class="sidebar">
-    <div class="sidebar-brand" style="display: flex; flex-direction: column; gap: 12px; align-items: flex-start;">
-      
-      <!-- TOP ROW: Logo on left, Titles on right -->
-      <div style="display: flex; flex-direction: row; align-items: center; gap: 12px;">
-        <div class="mark">
-          <img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" class="logo-img">
+    <!-- SIDEBAR BRANDING — strictly inline-styled (no .sidebar-brand class) so no stylesheet rule can
+         override the two-row layout. Top row: logo + KRBL text. Bottom row: centered IQlytics line. -->
+    <div class="branding-wrapper" style="display:flex; flex-direction:column; align-items:center; width:100%; box-sizing:border-box; padding:0 0 20px 0; margin:0 0 18px 0; border-bottom:1px solid rgba(255,255,255,0.12);">
+
+      <div class="branding-top-row" style="display:flex; flex-direction:row; align-items:center; justify-content:center; width:100%; margin-bottom:14px;">
+        
+        <div class="logo-container" style="height:44px; background:#ffffff; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:3px 6px; overflow:hidden;">
+          <img src="https://link.fobshanghai.com/bbsimage/fair/gulfood2018/1204.jpg" alt="KRBL Limited" style="height:100%; width:auto; max-width:120px; object-fit:contain; display:block; border-radius:5px;">
         </div>
-        <div class="txt" style="display: flex; flex-direction: column; justify-content: center;">
-          <h1>KRBL Limited</h1>
-          <p style="margin-top: 4px;">Pricing Simulator</p>
+        
+        <div class="title-container" style="display:flex; flex-direction:column; min-width:0; margin-left:12px; padding-right:15px;">
+          <h1 style="margin:0; font-size:15px; font-weight:800; color:#ffffff; line-height:1.2;">KRBL Limited</h1>
+          <p style="margin:2px 0 0; font-size:9.5px; font-weight:600; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:0.07em;">Pricing Simulator</p>
         </div>
+
       </div>
 
-      <!-- BOTTOM ROW: Iqlytics Line starts below the logo -->
-      <div class="sidebar-subbrand" style="margin: 0; width: 100%; text-align: center;">
-        BY IQLYTICS SOLUTIONS PVT. LTD.
+      <div class="branding-bottom-row" style="display:block; width:100%; text-align:center;">
+        <div class="iqlytics-text" style="font-size:9.5px; font-weight:700; color:#C5A059; text-transform:uppercase; letter-spacing:0.06em; line-height:1.3;">BY IQLYTICS SOLUTIONS PVT. LTD.</div>
       </div>
-      
+
     </div>
     <div class="side-nav">
       <button class="side-link" id="navEda" onclick="goToStep('eda')"><span class="num">1</span> EDA Analysis</button>
