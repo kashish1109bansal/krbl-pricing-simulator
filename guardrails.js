@@ -16,7 +16,7 @@
        GT price map
             │  CompetitionPriceProvider (returns Competition Price if/when the column exists)
             ▼
-       GuardrailValidator              (lower = per-SKU GT Price; upper = max(PTC×1.20, Comp))
+       GuardrailValidator              (lower = per-SKU GT Price; upper = max(PTC, Comp) × 1.20)
             ▼  verdict → UI tooltip
 
    FUTURE-PROOF: guardrail updates require replacing ONLY GT_Guardrails.csv. New city
@@ -43,7 +43,7 @@
     ],
     // Candidate names for the (future) Competition Price column — first present one wins.
     competitionPriceColumns: ['Competition Price', 'Competition_Price', 'Comp Price', 'Comp_ptc'],
-    // Upper guardrail multiplier on Current PTC (RPI cap): Upper = max(PTC × factor, CompPrice).
+    // Upper guardrail multiplier on Current PTC (RPI cap): Upper = max(PTC, CompPrice) × factor.
     upperMultiplier: 1.20
   };
 
@@ -133,7 +133,7 @@
   };
 
   // ====================================================================================
-  // 4) GuardrailValidator — pure rule. Lower = per-SKU GT Price; Upper = max(PTC×1.20, Comp?).
+  // 4) GuardrailValidator — pure rule. Lower = per-SKU GT Price; Upper = max(PTC, Comp?) × 1.20.
   // ====================================================================================
   var GuardrailValidator = {
     evaluate: function (ctx) {
@@ -141,11 +141,14 @@
       var sim = toNum(ctx.simulatedPtc);
       var lower = (ctx.gtPrice === undefined) ? null : ctx.gtPrice;   // SKU-level GT Price
       var cur = toNum(ctx.currentPtc);
-      var comp = (ctx.competitionPrice === undefined) ? null : ctx.competitionPrice;
+      var comp = toNum(ctx.competitionPrice);
 
-      var upper = null;
-      if (cur !== null) upper = cur * CONFIG.upperMultiplier;
-      if (comp !== null && comp !== 0) upper = (upper === null) ? comp : Math.max(upper, comp);
+      // Business rule: the simulated price may not exceed 20% above WHICHEVER IS HIGHER of the Current
+      // PTC and the Competition Price (Comp_PTC).  Maximum Allowed Price = max(Current PTC, Comp_PTC) × factor.
+      var base = null;
+      if (cur !== null) base = cur;
+      if (comp !== null && comp !== 0) base = (base === null) ? comp : Math.max(base, comp);
+      var upper = (base === null) ? null : base * CONFIG.upperMultiplier;
 
       var res = { status: 'ok', message: '', lower: lower, upper: upper, competitionUsed: (comp !== null && comp !== 0) };
       if (sim === null) return res;
@@ -199,10 +202,15 @@
     // input: { sku, currentPtc, simulatedPtc }
     // Lower guardrail = the SKU's OWN GT Price (per-SKU). The Overall GT Price is still computed and
     // exposed via getOverallGtPrice() so an overall-level mode can be re-enabled later without redesign.
+    // Competition Price = Comp_PTC. Prefer an explicit value passed by the caller (the app sources
+    // Comp_PTC per SKU + selected month); otherwise fall back to a Competition Price column in the
+    // guardrail file if one exists. Either way the validator uses max(Current PTC, Comp_PTC) × 1.20.
+    var comp = (input.competitionPrice !== undefined && input.competitionPrice !== null)
+      ? input.competitionPrice : getCompetitionPrice(input.sku);
     return GuardrailValidator.evaluate({
       gtPrice: getGtPrice(input.sku),
       currentPtc: input.currentPtc,
-      competitionPrice: getCompetitionPrice(input.sku),
+      competitionPrice: comp,
       simulatedPtc: input.simulatedPtc
     });
   }

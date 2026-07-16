@@ -1865,6 +1865,41 @@ function renderInputsTable(){
       <td class="num"><input type="number" step="1" min="1" inputmode="numeric" class="${lockClass.trim()}" value="${r.simProductRanking}" data-idx="${i}" oninput="onRankingChange(this)" ${lockAttr}></td>
     </tr>`;
   }).join('');
+  // Re-run guardrail validation for EVERY rendered Simulated PTC field. This makes a freshly rendered
+  // grid (scenario load, month change, initial render) reflect the guardrail rules — red border + tooltip —
+  // without the user having to edit the field. Uses the SAME validatePtcGuardrail() as manual editing.
+  revalidateAllGuardrails();
+}
+// GUARDRAIL Competition Price (Comp_PTC) reference — per month → per SKU → mean Comp_ptc. Built from the
+// Pricing_Features rows in the bootstrap; used ONLY by the guardrail validator's upper limit. Never feeds
+// the simulation engine / baseData / any calculation.
+let guardrailCompByMonth = {};
+function buildGuardrailCompMap(rows){
+  const out = {};
+  const num = v => { const n = (typeof v === 'number') ? v : parseFloat(v); return Number.isFinite(n) ? n : null; };
+  const ymOf = d => String(d).slice(0, 7);
+  SIMULATOR_MONTHS.forEach(({ label, ym }) => {
+    out[label] = {};
+    SKU_NAMES.forEach(name => {
+      const vals = rows.filter(r => r && r['Short Code'] === name && ymOf(r['date']) === ym)
+        .map(r => num(r['Comp_ptc'])).filter(v => v !== null);
+      out[label][name] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    });
+  });
+  return out;
+}
+// Comp_PTC for a SKU in the CURRENTLY selected baseline month (matches the Current PTC the validator uses).
+function getGuardrailCompPtc(sku){
+  const m = guardrailCompByMonth[selectedMonth];
+  return (m && m[sku] != null) ? m[sku] : null;
+}
+// Applies validatePtcGuardrail() to every Simulated PTC input currently in the grid.
+function revalidateAllGuardrails(){
+  if(!window.PriceGuardrails || !PriceGuardrails.isReady()) return;
+  document.querySelectorAll('#inputsTableBody .ptc-sim-input').forEach(function(el){
+    const tr = el.closest('tr');
+    if(tr) validatePtcGuardrail(+el.dataset.idx, tr);
+  });
 }
 
 // PERFORMANCE FIX: these handlers used to call renderInputsTable() on every single keystroke, which
@@ -1908,9 +1943,22 @@ function validatePtcGuardrail(i, tr){
   const simInput = tr.querySelector('.ptc-sim-input');
   const rowData = priceRows[i];
   if(!simInput || !rowData) return;
-  const res = PriceGuardrails.validate({ sku: rowData.name, currentPtc: rowData.ptc, simulatedPtc: parseFloat(simInput.value) });
-  const flagged = (res.status === 'below' || res.status === 'above');
   const cell = simInput.closest('td');
+  const clearFlag = function(){
+    simInput.classList.remove('guardrail-flag');
+    simInput.removeAttribute('title');
+    if(cell){ cell.classList.remove('guardrail-cell'); cell.removeAttribute('data-guardrail-msg'); }
+  };
+  const simVal = parseFloat(simInput.value);
+  // TRIGGER RULE: only validate a USER-ENTERED / loaded SIMULATED price. An untouched baseline value —
+  // Simulated PTC still equal to the SKU's Current (baseline) PTC — is never validated or flagged. This
+  // keeps the initial page load, month changes, and unedited rows of a loaded scenario clean.
+  if(isNaN(simVal) || (rowData.ptc != null && Math.abs(simVal - rowData.ptc) < 0.005)){
+    clearFlag();
+    return;
+  }
+  const res = PriceGuardrails.validate({ sku: rowData.name, currentPtc: rowData.ptc, competitionPrice: getGuardrailCompPtc(rowData.name), simulatedPtc: simVal });
+  const flagged = (res.status === 'below' || res.status === 'above');
   simInput.classList.toggle('guardrail-flag', flagged);
   if(flagged){
     // Native title (existing tooltip mechanism) + a cell-level bubble that also shows while the input
@@ -3096,7 +3144,7 @@ refreshScenarioLibrary();      // hydrate from Firestore + purge stale scenarios
 // PRICE GUARDRAILS (independent module, guardrails.js) — register the simulator's SKU set so the module
 // computes the Overall GT Price lower guardrail (average of those SKUs' GT Prices). The module loads
 // GT_Guardrails.csv on its own; this is the only wiring needed and it never changes when the data changes.
-if(window.PriceGuardrails){ PriceGuardrails.onReady(function(){ PriceGuardrails.setSimulatorSkus(SKU_NAMES); }); }
+if(window.PriceGuardrails){ PriceGuardrails.onReady(function(){ PriceGuardrails.setSimulatorSkus(SKU_NAMES); revalidateAllGuardrails(); }); }
 
 // Initial paint shows the "Loading baseline…" row until the CSV parse completes.
 populateMonthDropdown();
@@ -3114,6 +3162,10 @@ function bootstrapBaseline(){
     complete: function(res){
       try{
         baseData = buildBaselineFromCsv(res.data || []);
+        // GUARDRAIL-ONLY reference map: per-SKU, per-month Competition Price (Comp_PTC) extracted from the
+        // SAME already-parsed rows. This does NOT alter baseData or any calculation — it is read only by the
+        // price-guardrail validator (upper limit = max(Current PTC, Comp_PTC) × 1.20).
+        guardrailCompByMonth = buildGuardrailCompMap(res.data || []);
         baselineReady = true;
         if(!baseData[selectedMonth]) selectedMonth = DEFAULT_MONTH;
         initPriceRows(selectedMonth);
